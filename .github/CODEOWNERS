@@ -1,0 +1,6 @@
+# CODEOWNERS — tender repo (tray toolbox)
+
+*                       @ctwoodwa
+/.github/               @ctwoodwa
+/menubar-plugin/        @ctwoodwa
+/README.md              @ctwoodwa
