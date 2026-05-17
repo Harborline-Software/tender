@@ -1,6 +1,11 @@
-# CODEOWNERS — tender repo (tray toolbox)
-
-*                       @ctwoodwa
-/.github/               @ctwoodwa
-/menubar-plugin/        @ctwoodwa
-/README.md              @ctwoodwa
+# CODEOWNERS — tender
+#
+# Intentionally minimal: the previous catchall (* @ctwoodwa) auto-requested
+# review from the maintainer on every PR, including the steady stream of
+# Dependabot PRs. With the fleet on a solo-dev posture (BDFL governance)
+# and PR auto-assign already pinning each PR to ctwoodwa via the
+# `auto-assign.yml` workflow, the catchall added notification noise
+# without value.
+#
+# Add specific path ownerships here ONLY when a real second-reviewer
+# expectation exists for that path. Today there are none.
