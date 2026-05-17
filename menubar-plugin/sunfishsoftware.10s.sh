@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# SunfishSoftware coordinator — SwiftBar menubar plugin
+# Harborline-Software coordinator — SwiftBar menubar plugin
 #
 # Controls:
 #   - Coordination sync flag (.sync-active) + LaunchAgent
@@ -14,7 +14,7 @@
 # Install: symlink into ~/Library/Application Support/SwiftBar/Plugins/
 # Refresh: every 10s (encoded in filename .10s.sh)
 #
-# <swiftbar.title>SunfishSoftware</swiftbar.title>
+# <swiftbar.title>Harborline-Software</swiftbar.title>
 # <swiftbar.version>2.0</swiftbar.version>
 # <swiftbar.author>XO</swiftbar.author>
 # <swiftbar.desc>Control coordination sync + Bridge + Galley + Anchor services</swiftbar.desc>
@@ -216,7 +216,7 @@ echo "---"
 # ============================================================
 # Header
 # ============================================================
-echo "SunfishSoftware Coordinator | size=13 color=$SYNC_COLOR"
+echo "Harborline-Software Coordinator | size=13 color=$SYNC_COLOR"
 echo "Sync: $SYNC_STATE ($INBOX_COUNT inbox · $ARCHIVE_COUNT archived) | font=Menlo size=11"
 if [ "$LAUNCHAGENT_LOADED" = "yes" ]; then
   echo "LaunchAgent: loaded · fires every 60s | font=Menlo size=11 color=#666"
