@@ -13,5 +13,9 @@ export default {
     'body-leading-blank': [2, 'always'],
     'footer-leading-blank': [2, 'always'],
     'header-max-length': [2, 'always', 100],
+    // Dependabot commit bodies contain long release-note URLs that exceed
+    // the default 100-char body-max-line-length. Disable the rule for
+    // bot-authored commits compatibility; subjects are still capped.
+    'body-max-line-length': [0, 'always'],
   },
 };
