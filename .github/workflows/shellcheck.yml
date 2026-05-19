@@ -3,9 +3,15 @@ name: Shellcheck
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'menubar-plugin/**/*.sh'
-      - '.github/workflows/shellcheck.yml'
+    # Shellcheck runs on EVERY pull_request. The prior paths filter caused
+    # required-check stalls on PRs that did not touch shell scripts (e.g.,
+    # tender#2 chore/gitignore — workflow never triggered, required check
+    # never reported, PR stuck BLOCKED). The job exits 0 cleanly when no
+    # shell scripts are found, so the cost on non-shell PRs is the runner
+    # boot + the install-shellcheck step (~30s). Acceptable trade vs. the
+    # BLOCKED-with-no-error UX. Mirrors the fleet CI hygiene cluster pattern
+    # applied to shipyard, signal-bridge, flight-deck, sunfish per Admiral
+    # directives 2026-05-18T21-55Z + 2026-05-19T06-50Z.
   push:
     branches: [main]
     paths:
