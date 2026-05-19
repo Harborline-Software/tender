@@ -1,4 +1,10 @@
 #!/bin/bash
+# shellcheck disable=SC2034
+# SC2034 file-level: SYNC_ICON/STATE/COLOR + AA_PATH are state placeholders set
+# for future submenu / debug-info renderings. The tender SwiftBar plugin is
+# routinely extended with new submenu rows that consume these; suppressing
+# SC2034 at file-level keeps the placeholders without forcing a remove-now /
+# rename-when-consumed cycle.
 #
 # Tender — Harborline Fleet tray-resident toolbox (SwiftBar menubar plugin)
 #
