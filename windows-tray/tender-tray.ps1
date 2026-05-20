@@ -27,6 +27,7 @@ $Script:AnchorExe = $Script:AnchorExeCandidates | Where-Object { Test-Path $_ } 
 
 # GPU worker NSSM service manifest
 $Script:GpuServices = @(
+    [PSCustomObject]@{ Name = "ComfyUIService";         Label = "ComfyUI";          Port = 8188 }
     [PSCustomObject]@{ Name = "InferenceStudioService"; Label = "Inference Studio"; Port = 8881 }
     [PSCustomObject]@{ Name = "TTSService";             Label = "TTS (Chatterbox)"; Port = 8883 }
     [PSCustomObject]@{ Name = "KokoroTTSService";       Label = "Kokoro TTS";       Port = $null }
