@@ -1,23 +1,43 @@
 #Requires -Version 5.1
-# Harborline Tender -- Windows system tray service monitor.
-# Polls local Harborline NSSM services every 10 seconds and shows
-# a color-coded tray icon (green/yellow/red). Right-click menu lets
-# you start/stop individual services.
+# Harborline Tender -- Windows system tray coordinator.
+# Mirrors the Mac SwiftBar plugin at tender/menubar-plugin/sunfishsoftware.10s.sh
 #
-# Analog of the Mac SwiftBar plugin at tender/menubar-plugin/sunfishsoftware.10s.sh.
+# Sections: Coordination | Signal-Bridge | Sunfish ERP | Anchor (Tauri) | GPU Workers | Folders
+# Refresh: every 10 seconds
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# -- Service manifest ---------------------------------------------------------
-$Script:ServiceDefs = @(
-    [PSCustomObject]@{ Name = "InferenceStudioService"; Label = "Inference Studio";  Port = 8881 }
-    [PSCustomObject]@{ Name = "TTSService";             Label = "TTS (Chatterbox)";  Port = 8883 }
-    [PSCustomObject]@{ Name = "KokoroTTSService";       Label = "Kokoro TTS";        Port = $null }
-    [PSCustomObject]@{ Name = "MusicService";           Label = "Music Service";     Port = $null }
-    [PSCustomObject]@{ Name = "SunfishOllama";          Label = "Ollama";            Port = $null }
-    [PSCustomObject]@{ Name = "SunfishWhisper";         Label = "Whisper";           Port = $null }
+# -- Path resolution ----------------------------------------------------------
+$Script:ScriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$Script:TenderDir  = Split-Path -Parent $Script:ScriptDir
+$Script:FleetRoot  = Split-Path -Parent $Script:TenderDir
+$Script:CoordDir   = Join-Path $Script:FleetRoot "coordination"
+$Script:SunfishDir = Join-Path $Script:FleetRoot "sunfish"
+$Script:BridgeDir  = Join-Path $Script:FleetRoot "signal-bridge"
+$Script:FlightDeck = Join-Path $Script:FleetRoot "flight-deck"
+
+# Installed Anchor.exe -- search candidate paths
+$Script:AnchorExeCandidates = @(
+    (Join-Path $env:LOCALAPPDATA "Programs\anchor\Anchor.exe")
+    "C:\Program Files\Anchor\Anchor.exe"
+    (Join-Path $Script:SunfishDir "apps\desktop\src-tauri\target\release\Anchor.exe")
 )
+$Script:AnchorExe = $Script:AnchorExeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+# GPU worker NSSM service manifest
+$Script:GpuServices = @(
+    [PSCustomObject]@{ Name = "InferenceStudioService"; Label = "Inference Studio"; Port = 8881 }
+    [PSCustomObject]@{ Name = "TTSService";             Label = "TTS (Chatterbox)"; Port = 8883 }
+    [PSCustomObject]@{ Name = "KokoroTTSService";       Label = "Kokoro TTS";       Port = $null }
+    [PSCustomObject]@{ Name = "MusicService";           Label = "Music Service";    Port = $null }
+    [PSCustomObject]@{ Name = "SunfishOllama";          Label = "Ollama";           Port = $null }
+    [PSCustomObject]@{ Name = "SunfishWhisper";         Label = "Whisper";          Port = $null }
+)
+
+# Service URLs
+$Script:UrlBridgeAspire = "https://localhost:17101"
+$Script:UrlBridgeApi    = "http://localhost:5253"
 
 # -- Icon factory -------------------------------------------------------------
 function New-TrayIcon {
@@ -25,15 +45,12 @@ function New-TrayIcon {
     $bmp = New-Object System.Drawing.Bitmap(16, 16)
     $g   = [System.Drawing.Graphics]::FromImage($bmp)
     $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-    $fillColor   = [System.Drawing.ColorTranslator]::FromHtml($Fill)
-    $borderColor = [System.Drawing.ColorTranslator]::FromHtml($Border)
-    $brush = New-Object System.Drawing.SolidBrush($fillColor)
-    $pen   = New-Object System.Drawing.Pen($borderColor, 1.2)
+    $brush = New-Object System.Drawing.SolidBrush([System.Drawing.ColorTranslator]::FromHtml($Fill))
+    $pen   = New-Object System.Drawing.Pen([System.Drawing.ColorTranslator]::FromHtml($Border), 1.2)
     $g.FillEllipse($brush, 2, 2, 12, 12)
-    $g.DrawEllipse($pen, 2, 2, 11, 11)
+    $g.DrawEllipse($pen,   2, 2, 11, 11)
     $g.Dispose(); $brush.Dispose(); $pen.Dispose()
-    $hIcon = $bmp.GetHicon()
-    $icon  = [System.Drawing.Icon]::FromHandle($hIcon)
+    $icon = [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
     $bmp.Dispose()
     return $icon
 }
@@ -41,102 +58,285 @@ function New-TrayIcon {
 $Script:IconGreen  = New-TrayIcon "#22c55e" "#16a34a"
 $Script:IconYellow = New-TrayIcon "#eab308" "#ca8a04"
 $Script:IconRed    = New-TrayIcon "#ef4444" "#dc2626"
+$Script:IconGray   = New-TrayIcon "#9ca3af" "#6b7280"
 
 # -- Tray icon ----------------------------------------------------------------
 $Script:Tray = New-Object System.Windows.Forms.NotifyIcon
 $Script:Tray.Visible = $true
-$Script:Tray.Text    = "Harborline Tender - loading..."
-$Script:Tray.Icon    = $Script:IconYellow
+$Script:Tray.Text    = "Harborline Tender"
+$Script:Tray.Icon    = $Script:IconGray
 
-# -- Status query -------------------------------------------------------------
-function Get-SvcStatus {
-    param([string]$Name)
-    $s = Get-Service -Name $Name -ErrorAction SilentlyContinue
+# -- Helpers ------------------------------------------------------------------
+function Get-SvcStatus { param([string]$n)
+    $s = Get-Service -Name $n -ErrorAction SilentlyContinue
     if ($null -eq $s) { return $null }
     return $s.Status
 }
 
+function Test-ProcessCmdLine { param([string]$Pattern)
+    try {
+        $r = Get-CimInstance -ClassName Win32_Process -ErrorAction SilentlyContinue |
+             Where-Object { $_.CommandLine -like "*$Pattern*" }
+        return ($null -ne $r -and @($r).Count -gt 0)
+    } catch { return $false }
+}
+
+function Test-ProcessName { param([string]$Name)
+    return ($null -ne (Get-Process -Name $Name -ErrorAction SilentlyContinue))
+}
+
+function Get-InboxCount {
+    $path = Join-Path $Script:CoordDir "inbox"
+    if (-not (Test-Path $path)) { return 0 }
+    return @(Get-ChildItem "$path\*.md" -ErrorAction SilentlyContinue).Count
+}
+
+function Get-LastSyncLine {
+    $log = Join-Path $Script:CoordDir ".sync-stdout.log"
+    if (-not (Test-Path $log)) { return "" }
+    try {
+        $lines = Get-Content $log -Tail 20 -ErrorAction SilentlyContinue
+        $match = $lines | Where-Object { $_ -match "synced|ERROR|manual sync" } | Select-Object -Last 1
+        return if ($match) { $match.Substring(0, [Math]::Min($match.Length, 80)) } else { "" }
+    } catch { return "" }
+}
+
+function Open-Folder { param([string]$Path)
+    if (Test-Path $Path) { Start-Process "explorer.exe" -ArgumentList "`"$Path`"" }
+}
+
+function Open-Url { param([string]$Url)
+    Start-Process $Url
+}
+
+function Start-InTerminal { param([string]$WorkDir, [string]$Command)
+    $wt = Get-Command "wt.exe" -ErrorAction SilentlyContinue
+    if ($wt) {
+        Start-Process "wt.exe" -ArgumentList "new-tab", "-d", "`"$WorkDir`"", "pwsh.exe", "-NoExit", "-Command", "`"$Command`""
+    } else {
+        Start-Process "powershell.exe" -ArgumentList "-NoExit", "-Command", "Set-Location '$WorkDir'; $Command"
+    }
+}
+
+function Add-Sep { param($m)
+    # ContextMenuStrip uses .Items; ToolStripMenuItem uses .DropDownItems
+    if ($m -is [System.Windows.Forms.ContextMenuStrip]) {
+        $m.Items.Add("-") | Out-Null
+    } else {
+        $m.DropDownItems.Add("-") | Out-Null
+    }
+}
+
+function Add-Item {
+    param($Parent, [string]$Text, [scriptblock]$OnClick, [bool]$Enabled = $true, [bool]$Bold = $false)
+    $item = New-Object System.Windows.Forms.ToolStripMenuItem
+    $item.Text    = $Text
+    $item.Enabled = $Enabled
+    if ($Bold) { $item.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold) }
+    if ($OnClick -and $Enabled) { $item.Add_Click($OnClick) }
+    $Parent.Items.Add($item) | Out-Null
+    return $item
+}
+
+function Add-SubItem {
+    param($ParentItem, [string]$Text, [scriptblock]$OnClick, [bool]$Enabled = $true)
+    $sub = New-Object System.Windows.Forms.ToolStripMenuItem
+    $sub.Text    = $Text
+    $sub.Enabled = $Enabled
+    if ($OnClick -and $Enabled) { $sub.Add_Click($OnClick) }
+    $ParentItem.DropDownItems.Add($sub) | Out-Null
+    return $sub
+}
+
 # -- Menu rebuild -------------------------------------------------------------
 function Update-Tray {
-    $results = $Script:ServiceDefs | ForEach-Object {
+
+    # -- Gather state (do all slow queries once) ------------------------------
+    $inboxCount  = Get-InboxCount
+    $lastSync    = Get-LastSyncLine
+    $bridgeUp    = Test-ProcessCmdLine "Sunfish.Bridge.AppHost"
+    $mauiUp      = Test-ProcessCmdLine "Sunfish.Anchor"
+    $anchorUp    = if ($Script:AnchorExe) { Test-ProcessName "Anchor" } else { $false }
+
+    $gpuResults = $Script:GpuServices | ForEach-Object {
         $status = Get-SvcStatus $_.Name
-        [PSCustomObject]@{
-            Def     = $_
-            Status  = $status
-            Running = ($status -eq "Running")
-        }
+        [PSCustomObject]@{ Def = $_; Status = $status; Running = ($status -eq "Running") }
     }
+    $gpuRunning = ($gpuResults | Where-Object { $_.Running }).Count
+    $gpuTotal   = $gpuResults.Count
 
-    $runCount   = ($results | Where-Object { $_.Running }).Count
-    $totalCount = $results.Count
-
-    if ($runCount -eq $totalCount) {
+    # -- Overall health icon --------------------------------------------------
+    $allGpuUp = ($gpuRunning -eq $gpuTotal)
+    $anyUp    = $bridgeUp -or $mauiUp -or $anchorUp -or ($gpuRunning -gt 0)
+    if ($allGpuUp -and $bridgeUp) {
         $Script:Tray.Icon = $Script:IconGreen
-    } elseif ($runCount -gt 0) {
+    } elseif ($anyUp) {
         $Script:Tray.Icon = $Script:IconYellow
     } else {
         $Script:Tray.Icon = $Script:IconRed
     }
-    $Script:Tray.Text = "Harborline: $runCount/$totalCount running"
+    $Script:Tray.Text = "Harborline: GPU $gpuRunning/$gpuTotal  Bridge:$(if($bridgeUp){'up'}else{'--'})  ERP:$(if($mauiUp){'up'}else{'--'})"
 
+    # -- Build menu -----------------------------------------------------------
     $menu = New-Object System.Windows.Forms.ContextMenuStrip
 
-    $header = New-Object System.Windows.Forms.ToolStripMenuItem
-    $header.Text    = "Harborline Services ($runCount/$totalCount running)"
-    $header.Enabled = $false
-    $menu.Items.Add($header) | Out-Null
-    $menu.Items.Add("-") | Out-Null
+    # Header
+    Add-Item $menu "Harborline Windows Tender" $null $false $true
+    Add-Item $menu "Inbox: $inboxCount item$(if($inboxCount -ne 1){'s'} else {''})" $null $false
 
-    foreach ($r in $results) {
-        $dot      = if ($r.Running) { "[ON] " } else { "[--] " }
-        $portInfo = if ($r.Def.Port) { "  :$($r.Def.Port)" } else { "" }
-        $label    = if ($null -eq $r.Status) { "Not installed" } else { $r.Status.ToString() }
+    Add-Sep $menu
 
-        $item      = New-Object System.Windows.Forms.ToolStripMenuItem
-        $item.Text = "$dot$($r.Def.Label)$portInfo  $label"
-        $item.Tag  = [PSCustomObject]@{
-            ServiceName = $r.Def.Name
-            IsRunning   = $r.Running
-            Installed   = ($null -ne $r.Status)
+    # -- Coordination ---------------------------------------------------------
+    $coordItem = Add-Item $menu "Coordination"
+    Add-SubItem $coordItem "Sync now (one-shot)" {
+        $syncScript = Join-Path $Script:CoordDir "sync-coordination.py"
+        if (Test-Path $syncScript) {
+            Start-InTerminal $Script:CoordDir "python '$syncScript' -v"
+        } else {
+            [System.Windows.Forms.MessageBox]::Show("sync-coordination.py not found at $syncScript") | Out-Null
         }
+    }
+    if ($lastSync) {
+        Add-SubItem $coordItem "  $lastSync" $null $false
+    }
+    Add-SubItem $coordItem "Open inbox" { Open-Folder (Join-Path $Script:CoordDir "inbox") }
+    Add-SubItem $coordItem "Open coordination folder" { Open-Folder $Script:CoordDir }
 
-        if ($null -ne $r.Status) {
-            $actionText = if ($r.Running) { "Stop" } else { "Start" }
-            $sub = New-Object System.Windows.Forms.ToolStripMenuItem
-            $sub.Text = $actionText
-            $sub.Tag  = $item.Tag
-            $sub.Add_Click({
-                $tag = $this.Tag
-                if ($tag.IsRunning) {
-                    $cmd = "Stop-Service -Name '$($tag.ServiceName)' -Force"
-                } else {
-                    $cmd = "Start-Service -Name '$($tag.ServiceName)'"
-                }
-                Start-Process "powershell.exe" -ArgumentList "-NoProfile -Command `"$cmd`"" -Verb RunAs -WindowStyle Hidden
-            })
-            $item.DropDownItems.Add($sub) | Out-Null
+    Add-Sep $menu
+
+    # -- Signal-Bridge --------------------------------------------------------
+    $brDot   = if ($bridgeUp) { "[ON]" } else { "[--]" }
+    $brLabel = if ($bridgeUp) { "running" } else { "stopped" }
+    $brItem  = Add-Item $menu "Bridge  $brDot  $brLabel"
+    if ($bridgeUp) {
+        Add-SubItem $brItem "Stop Bridge" {
+            Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*Sunfish.Bridge.AppHost*" } |
+                ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
         }
+    } else {
+        Add-SubItem $brItem "Start Bridge (AppHost)" {
+            $appHostProj = Join-Path $Script:BridgeDir "Sunfish.Bridge.AppHost"
+            Start-InTerminal $Script:BridgeDir "dotnet run --project '$appHostProj'"
+        }
+    }
+    Add-SubItem $brItem "Open Aspire dashboard" { Open-Url $Script:UrlBridgeAspire }
+    Add-SubItem $brItem "Open Bridge API" { Open-Url $Script:UrlBridgeApi }
+    Add-SubItem $brItem "Open signal-bridge folder" { Open-Folder $Script:BridgeDir }
 
-        $menu.Items.Add($item) | Out-Null
+    Add-Sep $menu
+
+    # -- Sunfish ERP (MAUI) ---------------------------------------------------
+    $erDot   = if ($mauiUp) { "[ON]" } else { "[--]" }
+    $erLabel = if ($mauiUp) { "running" } else { "stopped" }
+    $erItem  = Add-Item $menu "Sunfish ERP  $erDot  $erLabel"
+    if ($mauiUp) {
+        Add-SubItem $erItem "Stop ERP" {
+            Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*Sunfish.Anchor*" } |
+                ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+        }
+    } else {
+        Add-SubItem $erItem "Start ERP (dotnet run)" {
+            $proj = Join-Path $Script:SunfishDir "src\Sunfish.Anchor.csproj"
+            Start-InTerminal $Script:SunfishDir "dotnet run --project '$proj'"
+        }
+    }
+    Add-SubItem $erItem "Open sunfish folder" { Open-Folder $Script:SunfishDir }
+
+    Add-Sep $menu
+
+    # -- Anchor (Tauri installed app) -----------------------------------------
+    $anDot   = if ($anchorUp)          { "[ON]" } else { "[--]" }
+    $anLabel = if ($anchorUp)          { "running" } elseif ($Script:AnchorExe) { "stopped" } else { "not installed" }
+    $anItem  = Add-Item $menu "Anchor  $anDot  $anLabel"
+    if ($anchorUp) {
+        Add-SubItem $anItem "Quit Anchor" { Get-Process -Name "Anchor" -ErrorAction SilentlyContinue | Stop-Process -Force }
+        Add-SubItem $anItem "Bring to front" {
+            $p = Get-Process -Name "Anchor" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($p) {
+                Add-Type @"
+using System; using System.Runtime.InteropServices;
+public class WinAPI { [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h); }
+"@
+                [WinAPI]::SetForegroundWindow($p.MainWindowHandle) | Out-Null
+            }
+        }
+    } elseif ($Script:AnchorExe) {
+        Add-SubItem $anItem "Open Anchor" { Start-Process $Script:AnchorExe }
+    } else {
+        Add-SubItem $anItem "(not installed -- build MSI first)" $null $false
+    }
+    if ($Script:AnchorExe) {
+        Add-SubItem $anItem "Reveal in Explorer" { Start-Process "explorer.exe" "/select,`"$Script:AnchorExe`"" }
     }
 
-    $menu.Items.Add("-") | Out-Null
+    Add-Sep $menu
 
-    $refreshItem = New-Object System.Windows.Forms.ToolStripMenuItem
-    $refreshItem.Text = "Refresh Now"
-    $refreshItem.Add_Click({ Update-Tray })
-    $menu.Items.Add($refreshItem) | Out-Null
+    # -- GPU Workers ----------------------------------------------------------
+    $gpuItem = Add-Item $menu "GPU Workers  ($gpuRunning/$gpuTotal running)"
+    foreach ($r in $gpuResults) {
+        $dot      = if ($r.Running) { "[ON]" } else { "[--]" }
+        $portInfo = if ($r.Def.Port) { " :$($r.Def.Port)" } else { "" }
+        $label    = if ($null -eq $r.Status) { "not installed" } else { $r.Status.ToString() }
+        $sub = Add-SubItem $gpuItem "$dot $($r.Def.Label)$portInfo  $label"
 
-    $exitItem = New-Object System.Windows.Forms.ToolStripMenuItem
-    $exitItem.Text = "Exit Tender"
-    $exitItem.Add_Click({
+        if ($null -ne $r.Status) {
+            $svcName  = $r.Def.Name
+            $isRunning = $r.Running
+            $action = New-Object System.Windows.Forms.ToolStripMenuItem
+            $action.Text = if ($isRunning) { "Stop" } else { "Start" }
+            $action.Tag  = [PSCustomObject]@{ ServiceName = $svcName; IsRunning = $isRunning }
+            $action.Add_Click({
+                $t = $this.Tag
+                $cmd = if ($t.IsRunning) { "Stop-Service -Name '$($t.ServiceName)' -Force" } else { "Start-Service -Name '$($t.ServiceName)'" }
+                Start-Process "powershell.exe" -ArgumentList "-NoProfile -Command `"$cmd`"" -Verb RunAs -WindowStyle Hidden
+            })
+            $sub.DropDownItems.Add($action) | Out-Null
+        }
+    }
+
+    Add-Sep $gpuItem
+
+    $startAll = New-Object System.Windows.Forms.ToolStripMenuItem
+    $startAll.Text = "Start All GPU Workers"
+    $startAll.Add_Click({
+        $names = ($Script:GpuServices | ForEach-Object { "'$($_.Name)'" }) -join ","
+        $cmd = "foreach (\$n in @($names)) { Start-Service -Name \$n -ErrorAction SilentlyContinue }"
+        Start-Process "powershell.exe" -ArgumentList "-NoProfile -Command `"$cmd`"" -Verb RunAs -WindowStyle Hidden
+    })
+    $gpuItem.DropDownItems.Add($startAll) | Out-Null
+
+    $stopAll = New-Object System.Windows.Forms.ToolStripMenuItem
+    $stopAll.Text = "Stop All GPU Workers"
+    $stopAll.Add_Click({
+        $names = ($Script:GpuServices | ForEach-Object { "'$($_.Name)'" }) -join ","
+        $cmd = "foreach (\$n in @($names)) { Stop-Service -Name \$n -Force -ErrorAction SilentlyContinue }"
+        Start-Process "powershell.exe" -ArgumentList "-NoProfile -Command `"$cmd`"" -Verb RunAs -WindowStyle Hidden
+    })
+    $gpuItem.DropDownItems.Add($stopAll) | Out-Null
+
+    Add-Sep $menu
+
+    # -- Folders --------------------------------------------------------------
+    $foldItem = Add-Item $menu "Folders"
+    Add-SubItem $foldItem "Harborline root"    { Open-Folder $Script:FleetRoot }
+    Add-SubItem $foldItem "Sunfish repo"       { Open-Folder $Script:SunfishDir }
+    Add-SubItem $foldItem "Signal-Bridge repo" { Open-Folder $Script:BridgeDir }
+    Add-SubItem $foldItem "Flight-deck repo"   { Open-Folder $Script:FlightDeck }
+    Add-SubItem $foldItem "Coordination"       { Open-Folder $Script:CoordDir }
+    Add-SubItem $foldItem "Inbox"              { Open-Folder (Join-Path $Script:CoordDir "inbox") }
+
+    Add-Sep $menu
+
+    $refreshItem = Add-Item $menu "Refresh Now" { Update-Tray }
+
+    $exitItem = Add-Item $menu "Exit Tender" {
         $Script:Timer.Stop()
         $Script:Tray.Visible = $false
         $Script:Tray.Dispose()
         [System.Windows.Forms.Application]::Exit()
-    })
-    $menu.Items.Add($exitItem) | Out-Null
+    }
 
+    # Swap menu
     $old = $Script:Tray.ContextMenuStrip
     $Script:Tray.ContextMenuStrip = $menu
     if ($null -ne $old) { $old.Dispose() }
