@@ -39,7 +39,37 @@ $Script:GpuServices = @(
 $Script:UrlBridgeAspire = "https://localhost:17101"
 $Script:UrlBridgeApi    = "http://localhost:5253"
 
-# -- Icon factory -------------------------------------------------------------
+# -- Icon factory (flag + status badge) ----------------------------------------
+$Script:AssetsDir   = Join-Path $Script:ScriptDir "assets"
+$Script:FlagBasePng = Join-Path $Script:AssetsDir "flag-base.png"
+
+function New-FlagStatusIcon {
+    param([string]$BadgeFill, [string]$BadgeBorder)
+    # Load via MemoryStream so no file lock is held on flag-base.png
+    $bytes  = [System.IO.File]::ReadAllBytes($Script:FlagBasePng)
+    $stream = New-Object System.IO.MemoryStream(,$bytes)
+    $base   = [System.Drawing.Image]::FromStream($stream)
+    $bmp    = New-Object System.Drawing.Bitmap(32, 32, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $g      = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.SmoothingMode     = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $g.Clear([System.Drawing.Color]::Transparent)
+    $g.DrawImage($base, 0, 0, 32, 32)
+    $base.Dispose(); $stream.Dispose()
+    # Badge at bottom-right badge zone (x=21,y=21 -- left clear in generate-assets.ps1)
+    # White ring behind badge for contrast against any flag color underneath
+    $whitePen  = New-Object System.Drawing.Pen([System.Drawing.Color]::White, 1.5)
+    $fillBrush = New-Object System.Drawing.SolidBrush([System.Drawing.ColorTranslator]::FromHtml($BadgeFill))
+    $borderPen = New-Object System.Drawing.Pen([System.Drawing.ColorTranslator]::FromHtml($BadgeBorder), 1.0)
+    $g.DrawEllipse($whitePen,  21, 21, 9, 9)
+    $g.FillEllipse($fillBrush, 22, 22, 8, 8)
+    $g.DrawEllipse($borderPen, 22, 22, 7, 7)
+    $g.Dispose(); $whitePen.Dispose(); $fillBrush.Dispose(); $borderPen.Dispose()
+    $icon = [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
+    $bmp.Dispose()
+    return $icon
+}
+
 function New-TrayIcon {
     param([string]$Fill, [string]$Border)
     $bmp = New-Object System.Drawing.Bitmap(16, 16)
@@ -55,10 +85,17 @@ function New-TrayIcon {
     return $icon
 }
 
-$Script:IconGreen  = New-TrayIcon "#22c55e" "#16a34a"
-$Script:IconYellow = New-TrayIcon "#eab308" "#ca8a04"
-$Script:IconRed    = New-TrayIcon "#ef4444" "#dc2626"
-$Script:IconGray   = New-TrayIcon "#9ca3af" "#6b7280"
+if (Test-Path $Script:FlagBasePng) {
+    $Script:IconGreen  = New-FlagStatusIcon "#22c55e" "#16a34a"
+    $Script:IconYellow = New-FlagStatusIcon "#eab308" "#ca8a04"
+    $Script:IconRed    = New-FlagStatusIcon "#ef4444" "#dc2626"
+    $Script:IconGray   = New-FlagStatusIcon "#9ca3af" "#6b7280"
+} else {
+    $Script:IconGreen  = New-TrayIcon "#22c55e" "#16a34a"
+    $Script:IconYellow = New-TrayIcon "#eab308" "#ca8a04"
+    $Script:IconRed    = New-TrayIcon "#ef4444" "#dc2626"
+    $Script:IconGray   = New-TrayIcon "#9ca3af" "#6b7280"
+}
 
 # -- Tray icon ----------------------------------------------------------------
 $Script:Tray = New-Object System.Windows.Forms.NotifyIcon
