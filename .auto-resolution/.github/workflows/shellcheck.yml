@@ -1,0 +1,43 @@
+name: Shellcheck
+
+on:
+  pull_request:
+    branches: [main]
+    # Shellcheck runs on EVERY pull_request. The prior paths filter caused
+    # required-check stalls on PRs that did not touch shell scripts (e.g.,
+    # tender#2 chore/gitignore — workflow never triggered, required check
+    # never reported, PR stuck BLOCKED). The job exits 0 cleanly when no
+    # shell scripts are found, so the cost on non-shell PRs is the runner
+    # boot + the install-shellcheck step (~30s). Acceptable trade vs. the
+    # BLOCKED-with-no-error UX. Mirrors the fleet CI hygiene cluster pattern
+    # applied to shipyard, signal-bridge, flight-deck, sunfish per Admiral
+    # directives 2026-05-18T21-55Z + 2026-05-19T06-50Z.
+  push:
+    branches: [main]
+    paths:
+      - 'menubar-plugin/**/*.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: Shellcheck menubar plugin scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck
+        run: |
+          set -e
+          shopt -s globstar nullglob
+          files=(menubar-plugin/**/*.sh)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No shell scripts found under menubar-plugin/; nothing to check."
+            exit 0
+          fi
+          printf 'Linting %s\n' "${files[@]}"
+          shellcheck --severity=warning "${files[@]}"

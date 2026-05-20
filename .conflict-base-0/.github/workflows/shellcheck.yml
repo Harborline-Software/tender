@@ -1,0 +1,37 @@
+name: Shellcheck
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'menubar-plugin/**/*.sh'
+      - '.github/workflows/shellcheck.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'menubar-plugin/**/*.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: Shellcheck menubar plugin scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck
+        run: |
+          set -e
+          shopt -s globstar nullglob
+          files=(menubar-plugin/**/*.sh)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No shell scripts found under menubar-plugin/; nothing to check."
+            exit 0
+          fi
+          printf 'Linting %s\n' "${files[@]}"
+          shellcheck --severity=warning "${files[@]}"
