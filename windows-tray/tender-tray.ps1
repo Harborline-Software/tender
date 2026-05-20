@@ -53,18 +53,31 @@ function New-FlagStatusIcon {
     $g      = [System.Drawing.Graphics]::FromImage($bmp)
     $g.SmoothingMode     = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
     $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-    $g.Clear([System.Drawing.Color]::Transparent)
+    $g.Clear([System.Drawing.Color]::FromArgb(0, 0, 0, 0))
     $g.DrawImage($base, 0, 0, 32, 32)
+    $g.Dispose()
     $base.Dispose(); $stream.Dispose()
-    # Badge at bottom-right badge zone (x=21,y=21 -- left clear in generate-assets.ps1)
-    # White ring behind badge for contrast against any flag color underneath
+    # Key out near-white pixels -- handles 24bpp PNGs saved without an alpha channel.
+    # Operates on the 32x32 copy (1024 px) so it is fast.
+    # Threshold R>230 AND G>230 AND B>230 covers pure white + anti-alias fringe.
+    for ($y = 0; $y -lt 32; $y++) {
+        for ($x = 0; $x -lt 32; $x++) {
+            $px = $bmp.GetPixel($x, $y)
+            if ($px.R -gt 230 -and $px.G -gt 230 -and $px.B -gt 230) {
+                $bmp.SetPixel($x, $y, [System.Drawing.Color]::FromArgb(0, 0, 0, 0))
+            }
+        }
+    }
+    # Badge at bottom-right (x=21,y=21). White ring for contrast on any bg color.
+    $g2        = [System.Drawing.Graphics]::FromImage($bmp)
+    $g2.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
     $whitePen  = New-Object System.Drawing.Pen([System.Drawing.Color]::White, 1.5)
     $fillBrush = New-Object System.Drawing.SolidBrush([System.Drawing.ColorTranslator]::FromHtml($BadgeFill))
     $borderPen = New-Object System.Drawing.Pen([System.Drawing.ColorTranslator]::FromHtml($BadgeBorder), 1.0)
-    $g.DrawEllipse($whitePen,  21, 21, 9, 9)
-    $g.FillEllipse($fillBrush, 22, 22, 8, 8)
-    $g.DrawEllipse($borderPen, 22, 22, 7, 7)
-    $g.Dispose(); $whitePen.Dispose(); $fillBrush.Dispose(); $borderPen.Dispose()
+    $g2.DrawEllipse($whitePen,  21, 21, 9, 9)
+    $g2.FillEllipse($fillBrush, 22, 22, 8, 8)
+    $g2.DrawEllipse($borderPen, 22, 22, 7, 7)
+    $g2.Dispose(); $whitePen.Dispose(); $fillBrush.Dispose(); $borderPen.Dispose()
     $icon = [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
     $bmp.Dispose()
     return $icon
