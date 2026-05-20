@@ -7,6 +7,14 @@
 # Run once after checkout, or whenever you want to regenerate from source.
 # tender-tray.ps1 loads flag-base.png at startup and composites the
 # green/yellow/red status badge circle onto it at runtime.
+#
+# Dual-theme design notes:
+#   - Background: fully transparent (argb 0,0,0,0) -- no white fill
+#   - Flag body: navy (#1e3a5f) upper band + teal (#0d9488) lower band
+#       -> readable on light taskbars by color contrast
+#   - Flag outline + pole highlight: WHITE
+#       -> readable on dark taskbars by luminance contrast
+#   This two-tone approach works without runtime theme detection.
 
 Add-Type -AssemblyName System.Drawing
 
@@ -40,14 +48,18 @@ $bmp = New-Object System.Drawing.Bitmap($W, $H, [System.Drawing.Imaging.PixelFor
 $g   = [System.Drawing.Graphics]::FromImage($bmp)
 $g.SmoothingMode    = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
 $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-$g.Clear([System.Drawing.Color]::Transparent)
+
+# Fully transparent clear -- FromArgb(0,0,0,0) not Color.Transparent
+# (Color.Transparent = argb(0,255,255,255); the white RGB bleeds through
+#  in some compositing paths even with alpha=0)
+$g.Clear([System.Drawing.Color]::FromArgb(0, 0, 0, 0))
 
 # -- Flagpole ----------------------------------------------------------------
-$poleBrush = New-Object System.Drawing.SolidBrush([System.Drawing.ColorTranslator]::FromHtml("#374151"))
-$g.FillRectangle($poleBrush, 0, 0, 3, $H)
-
-# Pole highlight (1px lighter edge for depth)
-$poleHighlight = New-Object System.Drawing.SolidBrush([System.Drawing.ColorTranslator]::FromHtml("#6b7280"))
+# Dark shaft + white highlight: shaft reads as shape on light bg,
+# white highlight reads on dark bg.
+$poleBrush    = New-Object System.Drawing.SolidBrush([System.Drawing.ColorTranslator]::FromHtml("#374151"))
+$poleHighlight = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::White)
+$g.FillRectangle($poleBrush,     0, 0, 3, $H)
 $g.FillRectangle($poleHighlight, 1, 0, 1, $H)
 $poleBrush.Dispose(); $poleHighlight.Dispose()
 
@@ -66,19 +78,20 @@ $tealBrush = New-Object System.Drawing.SolidBrush([System.Drawing.ColorTranslato
 $g.FillRectangle($tealBrush, 3, 11, 27, 9)
 $tealBrush.Dispose()
 
-# -- Flag outline (subtle border around the whole flag) ----------------------
-$outlinePen = New-Object System.Drawing.Pen([System.Drawing.ColorTranslator]::FromHtml("#94a3b8"), 0.8)
+# -- Flag outline: WHITE for dark-taskbar visibility -------------------------
+# On dark taskbar: white border makes the flag shape visible.
+# On light taskbar: navy/teal fill provides color contrast.
+$outlinePen = New-Object System.Drawing.Pen([System.Drawing.Color]::White, 1.0)
 $g.DrawRectangle($outlinePen, 3, 2, 26, 17)
 $outlinePen.Dispose()
 
 # -- Flyend notch (right edge slight taper -- classic pennant shape) ----------
-# Overdraw the right 2 columns of the flag with transparency to create a
-# slight taper: row 2 and row 19 have the corners clipped.
-$clearBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::Transparent)
+# Overdraw with alpha=0 to clip top-right and bottom-right corners.
+$clearBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(0, 0, 0, 0))
 $g.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceCopy
 # Clip top-right corner triangle
 $topRight = [System.Drawing.Drawing2D.GraphicsPath]::new()
-$topRight.AddPolygon(@(
+$topRight.AddPolygon([System.Drawing.PointF[]]@(
     [System.Drawing.PointF]::new(28, 2),
     [System.Drawing.PointF]::new(30, 2),
     [System.Drawing.PointF]::new(30, 5)
@@ -86,7 +99,7 @@ $topRight.AddPolygon(@(
 $g.FillPath($clearBrush, $topRight)
 # Clip bottom-right corner triangle
 $botRight = [System.Drawing.Drawing2D.GraphicsPath]::new()
-$botRight.AddPolygon(@(
+$botRight.AddPolygon([System.Drawing.PointF[]]@(
     [System.Drawing.PointF]::new(28, 19),
     [System.Drawing.PointF]::new(30, 16),
     [System.Drawing.PointF]::new(30, 19)
@@ -100,4 +113,4 @@ $g.Dispose()
 $outPath = Join-Path $AssetsDir "flag-base.png"
 $bmp.Save($outPath, [System.Drawing.Imaging.ImageFormat]::Png)
 $bmp.Dispose()
-Write-Host "Generated $outPath  (32x32 ARGB PNG)"
+Write-Host "Generated $outPath  (32x32 ARGB PNG, transparent bg, dual-tone outline)"
