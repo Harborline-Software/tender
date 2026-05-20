@@ -1,30 +1,25 @@
 #Requires -Version 5.1
-<#
-.SYNOPSIS
-    Harborline Tender — Windows system tray service monitor.
-
-.DESCRIPTION
-    Polls local Harborline NSSM services every 10 seconds and shows
-    a color-coded tray icon (green/yellow/red). Right-click menu lets
-    you start/stop individual services.
-
-    Analog of the Mac SwiftBar plugin at tender/menubar-plugin/sunfishsoftware.10s.sh.
-#>
+# Harborline Tender -- Windows system tray service monitor.
+# Polls local Harborline NSSM services every 10 seconds and shows
+# a color-coded tray icon (green/yellow/red). Right-click menu lets
+# you start/stop individual services.
+#
+# Analog of the Mac SwiftBar plugin at tender/menubar-plugin/sunfishsoftware.10s.sh.
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-# ── Service manifest ──────────────────────────────────────────────────────────
+# -- Service manifest ---------------------------------------------------------
 $Script:ServiceDefs = @(
-    [PSCustomObject]@{ Name = "InferenceStudioService"; Label = "Inference Studio";  Port = 8881; Group = "GPU" }
-    [PSCustomObject]@{ Name = "TTSService";             Label = "TTS (Chatterbox)";  Port = 8883; Group = "GPU" }
-    [PSCustomObject]@{ Name = "KokoroTTSService";       Label = "Kokoro TTS";        Port = $null; Group = "GPU" }
-    [PSCustomObject]@{ Name = "MusicService";           Label = "Music Service";     Port = $null; Group = "GPU" }
-    [PSCustomObject]@{ Name = "SunfishOllama";          Label = "Ollama";            Port = $null; Group = "GPU" }
-    [PSCustomObject]@{ Name = "SunfishWhisper";         Label = "Whisper";           Port = $null; Group = "GPU" }
+    [PSCustomObject]@{ Name = "InferenceStudioService"; Label = "Inference Studio";  Port = 8881 }
+    [PSCustomObject]@{ Name = "TTSService";             Label = "TTS (Chatterbox)";  Port = 8883 }
+    [PSCustomObject]@{ Name = "KokoroTTSService";       Label = "Kokoro TTS";        Port = $null }
+    [PSCustomObject]@{ Name = "MusicService";           Label = "Music Service";     Port = $null }
+    [PSCustomObject]@{ Name = "SunfishOllama";          Label = "Ollama";            Port = $null }
+    [PSCustomObject]@{ Name = "SunfishWhisper";         Label = "Whisper";           Port = $null }
 )
 
-# ── Icon factory ──────────────────────────────────────────────────────────────
+# -- Icon factory -------------------------------------------------------------
 function New-TrayIcon {
     param([string]$Fill, [string]$Border)
     $bmp = New-Object System.Drawing.Bitmap(16, 16)
@@ -47,13 +42,13 @@ $Script:IconGreen  = New-TrayIcon "#22c55e" "#16a34a"
 $Script:IconYellow = New-TrayIcon "#eab308" "#ca8a04"
 $Script:IconRed    = New-TrayIcon "#ef4444" "#dc2626"
 
-# ── Tray icon ─────────────────────────────────────────────────────────────────
+# -- Tray icon ----------------------------------------------------------------
 $Script:Tray = New-Object System.Windows.Forms.NotifyIcon
 $Script:Tray.Visible = $true
-$Script:Tray.Text    = "Harborline Tender — loading..."
+$Script:Tray.Text    = "Harborline Tender - loading..."
 $Script:Tray.Icon    = $Script:IconYellow
 
-# ── Status query ──────────────────────────────────────────────────────────────
+# -- Status query -------------------------------------------------------------
 function Get-SvcStatus {
     param([string]$Name)
     $s = Get-Service -Name $Name -ErrorAction SilentlyContinue
@@ -61,7 +56,7 @@ function Get-SvcStatus {
     return $s.Status
 }
 
-# ── Menu rebuild ──────────────────────────────────────────────────────────────
+# -- Menu rebuild -------------------------------------------------------------
 function Update-Tray {
     $results = $Script:ServiceDefs | ForEach-Object {
         $status = Get-SvcStatus $_.Name
@@ -72,10 +67,9 @@ function Update-Tray {
         }
     }
 
-    $runCount   = ($results | Where-Object Running).Count
+    $runCount   = ($results | Where-Object { $_.Running }).Count
     $totalCount = $results.Count
 
-    # Update icon + tooltip
     if ($runCount -eq $totalCount) {
         $Script:Tray.Icon = $Script:IconGreen
     } elseif ($runCount -gt 0) {
@@ -85,24 +79,26 @@ function Update-Tray {
     }
     $Script:Tray.Text = "Harborline: $runCount/$totalCount running"
 
-    # Build context menu
     $menu = New-Object System.Windows.Forms.ContextMenuStrip
 
-    $header = New-Object System.Windows.Forms.ToolStripLabel
-    $header.Text    = "Harborline Services  ($runCount/$totalCount)"
+    $header = New-Object System.Windows.Forms.ToolStripMenuItem
+    $header.Text    = "Harborline Services ($runCount/$totalCount running)"
     $header.Enabled = $false
-    $header.Font    = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
     $menu.Items.Add($header) | Out-Null
     $menu.Items.Add("-") | Out-Null
 
     foreach ($r in $results) {
-        $dot      = if ($r.Running) { "● " } else { "○ " }
-        $portInfo = if ($r.Def.Port) { "  [$($r.Def.Port)]" } else { "" }
+        $dot      = if ($r.Running) { "[ON] " } else { "[--] " }
+        $portInfo = if ($r.Def.Port) { "  :$($r.Def.Port)" } else { "" }
         $label    = if ($null -eq $r.Status) { "Not installed" } else { $r.Status.ToString() }
 
         $item      = New-Object System.Windows.Forms.ToolStripMenuItem
-        $item.Text = "$dot$($r.Def.Label)$portInfo    $label"
-        $item.Tag  = [PSCustomObject]@{ ServiceName = $r.Def.Name; IsRunning = $r.Running; Installed = ($null -ne $r.Status) }
+        $item.Text = "$dot$($r.Def.Label)$portInfo  $label"
+        $item.Tag  = [PSCustomObject]@{
+            ServiceName = $r.Def.Name
+            IsRunning   = $r.Running
+            Installed   = ($null -ne $r.Status)
+        }
 
         if ($null -ne $r.Status) {
             $actionText = if ($r.Running) { "Stop" } else { "Start" }
@@ -116,7 +112,7 @@ function Update-Tray {
                 } else {
                     $cmd = "Start-Service -Name '$($tag.ServiceName)'"
                 }
-                Start-Process "powershell.exe" -ArgumentList "-NoProfile -Command", $cmd -Verb RunAs -WindowStyle Hidden
+                Start-Process "powershell.exe" -ArgumentList "-NoProfile -Command `"$cmd`"" -Verb RunAs -WindowStyle Hidden
             })
             $item.DropDownItems.Add($sub) | Out-Null
         }
@@ -146,9 +142,9 @@ function Update-Tray {
     if ($null -ne $old) { $old.Dispose() }
 }
 
-# ── Periodic refresh ──────────────────────────────────────────────────────────
+# -- Periodic refresh ---------------------------------------------------------
 $Script:Timer = New-Object System.Windows.Forms.Timer
-$Script:Timer.Interval = 10000   # 10 s — matches Mac SwiftBar update cadence
+$Script:Timer.Interval = 10000
 $Script:Timer.Add_Tick({ Update-Tray })
 $Script:Timer.Start()
 
