@@ -228,6 +228,14 @@ function Update-Tray {
     }
     $Script:Tray.Text = "Harborline: GPU $gpuRunning/$gpuTotal  Bridge:$(if($bridgeUp){'up'}else{'--'})  ERP:$(if($mauiUp){'up'}else{'--'})"
 
+    # -- Skip menu rebuild if the menu is currently open ----------------------
+    # Swapping ContextMenuStrip while the popup is visible tears focus away
+    # from the menu the user is interacting with. Icon + tooltip above are
+    # always updated; menu rebuild is deferred until the next tick.
+    if ($null -ne $Script:Tray.ContextMenuStrip -and $Script:Tray.ContextMenuStrip.Visible) {
+        return
+    }
+
     # -- Build menu -----------------------------------------------------------
     $menu = New-Object System.Windows.Forms.ContextMenuStrip
 
