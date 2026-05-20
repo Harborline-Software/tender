@@ -1,0 +1,3 @@
+ancestorEntries = []
+ourEntries = [".wolf/anatomy.md"]
+theirEntries = [".wolf/anatomy.md"]

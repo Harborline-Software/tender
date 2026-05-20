@@ -1,0 +1,39 @@
+# ---------------------------------------------------------------------------
+# Ban `pull_request_target:` (and `workflow_run:`) workflow triggers.
+# Mirrors the shipyard hardening gate; fork PRs cannot escalate to base-
+# branch secrets via these triggers.
+# ---------------------------------------------------------------------------
+
+name: Ban pull_request_target
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Scan workflows for banned triggers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Fail if any workflow uses pull_request_target or workflow_run
+        run: |
+          set -eu
+          self=".github/workflows/ban-pull-request-target.yml"
+          banned_pattern='^[[:space:]]*(pull_request_target|workflow_run)[[:space:]]*:'
+          all_hits=$(grep -rEln "$banned_pattern" .github/workflows \
+              --include='*.yml' --include='*.yaml' || true)
+          offenders=$(printf '%s\n' "$all_hits" | grep -v "^${self}$" | grep -v '^$' || true)
+          if [ -n "$offenders" ]; then
+            echo "::error::Banned workflow trigger detected."
+            for f in $offenders; do
+              echo "  - $f"
+              grep -nE "$banned_pattern" "$f" | sed 's/^/      /'
+            done
+            exit 1
+          fi
+          echo "OK: no banned workflow triggers found."
