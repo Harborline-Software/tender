@@ -16,11 +16,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     getAppearance().then(setMode).catch(() => setMode('dark'))
 
-    // Listen for appearance-changed events from the Rust backend (M2+).
     let unlisten: (() => void) | undefined
-    listen<string>('appearance-changed', (e) => {
-      setMode(e.payload === 'light' ? 'light' : 'dark')
-    }).then((fn) => { unlisten = fn })
+    if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+      listen<string>('appearance-changed', (e) => {
+        setMode(e.payload === 'light' ? 'light' : 'dark')
+      }).then((fn) => { unlisten = fn })
+    }
 
     return () => { unlisten?.() }
   }, [])
