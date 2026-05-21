@@ -78,7 +78,7 @@ P_BRIDGE="Sunfish.Bridge.AppHost"
 P_FLIGHTDECK_BOOK="services/book-server/server"
 P_FLIGHTDECK_TURBO="turbo[[:space:]]+dev"
 P_ANCHOR_MAUI="Sunfish\\.Anchor|src/bin/.*Anchor"
-P_ANCHOR_REACT="apps/web.*vite|vite.*apps/web"
+P_ANCHOR_REACT="sunfish/apps/web.*vite|vite.*sunfish/apps/web"
 P_ANCHOR_TAURI="apps/desktop.*tauri|tauri.*apps/desktop"
 P_ANCHOR_APP="Anchor\\.app/Contents/MacOS/anchor-tauri"
 
@@ -387,7 +387,7 @@ echo "---"
 echo "🛠 Dev services | size=12"
 
 # --- Bridge ---
-echo "--Bridge $BR_DOT  ·  $BR_STATE"
+echo "--Signal-Bridge $BR_DOT  ·  $BR_STATE"
 if [ "$BR_STATE" = "running" ]; then
   echo "----◼  Stop Bridge | shell='$SELF' param0=bridge-stop terminal=false refresh=true"
 else
