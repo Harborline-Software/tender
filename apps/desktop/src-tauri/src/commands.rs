@@ -36,3 +36,13 @@ pub async fn get_local_services() -> Vec<telemetry::LocalService> {
 pub async fn get_devices() -> Vec<devices::TailscaleDevice> {
     devices::get_devices().await
 }
+
+#[tauri::command]
+pub fn open_external(url: String) {
+    let _ = std::process::Command::new("open").arg(&url).spawn();
+}
+
+#[tauri::command]
+pub fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}

@@ -82,6 +82,8 @@ pub fn run() {
             commands::get_system_stats,
             commands::get_local_services,
             commands::get_devices,
+            commands::open_external,
+            commands::quit_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tender");

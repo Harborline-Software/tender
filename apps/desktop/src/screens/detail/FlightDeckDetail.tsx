@@ -4,6 +4,7 @@ import { DetailHeader } from '@/components/DetailHeader'
 import { StatusPill } from '@/components/StatusPill'
 import { ActionFooter } from '@/components/ActionFooter'
 import { useServices } from '@/ipc/useTelemetry'
+import { openExternal } from '@/ipc/tauri'
 
 const WORKERS = [
   { id: 1, util: 88, temp: 71 },
@@ -78,7 +79,12 @@ export function FlightDeckDetail({ onBack }: Props) {
         </div>
       </div>
 
-      <ActionFooter primary="Open Dashboard" secondary="Emergency Stop" danger />
+      <ActionFooter
+        primary="Open Dashboard"
+        secondary="Emergency Stop"
+        danger
+        onPrimary={() => openExternal('http://localhost:3080').catch(() => {})}
+      />
     </MenuShell>
   )
 }
