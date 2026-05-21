@@ -7,7 +7,7 @@ import { FiberDivider } from '@/components/FiberDivider'
 import { ActionFooter } from '@/components/ActionFooter'
 import { ConsoleIndicator } from '@/components/ConsoleIndicator'
 import { useServices } from '@/ipc/useTelemetry'
-import { openExternal } from '@/ipc/tauri'
+import { openExternal, restartSignalBridge } from '@/ipc/tauri'
 
 const FALLBACK_SPARKLINE = [9.1, 10.2, 11.8, 10.5, 12.0, 11.3, 13.4, 12.8, 11.5, 12.1, 13.6, 14.2, 13.0, 12.4, 11.8, 12.9, 13.1, 12.7, 11.9, 12.5, 13.8, 12.6, 12.0, 11.7, 12.4, 13.2, 12.9, 12.1, 11.8, 12.3]
 const FALLBACK_LINKS = [
@@ -81,6 +81,7 @@ export function SignalBridgeDetail({ onBack }: Props) {
       <ActionFooter
         primary="Restart Link"
         secondary="View Logs"
+        onPrimary={() => restartSignalBridge().catch(() => {})}
         onSecondary={() => openExternal('https://localhost:17101').catch(() => {})}
       />
     </MenuShell>

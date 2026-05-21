@@ -6,7 +6,7 @@ import { FiberDivider } from '@/components/FiberDivider'
 import { MeterBar } from '@/components/MeterBar'
 import { ActionFooter } from '@/components/ActionFooter'
 import { useSystemStats } from '@/ipc/useTelemetry'
-import { quitApp } from '@/ipc/tauri'
+import { quitApp, collectDiagnostics, openExternal } from '@/ipc/tauri'
 
 function fmtMem(bytes: number) {
   const g = bytes / 1e9
@@ -76,6 +76,7 @@ export function EngineRoomDetail({ onBack }: Props) {
       <ActionFooter
         primary="Full Diagnostics"
         secondary="Restart Tender"
+        onPrimary={() => collectDiagnostics().then((path) => openExternal(path)).catch(() => {})}
         onSecondary={() => quitApp().catch(() => {})}
       />
     </MenuShell>

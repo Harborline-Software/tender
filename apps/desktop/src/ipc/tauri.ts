@@ -72,3 +72,15 @@ export async function openExternal(url: string): Promise<void> {
 export async function quitApp(): Promise<void> {
   return invoke('quit_app')
 }
+
+export async function emergencyStop(): Promise<string> {
+  return invoke<string>('emergency_stop')
+}
+
+export async function restartSignalBridge(): Promise<string> {
+  return invoke<string>('restart_signal_bridge')
+}
+
+export async function collectDiagnostics(): Promise<string> {
+  return invoke<string>('collect_diagnostics')
+}
