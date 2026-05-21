@@ -64,3 +64,11 @@ export async function getLocalServices(): Promise<ProcessData[]> {
 export async function getDevices(): Promise<DeviceData[]> {
   return invoke<DeviceData[]>('get_devices')
 }
+
+export async function openExternal(url: string): Promise<void> {
+  return invoke('open_external', { url })
+}
+
+export async function quitApp(): Promise<void> {
+  return invoke('quit_app')
+}
