@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTheme } from '@/theme/ThemeProvider'
+import { getDevices, type DeviceData } from '@/ipc/tauri'
 import { MenuShell } from '@/components/MenuShell'
 import { FiberDivider } from '@/components/FiberDivider'
 import { Logomark } from '@/components/Logomark'
@@ -33,6 +34,15 @@ export function Panel({ onNavigate }: Props) {
   const [wsOpen, setWsOpen] = useState(false)
   const [gearOpen, setGearOpen] = useState(false)
   const [workspace, setWorkspace] = useState('Local')
+  const [devices, setDevices] = useState<DeviceData[]>([])
+
+  useEffect(() => {
+    getDevices().then((ds) => {
+      setDevices(ds)
+      const current = ds.find(d => d.isCurrentDevice)
+      if (current) setWorkspace(current.hostname)
+    }).catch(() => {})
+  }, [])
 
   const a = theme.accent
   const m = theme.metalBright
@@ -196,10 +206,12 @@ export function Panel({ onNavigate }: Props) {
 
       <FiberDivider />
 
-      {/* Tab body */}
-      {tab === 'fleet' && <FleetTab onNavigate={handleNavigate} />}
-      {tab === 'projects' && <ProjectsTab />}
-      {tab === 'services' && <ServicesTab onNavigate={handleNavigate} />}
+      {/* Tab body — scrollable, fills remaining space so Dry Dock stays pinned */}
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {tab === 'fleet' && <FleetTab onNavigate={handleNavigate} />}
+        {tab === 'projects' && <ProjectsTab />}
+        {tab === 'services' && <ServicesTab onNavigate={handleNavigate} />}
+      </div>
 
       {/* Bottom separator + Dry Dock */}
       <FiberDivider />
@@ -230,30 +242,29 @@ export function Panel({ onNavigate }: Props) {
               Connected Devices
             </span>
             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8.5, color: a, letterSpacing: 0.6 }}>
-              1 ONLINE
+              {devices.filter(d => d.online).length} ONLINE
             </span>
           </div>
-          {[
-            { name: 'Local', host: 'local-mac', ip: '–', os: 'MAC', status: 'online', isThis: true },
-          ].map((d) => (
-            <button key={d.name} onClick={() => { setWorkspace(d.name); setWsOpen(false) }}
+          {devices.map((d) => (
+            <button key={d.hostname} onClick={() => { setWorkspace(d.hostname); setWsOpen(false) }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 9,
                 width: '100%', textAlign: 'left',
                 padding: '8px 12px',
-                background: d.name === workspace ? `${a}1a` : 'transparent',
+                background: d.hostname === workspace ? `${a}1a` : 'transparent',
                 border: 'none', borderTop: `1px solid ${theme.border}`,
                 color: theme.text, fontSize: 11, cursor: 'pointer',
+                opacity: d.online ? 1 : 0.45,
               }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: a, boxShadow: `0 0 4px ${a}, 0 0 8px ${a}88`, flexShrink: 0 }} />
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: d.online ? a : theme.textMuted, boxShadow: d.online ? `0 0 4px ${a}, 0 0 8px ${a}88` : 'none', flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 11.5 }}>{d.host}</span>
-                  {d.isThis && (
+                  <span style={{ fontSize: 11.5 }}>{d.hostname}</span>
+                  {d.isCurrentDevice && (
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 7.5, color: a, background: `${a}22`, border: `1px solid ${a}55`, borderRadius: 2, padding: '1px 4px', letterSpacing: 0.8, textTransform: 'uppercase' }}>this</span>
                   )}
                 </div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8.5, color: theme.textMuted, marginTop: 2 }}>{d.os}</div>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8.5, color: theme.textMuted, marginTop: 2 }}>{d.os.toUpperCase()}</div>
               </div>
             </button>
           ))}

@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { ConsoleRow } from '@/components/ConsoleRow'
 import { FiberDivider } from '@/components/FiberDivider'
@@ -21,6 +22,29 @@ interface Props {
 export function ServicesTab({ onNavigate }: Props) {
   const { theme } = useTheme()
   const a = theme.accent
+  const prevStatuses = useRef<Map<string, boolean>>(new Map())
+  const [pulsing, setPulsing] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    const transitions: string[] = []
+    SERVICES.forEach(s => {
+      const prev = prevStatuses.current.get(s.name)
+      if (prev !== undefined && prev !== s.hl) {
+        transitions.push(s.name)
+      }
+      prevStatuses.current.set(s.name, s.hl)
+    })
+    if (transitions.length === 0) return
+    setPulsing(prev => new Set([...prev, ...transitions]))
+    const timer = setTimeout(() => {
+      setPulsing(prev => {
+        const next = new Set(prev)
+        transitions.forEach(n => next.delete(n))
+        return next
+      })
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, []) // re-run when SERVICES is replaced with live data
 
   return (
     <div>
@@ -46,6 +70,7 @@ export function ServicesTab({ onNavigate }: Props) {
             name={s.name}
             subLabel={`cpu ${s.cpu} · mem ${s.mem}`}
             active={s.hl}
+            pulsing={pulsing.has(s.name)}
             onClick={() => onNavigate('engine-room')}
           />
           {i < SERVICES.length - 1 && <FiberDivider dim />}
