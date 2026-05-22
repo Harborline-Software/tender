@@ -9,12 +9,13 @@ interface Props {
   indicator?: IndicatorKind
   active?: boolean
   danger?: boolean
+  pulsing?: boolean
   badge?: React.ReactNode
   onClick?: () => void
   children?: React.ReactNode
 }
 
-export function ConsoleRow({ name, subLabel, meter, indicator, active = false, danger = false, badge, onClick, children }: Props) {
+export function ConsoleRow({ name, subLabel, meter, indicator, active = false, danger = false, pulsing = false, badge, onClick, children }: Props) {
   const { theme } = useTheme()
   const [hovered, setHovered] = useState(false)
   const a = theme.accent
@@ -46,7 +47,14 @@ export function ConsoleRow({ name, subLabel, meter, indicator, active = false, d
       }}
     >
       {/* Indicator column — 14px wide */}
-      <div style={{ width: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <div style={{
+        width: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        ...(pulsing ? {
+          animation: 'statusTransition 2s ease-out 1 forwards',
+          '--status-color': dc,
+          borderRadius: '50%',
+        } as React.CSSProperties : {}),
+      }}>
         {indicator ? (
           <ConsoleIndicator kind={indicator} color={dc} active={active || danger} dimColor={theme.textMuted} />
         ) : (
