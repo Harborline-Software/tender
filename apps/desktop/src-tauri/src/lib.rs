@@ -6,12 +6,15 @@ use tauri_plugin_positioner::{Position, WindowExt};
 
 mod commands;
 mod devices;
+mod notifications;
 mod telemetry;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_positioner::init())
+        .manage(notifications::NotificationState::new())
         .setup(|app| {
             // Menu-bar accessory mode: no Dock icon, app never becomes the
             // foreground app. The panel window is the only visible surface.
@@ -52,6 +55,10 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.hide();
             }
+
+            // Background task: watch service health and fire macOS notifications
+            // on state transitions (running→stopped, stopped→running, any→error).
+            notifications::spawn_notification_watcher(app.handle().clone());
 
             Ok(())
         })
