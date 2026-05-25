@@ -1,5 +1,91 @@
 use crate::{devices, telemetry};
 
+// ── Log file path resolution ───────────────────────────────────────────────
+
+/// Canonical log file paths for each service identifier.
+/// Returns `(stdout_path, stderr_path)` tuples where available.
+/// Services launched via LaunchAgent have fixed redirect paths.
+/// Services launched manually write to `~/.harborline/logs/<id>.log`
+/// when that convention is honoured; we fall back gracefully if absent.
+fn log_paths_for_service(service_id: &str) -> Vec<std::path::PathBuf> {
+    let home = match std::env::var("HOME") {
+        Ok(h) => h,
+        Err(_) => return vec![],
+    };
+    let coord = format!("{}/Projects/Harborline-Software/coordination", home);
+    let hl_logs = format!("{}/.harborline/logs", home);
+
+    match service_id {
+        "coordination-sync" => vec![
+            format!("{}/.sync-stdout.log", coord).into(),
+            format!("{}/.sync-stderr.log", coord).into(),
+        ],
+        "archive-rollup" => vec![
+            format!("{}/.archive-rollup-stdout.log", coord).into(),
+            format!("{}/.archive-rollup-stderr.log", coord).into(),
+        ],
+        "qm-daemon" => vec![
+            format!("{}/.qm-daemon-stdout.log", coord).into(),
+            format!("{}/.qm-daemon-stderr.log", coord).into(),
+            format!("{}/.qm-daemon.log", coord).into(),
+        ],
+        "agent-revival-daemon" => vec![
+            format!("{}/.agent-revival-daemon-stdout.log", coord).into(),
+            format!("{}/.agent-revival-daemon-stderr.log", coord).into(),
+        ],
+        // Manually-started services: check ~/.harborline/logs/<id>.log
+        id => vec![
+            format!("{}/{}.log", hl_logs, id).into(),
+        ],
+    }
+}
+
+/// Read the tail of a log file — returns the last `lines` lines as a Vec.
+/// Returns an empty Vec if the file does not exist yet.
+fn tail_file(path: &std::path::Path, lines: usize) -> std::io::Result<Vec<String>> {
+    use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
+    use std::fs::File;
+
+    let mut f = match File::open(path) {
+        Ok(f) => f,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(vec![]),
+        Err(e) => return Err(e),
+    };
+
+    // For small files just read everything; for larger files seek from end.
+    let size = f.seek(SeekFrom::End(0))?;
+    let chunk = (lines as u64 * 200).min(size); // ~200 bytes/line heuristic
+    let start = if size > chunk { size - chunk } else { 0 };
+    f.seek(SeekFrom::Start(start))?;
+
+    let mut buf = String::new();
+    f.read_to_string(&mut buf)?;
+
+    // If we seeked mid-line, discard the partial first line
+    let trimmed = if start > 0 {
+        if let Some(nl) = buf.find('\n') {
+            &buf[nl + 1..]
+        } else {
+            &buf
+        }
+    } else {
+        &buf
+    };
+
+    let all_lines: Vec<String> = BufReader::new(std::io::Cursor::new(trimmed))
+        .lines()
+        .filter_map(|l| l.ok())
+        .collect();
+
+    let tail_start = if all_lines.len() > lines {
+        all_lines.len() - lines
+    } else {
+        0
+    };
+
+    Ok(all_lines[tail_start..].to_vec())
+}
+
 #[tauri::command]
 pub fn get_appearance(window: tauri::WebviewWindow) -> String {
     #[cfg(target_os = "macos")]
@@ -160,4 +246,80 @@ pub async fn collect_diagnostics() -> Result<String, String> {
     std::fs::write(&path, &out).map_err(|e| format!("Write failed: {}", e))?;
 
     Ok(path)
+}
+
+// ── M6 Phase 1 — per-service log viewer ───────────────────────────────────
+
+/// Return the last `lines` lines from the log file(s) for the given service.
+///
+/// When a service has multiple candidate log files (e.g. stdout + stderr),
+/// all are merged in order. Lines from each file are prefixed with a short
+/// source tag (e.g. `[stdout]`, `[stderr]`, `[qm-daemon.log]`) so the
+/// viewer can distinguish them when multiple files are merged.
+///
+/// Returns `Ok(vec![])` for services with no log file present yet (normal
+/// for manually-started services that have never run since boot). Returns
+/// `Err` only on unexpected I/O failures.
+#[tauri::command]
+pub async fn get_log_tail(service_id: String, lines: Option<u32>) -> Result<Vec<String>, String> {
+    let n = lines.unwrap_or(200) as usize;
+
+    let paths = tokio::task::spawn_blocking(move || log_paths_for_service(&service_id))
+        .await
+        .map_err(|e| format!("Task join error: {}", e))?;
+
+    if paths.is_empty() {
+        return Ok(vec!["[no log paths configured for this service]".to_string()]);
+    }
+
+    let mut result: Vec<String> = Vec::new();
+
+    for path in &paths {
+        let file_name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| "log".to_string());
+
+        let path_clone = path.clone();
+        let tail = tokio::task::spawn_blocking(move || tail_file(&path_clone, n))
+            .await
+            .map_err(|e| format!("Task join error: {}", e))?
+            .map_err(|e| format!("Read error on {}: {}", file_name, e))?;
+
+        if tail.is_empty() {
+            // File absent or empty — emit a placeholder only if it's the sole file
+            if paths.len() == 1 {
+                result.push(format!("[{}] (no log output yet)", file_name));
+            }
+        } else {
+            // Prefix each line with the source filename when multiple files are merged
+            if paths.len() > 1 {
+                let tag = derive_log_tag(&file_name);
+                for line in tail {
+                    result.push(format!("[{}] {}", tag, line));
+                }
+            } else {
+                result.extend(tail);
+            }
+        }
+    }
+
+    // Return the last `n` lines across all merged sources
+    if result.len() > n {
+        let start = result.len() - n;
+        Ok(result[start..].to_vec())
+    } else {
+        Ok(result)
+    }
+}
+
+/// Convert a log filename to a short display tag.
+fn derive_log_tag(filename: &str) -> &str {
+    if filename.contains("stdout") {
+        "out"
+    } else if filename.contains("stderr") {
+        "err"
+    } else {
+        "log"
+    }
 }

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { MenuShell } from '@/components/MenuShell'
 import { DetailHeader } from '@/components/DetailHeader'
@@ -6,8 +7,10 @@ import { Sparkline } from '@/components/Sparkline'
 import { FiberDivider } from '@/components/FiberDivider'
 import { ActionFooter } from '@/components/ActionFooter'
 import { ConsoleIndicator } from '@/components/ConsoleIndicator'
+import { ConsoleRow } from '@/components/ConsoleRow'
+import { LogViewerSheet } from '@/components/LogViewerSheet'
 import { useServices } from '@/ipc/useTelemetry'
-import { openExternal, restartSignalBridge } from '@/ipc/tauri'
+import { restartSignalBridge } from '@/ipc/tauri'
 
 const FALLBACK_SPARKLINE = [9.1, 10.2, 11.8, 10.5, 12.0, 11.3, 13.4, 12.8, 11.5, 12.1, 13.6, 14.2, 13.0, 12.4, 11.8, 12.9, 13.1, 12.7, 11.9, 12.5, 13.8, 12.6, 12.0, 11.7, 12.4, 13.2, 12.9, 12.1, 11.8, 12.3]
 const FALLBACK_LINKS = [
@@ -25,12 +28,23 @@ export function SignalBridgeDetail({ onBack }: Props) {
   const a = theme.accent
   const services = useServices(5000)
   const sb = services?.find((s) => s.id === 'signal-bridge')
+  const [logsOpen, setLogsOpen] = useState(false)
 
   const running = sb?.status === 'running'
   const mbps = sb?.throughputMbps ?? 0
   const sparkline = sb?.history?.length ? sb.history : FALLBACK_SPARKLINE
   const pillText = running ? 'Healthy' : (sb ? 'Stopped' : 'Polling')
   const pillTone = running ? undefined : (sb?.status === 'stopped' ? theme.danger : theme.textMuted)
+
+  if (logsOpen) {
+    return (
+      <LogViewerSheet
+        serviceId="signal-bridge"
+        serviceLabel="Signal-Bridge Logs"
+        onClose={() => setLogsOpen(false)}
+      />
+    )
+  }
 
   return (
     <MenuShell>
@@ -78,11 +92,19 @@ export function SignalBridgeDetail({ onBack }: Props) {
         </div>
       ))}
 
+      <FiberDivider dim />
+
+      <ConsoleRow
+        name="View Logs"
+        subLabel="Last 200 lines · 5s refresh"
+        indicator="port"
+        active={false}
+        onClick={() => setLogsOpen(true)}
+      />
+
       <ActionFooter
         primary="Restart Link"
-        secondary="View Logs"
         onPrimary={() => restartSignalBridge().catch(() => {})}
-        onSecondary={() => openExternal('https://localhost:17101').catch(() => {})}
       />
     </MenuShell>
   )

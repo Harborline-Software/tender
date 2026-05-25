@@ -1,8 +1,12 @@
+import { useState } from 'react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { MenuShell } from '@/components/MenuShell'
 import { DetailHeader } from '@/components/DetailHeader'
 import { StatusPill } from '@/components/StatusPill'
 import { ActionFooter } from '@/components/ActionFooter'
+import { FiberDivider } from '@/components/FiberDivider'
+import { ConsoleRow } from '@/components/ConsoleRow'
+import { LogViewerSheet } from '@/components/LogViewerSheet'
 import { useServices } from '@/ipc/useTelemetry'
 import { openExternal, emergencyStop } from '@/ipc/tauri'
 
@@ -25,12 +29,23 @@ export function FlightDeckDetail({ onBack }: Props) {
   const a = theme.accent
   const services = useServices(5000)
   const fd = services?.find((s) => s.id === 'flight-deck')
+  const [logsOpen, setLogsOpen] = useState(false)
 
   const running = fd?.status === 'running'
   const airborne = fd?.airborne ?? 7
   const total = fd?.totalWorkers ?? 7
   const pillText = running ? 'Airborne' : (fd ? 'Grounded' : 'Polling')
   const pillTone = running ? undefined : (fd?.status === 'stopped' ? theme.danger : theme.textMuted)
+
+  if (logsOpen) {
+    return (
+      <LogViewerSheet
+        serviceId="flight-deck"
+        serviceLabel="Flight-Deck Logs"
+        onClose={() => setLogsOpen(false)}
+      />
+    )
+  }
 
   return (
     <MenuShell>
@@ -64,7 +79,7 @@ export function FlightDeckDetail({ onBack }: Props) {
               fontSize: 7.5,
               color: w.temp > 75 ? '#f0b370' : theme.textMuted,
               letterSpacing: 0.4,
-            }}>{w.temp}°C</div>
+            }}>{w.temp}&deg;C</div>
           </div>
         ))}
         {/* spare slot */}
@@ -78,6 +93,16 @@ export function FlightDeckDetail({ onBack }: Props) {
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8, color: theme.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>spare</span>
         </div>
       </div>
+
+      <FiberDivider dim />
+
+      <ConsoleRow
+        name="View Logs"
+        subLabel="Last 200 lines · 5s refresh"
+        indicator="port"
+        active={false}
+        onClick={() => setLogsOpen(true)}
+      />
 
       <ActionFooter
         primary="Open Dashboard"

@@ -84,3 +84,7 @@ export async function restartSignalBridge(): Promise<string> {
 export async function collectDiagnostics(): Promise<string> {
   return invoke<string>('collect_diagnostics')
 }
+
+export async function getLogTail(serviceId: string, lines?: number): Promise<string[]> {
+  return invoke<string[]>('get_log_tail', { serviceId, lines })
+}
