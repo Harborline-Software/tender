@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { MenuShell } from '@/components/MenuShell'
 import { DetailHeader } from '@/components/DetailHeader'
 import { StatusPill } from '@/components/StatusPill'
 import { FiberDivider } from '@/components/FiberDivider'
 import { ActionFooter } from '@/components/ActionFooter'
+import { ConsoleRow } from '@/components/ConsoleRow'
+import { LogViewerSheet } from '@/components/LogViewerSheet'
 import { useServices } from '@/ipc/useTelemetry'
 
 const TASKS = [
@@ -23,11 +26,22 @@ export function SunfishDetail({ onBack }: Props) {
   const a = theme.accent
   const services = useServices(5000)
   const sf = services?.find((s) => s.id === 'sunfish')
+  const [logsOpen, setLogsOpen] = useState(false)
 
   const running = sf?.status === 'running'
   const activeTasks = sf?.activeTasks ?? 7
   const pillText = running ? 'Running' : (sf ? 'Stopped' : 'Polling')
   const pillTone = running ? undefined : (sf?.status === 'stopped' ? theme.danger : theme.textMuted)
+
+  if (logsOpen) {
+    return (
+      <LogViewerSheet
+        serviceId="sunfish"
+        serviceLabel="Sunfish Logs"
+        onClose={() => setLogsOpen(false)}
+      />
+    )
+  }
 
   return (
     <MenuShell>
@@ -68,6 +82,16 @@ export function SunfishDetail({ onBack }: Props) {
           </div>
         </div>
       ))}
+
+      <FiberDivider dim />
+
+      <ConsoleRow
+        name="View Logs"
+        subLabel="Last 200 lines · 5s refresh"
+        indicator="port"
+        active={false}
+        onClick={() => setLogsOpen(true)}
+      />
 
       <ActionFooter primary="Open Workspace" secondary="Pause All" />
     </MenuShell>

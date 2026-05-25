@@ -87,6 +87,7 @@ pub fn run() {
             commands::emergency_stop,
             commands::restart_signal_bridge,
             commands::collect_diagnostics,
+            commands::get_log_tail,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tender");
