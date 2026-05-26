@@ -15,18 +15,24 @@ import { DetailHeader } from '@/components/DetailHeader'
 import { StatusPill } from '@/components/StatusPill'
 import { FiberDivider } from '@/components/FiberDivider'
 import { getBundleManifests, getPluginHealth } from '@/ipc/tauri'
-import type { BusinessCaseBundleManifest, PluginHealthRecord } from '@/ipc/tauri'
+import type {
+  BusinessCaseBundleManifest,
+  PluginHealthRecord,
+  PluginHealthStatus,
+} from '@/ipc/tauri'
+import type { BundleCategory, BundleStatus } from '@sunfish/contracts'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const CATEGORY_ICONS: Record<string, string> = {
+// T1: typed as Record<Union, string> so TS catches missing keys on enum-drift
+const CATEGORY_ICONS: Record<BundleCategory, string> = {
   Operations: '⚙',
   Diligence: '🔍',
   Finance: '◈',
   Platform: '⬡',
 }
 
-const STATUS_LABEL: Record<string, string> = {
+const STATUS_LABEL: Record<BundleStatus, string> = {
   Draft: 'Draft',
   Preview: 'Preview',
   GA: 'GA',
@@ -41,23 +47,33 @@ interface Props {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function HealthDot({ status }: { status: string }) {
+function HealthDot({ status }: { status: PluginHealthStatus }) {
   const { theme } = useTheme()
-  const colors: Record<string, string> = {
+  // T1: typed as Record<PluginHealthStatus, string> for discriminated-union safety
+  const colors: Record<PluginHealthStatus, string> = {
     unknown: theme.textMuted,
     ok: theme.accent,
     degraded: '#f0b370',
     missing: theme.danger,
   }
   const color = colors[status] ?? theme.textMuted
+  // U1: tooltip explains "unknown" status in H4.A framing; aria-label for screen readers
+  const tooltip = status === 'unknown'
+    ? 'Status check not implemented in Q6 v1 — provider health probing ships in Q6 v2'
+    : `Provider health: ${status}`
   return (
-    <span style={{
-      display: 'inline-block',
-      width: 6, height: 6, borderRadius: '50%',
-      background: color,
-      boxShadow: status === 'ok' ? `0 0 4px ${color}` : 'none',
-      flexShrink: 0,
-    }} />
+    <span
+      aria-label={tooltip}
+      aria-hidden="true"
+      title={tooltip}
+      style={{
+        display: 'inline-block',
+        width: 6, height: 6, borderRadius: '50%',
+        background: color,
+        boxShadow: status === 'ok' ? `0 0 4px ${color}` : 'none',
+        flexShrink: 0,
+      }}
+    />
   )
 }
 
@@ -74,6 +90,8 @@ function BundleCard({
 
   const bundleHealth = healthRecords.filter((r) => r.bundleKey === manifest.key)
   const icon = CATEGORY_ICONS[manifest.category] ?? '◻'
+  // A1: stable id for aria-controls linkage
+  const detailPanelId = `bundle-detail-${manifest.key}`
 
   const statusColor =
     manifest.status === 'GA' ? a
@@ -90,8 +108,12 @@ function BundleCard({
       overflow: 'hidden',
     }}>
       {/* Bundle header row */}
+      {/* A1: aria-expanded + aria-controls link to detail panel */}
       <button
         onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        aria-controls={detailPanelId}
+        title={expanded ? 'Collapse' : 'Expand'}
         style={{
           width: '100%', textAlign: 'left',
           background: 'transparent',
@@ -136,8 +158,9 @@ function BundleCard({
         {/* Status pill */}
         <StatusPill text={STATUS_LABEL[manifest.status] ?? manifest.status} tone={statusColor} />
 
-        {/* Expand chevron */}
+        {/* Expand chevron — decorative; aria-expanded on button carries semantic state */}
         <svg
+          aria-hidden="true"
           width="10" height="10" viewBox="0 0 10 10" fill="none"
           style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 150ms ease', flexShrink: 0 }}
         >
@@ -145,9 +168,9 @@ function BundleCard({
         </svg>
       </button>
 
-      {/* Expanded detail */}
+      {/* A1: expanded detail panel — id linked from aria-controls on the button */}
       {expanded && (
-        <>
+        <div id={detailPanelId}>
           <div style={{ height: 1, background: theme.border }} />
 
           {/* Maturity + description */}
@@ -171,7 +194,7 @@ function BundleCard({
             </div>
           )}
 
-          {/* Provider requirements / plugin health */}
+          {/* A2: provider requirements as semantic table with scope attrs */}
           {bundleHealth.length > 0 && (
             <>
               <div style={{ height: 1, background: `${theme.border}88` }} />
@@ -183,53 +206,103 @@ function BundleCard({
                 }}>
                   Plugin requirements ({bundleHealth.length})
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {bundleHealth.map((rec, i) => (
-                    <div key={i} style={{
-                      display: 'flex', alignItems: 'center', gap: 7,
-                      padding: '3px 6px',
-                      background: `${theme.bgSoft}88`,
-                      borderRadius: 3,
-                      border: `1px solid ${theme.border}55`,
-                    }}>
-                      <HealthDot status={rec.status} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{
-                          fontFamily: "'Space Grotesk', sans-serif",
-                          fontSize: 10.5, color: theme.text,
+                <table style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  borderSpacing: 0,
+                }}>
+                  <thead>
+                    <tr>
+                      <th scope="col" style={{
+                        textAlign: 'left',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 7, letterSpacing: 0.8,
+                        color: theme.textMuted, fontWeight: 'normal',
+                        textTransform: 'uppercase',
+                        paddingBottom: 3,
+                      }}>
+                        Provider
+                      </th>
+                      <th scope="col" style={{
+                        textAlign: 'center',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 7, letterSpacing: 0.8,
+                        color: theme.textMuted, fontWeight: 'normal',
+                        textTransform: 'uppercase',
+                        paddingBottom: 3,
+                        width: 32,
+                      }}>
+                        Req
+                      </th>
+                      <th scope="col" style={{
+                        textAlign: 'right',
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 7, letterSpacing: 0.8,
+                        color: theme.textMuted, fontWeight: 'normal',
+                        textTransform: 'uppercase',
+                        paddingBottom: 3,
+                        width: 60,
+                      }}>
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bundleHealth.map((rec, i) => (
+                      <tr key={i} style={{
+                        background: `${theme.bgSoft}88`,
+                      }}>
+                        <td style={{
+                          padding: '3px 6px 3px 0',
+                          borderBottom: `1px solid ${theme.border}33`,
                         }}>
-                          {rec.providerCategory}
-                        </span>
-                        {rec.purpose && (
-                          <span style={{
-                            fontFamily: "'Space Grotesk', sans-serif",
-                            fontSize: 9.5, color: theme.textMuted, marginLeft: 5,
-                          }}>
-                            — {rec.purpose}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                        {rec.isRequired && (
-                          <span style={{
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: 7, letterSpacing: 0.6,
-                            color: theme.textMuted, background: `${theme.border}88`,
-                            borderRadius: 2, padding: '1px 4px',
-                            textTransform: 'uppercase',
-                          }}>req</span>
-                        )}
-                        <span style={{
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <HealthDot status={rec.status} />
+                            <span style={{
+                              fontFamily: "'Space Grotesk', sans-serif",
+                              fontSize: 10.5, color: theme.text,
+                            }}>
+                              {rec.providerCategory}
+                            </span>
+                            {rec.purpose && (
+                              <span style={{
+                                fontFamily: "'Space Grotesk', sans-serif",
+                                fontSize: 9.5, color: theme.textMuted,
+                              }}>
+                                — {rec.purpose}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{
+                          textAlign: 'center',
+                          padding: '3px 4px',
+                          borderBottom: `1px solid ${theme.border}33`,
+                        }}>
+                          {rec.isRequired && (
+                            <span style={{
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontSize: 7, letterSpacing: 0.6,
+                              color: theme.textMuted, background: `${theme.border}88`,
+                              borderRadius: 2, padding: '1px 4px',
+                              textTransform: 'uppercase',
+                            }}>req</span>
+                          )}
+                        </td>
+                        <td style={{
+                          textAlign: 'right',
+                          padding: '3px 0 3px 4px',
+                          borderBottom: `1px solid ${theme.border}33`,
                           fontFamily: "'JetBrains Mono', monospace",
                           fontSize: 8, color: theme.textMuted,
                           textTransform: 'uppercase',
                         }}>
                           {rec.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </>
           )}
@@ -258,7 +331,7 @@ function BundleCard({
               </div>
             </>
           )}
-        </>
+        </div>
       )}
     </div>
   )
@@ -320,26 +393,33 @@ export function BundlesDetail({ onBack }: Props) {
       />
 
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {/* A3: loading state — role="status" + aria-live for screen reader announcement */}
         {loading && (
-          <div style={{
-            padding: '24px 14px',
-            textAlign: 'center',
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 9, letterSpacing: 1.2, color: theme.textMuted,
-            textTransform: 'uppercase',
-          }}>
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              padding: '24px 14px',
+              textAlign: 'center',
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 9, letterSpacing: 1.2, color: theme.textMuted,
+              textTransform: 'uppercase',
+            }}>
             Reading manifests…
           </div>
         )}
 
+        {/* A3: error state — role="alert" for screen reader announcement */}
         {error && !loading && (
           <div style={{ padding: '14px' }}>
-            <div style={{
-              background: `${theme.danger}1a`,
-              border: `1px solid ${theme.danger}44`,
-              borderRadius: 5,
-              padding: '10px 12px',
-            }}>
+            <div
+              role="alert"
+              style={{
+                background: `${theme.danger}1a`,
+                border: `1px solid ${theme.danger}44`,
+                borderRadius: 5,
+                padding: '10px 12px',
+              }}>
               <div style={{
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: 9, letterSpacing: 1.2, color: theme.danger,
