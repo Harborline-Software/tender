@@ -1,4 +1,4 @@
-use crate::{devices, telemetry};
+use crate::{bundles, devices, telemetry};
 
 // ── Log file path resolution ───────────────────────────────────────────────
 
@@ -322,4 +322,30 @@ fn derive_log_tag(filename: &str) -> &str {
     } else {
         "log"
     }
+}
+
+// ── Q6 bundle manifest commands ────────────────────────────────────────────
+
+/// Return all bundle manifests from the fleet-layout filesystem path.
+///
+/// Reads `$HOME/Projects/Harborline-Software/shipyard/packages/foundation-catalog/
+/// Manifests/Bundles/*.bundle.json` on every call per H3.A (load-on-panel-open,
+/// no caching). Returns an `Err` string if the directory is absent or no
+/// manifests parse cleanly.
+#[tauri::command]
+pub fn get_bundle_manifests() -> Result<Vec<bundles::BusinessCaseBundleManifest>, String> {
+    bundles::read_bundle_manifests()
+}
+
+/// Return plugin health records for all provider requirements across all bundles.
+///
+/// Q6 v1: all records carry `status: "unknown"` per H4.A ruling. No HTTP probing
+/// is performed — the status "unknown" is honest UX: Tender cannot determine
+/// provider health without an HTTP hop that falls outside Q6 scope.
+///
+/// Reads manifests fresh on each call (consistent with H3.A cadence).
+#[tauri::command]
+pub fn get_plugin_health() -> Result<Vec<bundles::PluginHealthRecord>, String> {
+    let manifests = bundles::read_bundle_manifests()?;
+    Ok(bundles::build_plugin_health_records(&manifests))
 }

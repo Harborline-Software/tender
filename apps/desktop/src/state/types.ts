@@ -86,5 +86,6 @@ export type DetailId =
   | 'dock-settings'
   | 'dry-dock'
   | 'release-notes'
+  | 'bundles'
 
 export type Screen = { kind: 'main' } | { kind: 'detail'; id: DetailId }

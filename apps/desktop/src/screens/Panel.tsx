@@ -67,6 +67,7 @@ export function Panel({ onNavigate }: Props) {
       appearance: 'dock-settings',
       logs: 'engine-room',
       'dry-dock': 'dry-dock',
+      plugins: 'bundles',
     }
     const detailId = map[id]
     if (detailId) onNavigate({ kind: 'detail', id: detailId })
