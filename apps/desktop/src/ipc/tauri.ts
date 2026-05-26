@@ -1,4 +1,19 @@
 import { invoke } from '@tauri-apps/api/core'
+import type { BusinessCaseBundleManifest, ProviderCategory } from '@sunfish/contracts'
+
+export type { BusinessCaseBundleManifest, ProviderCategory }
+
+/** Health status for a provider slot — Q6 v1 always returns "unknown" (H4.A). */
+export type PluginHealthStatus = 'unknown' | 'ok' | 'degraded' | 'missing'
+
+/** Health record for a single provider requirement from a bundle. */
+export interface PluginHealthRecord {
+  bundleKey: string
+  providerCategory: ProviderCategory
+  isRequired: boolean
+  purpose?: string | null
+  status: PluginHealthStatus
+}
 
 // ── Backend wire types (match Rust serde field names) ────────────────────────
 
@@ -87,4 +102,26 @@ export async function collectDiagnostics(): Promise<string> {
 
 export async function getLogTail(serviceId: string, lines?: number): Promise<string[]> {
   return invoke<string[]>('get_log_tail', { serviceId, lines })
+}
+
+// ── Q6 bundle manifest commands ───────────────────────────────────────────────
+
+/**
+ * Load all bundle manifests from the fleet-layout filesystem path.
+ *
+ * Reads fresh on every call (no caching, per H3.A load-on-panel-open ruling).
+ * Throws a string error if the manifest directory is absent or unparseable.
+ */
+export async function getBundleManifests(): Promise<BusinessCaseBundleManifest[]> {
+  return invoke<BusinessCaseBundleManifest[]>('get_bundle_manifests')
+}
+
+/**
+ * Return plugin health records for all provider requirements.
+ *
+ * Q6 v1: all records carry status "unknown" (H4.A ruling — no probing).
+ * Reads manifests fresh on every call (consistent with H3.A cadence).
+ */
+export async function getPluginHealth(): Promise<PluginHealthRecord[]> {
+  return invoke<PluginHealthRecord[]>('get_plugin_health')
 }
