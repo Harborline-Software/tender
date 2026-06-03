@@ -15,8 +15,8 @@ export default defineConfig({
     alias: { '@': path.resolve(__dirname, 'src') },
   },
   build: {
-    target: ['es2021', 'safari13'],
-    minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
+    target: ['es2021', 'safari14.1'],
+    minify: !process.env.TAURI_DEBUG ? 'oxc' : false,
     sourcemap: !!process.env.TAURI_DEBUG,
   },
 })
