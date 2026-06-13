@@ -10,6 +10,8 @@ import { DockSettingsDetail } from '@/screens/detail/DockSettingsDetail'
 import { DryDockDetail } from '@/screens/detail/DryDockDetail'
 import { ReleaseNotesDetail } from '@/screens/detail/ReleaseNotesDetail'
 import { BundlesDetail } from '@/screens/detail/BundlesDetail'
+import { BackupsDetail } from '@/screens/detail/BackupsDetail'
+import { RelayDetail } from '@/screens/detail/RelayDetail'
 import '@/animations.css'
 
 function DetailScreen({ id, onBack }: { id: DetailId; onBack: () => void }) {
@@ -22,6 +24,8 @@ function DetailScreen({ id, onBack }: { id: DetailId; onBack: () => void }) {
     case 'dry-dock':       return <DryDockDetail         onBack={onBack} />
     case 'release-notes':  return <ReleaseNotesDetail   onBack={onBack} />
     case 'bundles':        return <BundlesDetail        onBack={onBack} />
+    case 'backups':        return <BackupsDetail        onBack={onBack} />
+    case 'relay':          return <RelayDetail          onBack={onBack} />
     default:               return null
   }
 }
