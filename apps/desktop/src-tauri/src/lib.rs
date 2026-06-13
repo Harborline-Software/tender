@@ -4,11 +4,11 @@ use tauri::{
 };
 use tauri_plugin_positioner::{Position, WindowExt};
 
-pub mod backup;
 pub mod bundles;
 mod commands;
 mod devices;
 mod notifications;
+pub mod provider_health;
 mod telemetry;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -99,10 +99,7 @@ pub fn run() {
             commands::get_log_tail,
             commands::get_bundle_manifests,
             commands::get_plugin_health,
-            backup::list_backups,
-            backup::run_backup,
-            backup::restore_backup,
-            backup::get_sync_status,
+            commands::get_live_provider_health,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tender");

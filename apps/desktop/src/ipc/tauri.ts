@@ -15,6 +15,40 @@ export interface PluginHealthRecord {
   status: PluginHealthStatus
 }
 
+// ── R10 live provider health types ───────────────────────────────────────────
+
+/**
+ * Live probe status for a Tier-2 category-provider slot.
+ * Mirrors the Rust `ProbeStatus` enum (serde camelCase).
+ */
+export type ProbeStatus =
+  | 'ok'
+  | 'error'
+  | 'notProbed'
+  | 'unconfigured'
+  | 'authRequired'
+  | 'bridgeUnreachable'
+  | 'unknown'
+
+/**
+ * Live health record for a single Tier-2 provider slot.
+ * Returned by `get_live_provider_health` Tauri command.
+ */
+export interface ProviderHealthRecord {
+  /** Vendor-neutral contract name, e.g. "IEmailProvider". */
+  providerSlot: string
+  /** Environment variable key that activates the real adapter. */
+  envVarKey: string
+  /** Whether the env-var is set (real adapter active in Bridge). */
+  configured: boolean
+  /** Whether Bridge is using the mock fallback. */
+  usingMock: boolean
+  /** Resolved probe status. */
+  status: ProbeStatus
+  /** Short detail for the Error state (from Bridge or Tender). */
+  statusDetail?: string | null
+}
+
 // ── Backend wire types (match Rust serde field names) ────────────────────────
 
 export interface ServiceData {
@@ -124,6 +158,20 @@ export async function getBundleManifests(): Promise<BusinessCaseBundleManifest[]
  */
 export async function getPluginHealth(): Promise<PluginHealthRecord[]> {
   return invoke<PluginHealthRecord[]>('get_plugin_health')
+}
+
+/**
+ * Fetch live provider health from the Bridge admin/providers endpoint.
+ *
+ * Returns one record per registered Tier-2 provider slot, with real
+ * configuration + reachability status. When Bridge is unreachable a single
+ * synthetic record with status "bridgeUnreachable" is returned.
+ *
+ * Never throws — individual and aggregate failures are captured in
+ * each record's `status` field.
+ */
+export async function getLiveProviderHealth(): Promise<ProviderHealthRecord[]> {
+  return invoke<ProviderHealthRecord[]>('get_live_provider_health')
 }
 
 // ── R8 backup commands ────────────────────────────────────────────────────────

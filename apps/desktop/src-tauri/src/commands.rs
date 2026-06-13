@@ -349,3 +349,27 @@ pub fn get_plugin_health() -> Result<Vec<bundles::PluginHealthRecord>, String> {
     let manifests = bundles::read_bundle_manifests()?;
     Ok(bundles::build_plugin_health_records(&manifests))
 }
+
+// ── R10 Q6 v2 — live provider health from Bridge admin endpoint ───────────
+
+/// Fetch live provider-health records from the Bridge admin/providers endpoint.
+///
+/// Returns a Vec of `ProviderHealthRecord` on success. Each record carries a
+/// `status` discriminant:
+///   - `ok`                — configured + reachability probe returned ok
+///   - `error`             — configured but probe returned an error
+///   - `notProbed`         — configured, no probe registered for this contract
+///   - `unconfigured`      — env-var absent; mock fallback is active
+///   - `authRequired`      — Bridge returned 401/403 (Tender not authenticated)
+///   - `bridgeUnreachable` — cannot reach Bridge at the configured URL
+///   - `unknown`           — unexpected Bridge response
+///
+/// Falls back gracefully: if Bridge is not running the caller gets a single
+/// `bridgeUnreachable` record rather than an `Err`.
+///
+/// Base URL: `TENDER_BRIDGE_BASE_URL` env var, default `http://localhost:5000`.
+#[tauri::command]
+pub async fn get_live_provider_health(
+) -> Result<Vec<crate::provider_health::ProviderHealthRecord>, String> {
+    crate::provider_health::fetch_provider_health().await
+}
