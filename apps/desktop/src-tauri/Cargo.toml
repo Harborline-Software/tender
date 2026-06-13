@@ -20,6 +20,8 @@ tokio = { version = "1", features = ["full"] }
 anyhow = "1"
 sysinfo = "0.39"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+flate2 = "1"
+tar = "0.4"
 
 [profile.release]
 strip = true

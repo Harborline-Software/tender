@@ -87,5 +87,41 @@ export type DetailId =
   | 'dry-dock'
   | 'release-notes'
   | 'bundles'
+  | 'backups'
+  | 'relay'
 
 export type Screen = { kind: 'main' } | { kind: 'detail'; id: DetailId }
+
+// ── Backup types (R8 operator-companion) ─────────────────────────────────────
+
+/** A single backup archive in the history list. */
+export interface BackupEntry {
+  /** Unix epoch seconds at snapshot time — used as a unique id. */
+  id: number
+  /** ISO 8601 UTC timestamp. */
+  createdAt: string
+  /** Compressed archive size in bytes. */
+  sizeBytes: number
+  /** Absolute filesystem path to the .tar.gz file. */
+  path: string
+  /** True when both DB + vault were found and snapshotted. */
+  complete: boolean
+  /** Human-readable scope label ("DB + vault", "DB only", etc.). */
+  scope: string
+}
+
+// ── Sync / relay status types ─────────────────────────────────────────────────
+
+/** Four-state sync indicator — fleet SyncState vocabulary. */
+export type SyncStateValue = 'healthy' | 'stale' | 'offline' | 'singledevice'
+
+/** Relay + coordination-sync status snapshot. */
+export interface SyncStatus {
+  relayReachable: boolean
+  /** v1: always false — device-pairing deferred. */
+  multiDeviceActive: boolean
+  tailnetDeviceCount: number
+  /** Unix epoch seconds of the last coordination-sync log mtime, or null. */
+  lastCoordSyncAt: number | null
+  state: SyncStateValue
+}

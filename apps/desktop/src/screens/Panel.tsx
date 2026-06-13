@@ -1,11 +1,16 @@
 /**
  * Panel — main tray panel with header, tab strip, and tab body.
  *
- * Changes (design-review 2026-06):
- * - MenuShell now clamps to calc(100vh - 44px) so lists don't run off the
- *   bottom of the screen (F1.2). The popover also gets a maxHeight + overflow.
- * - updatesAvailable stub removed; update badge hidden until real data wires
- *   in (F8.2: never render fictional data as fact).
+ * R8 changes (operator-companion doctrine):
+ * - Console tab added (4th tab: Fleet / Projects / Services / Console).
+ *   Houses operator management: Bundles, Backups, Sync/Relay, Diagnostics.
+ * - Gear menu trimmed to app preferences only (design-review F1.3).
+ *   Plugins / Logs / Dry-Dock entries removed from gear; they live in
+ *   Console tab now. Dry-Dock stays pinned at the bottom (always reachable).
+ *
+ * Prior changes (design-review 2026-06):
+ * - MenuShell clamps to calc(100vh - 44px) (F1.2).
+ * - updatesAvailable stub removed (F8.2).
  * - All font literals replaced with theme token references (F3.1).
  */
 import { useState, useEffect } from 'react'
@@ -19,17 +24,18 @@ import { ConsoleRow } from '@/components/ConsoleRow'
 import { FleetTab } from './tabs/FleetTab'
 import { ProjectsTab } from './tabs/ProjectsTab'
 import { ServicesTab } from './tabs/ServicesTab'
+import { ConsoleTab } from './tabs/ConsoleTab'
 import { type Screen, type DetailId } from '@/state/types'
 
+// Gear menu: app preferences only (design-review F1.3).
+// Operator management (Plugins, Backups, Relay, Diagnostics) moved to Console tab.
 const GEAR_ITEMS = [
-  { id: 'about', label: 'About Tender' },
-  { id: 'faq', label: 'FAQ' },
-  { id: 'plugins', label: 'Plugins' },
-  { id: 'proxy', label: 'Proxy settings' },
+  { id: 'about',      label: 'About Tender' },
+  { id: 'faq',        label: 'FAQ' },
+  { id: 'proxy',      label: 'Proxy settings' },
   { id: 'appearance', label: 'Appearance & behavior' },
-  { id: 'account', label: 'Account · Log out', muted: true },
-  { id: 'logs', label: 'Collect logs & diagnostics' },
-  { id: 'dry-dock', label: 'Dry Dock (shutdown)', danger: true },
+  { id: 'account',    label: 'Account · Log out', muted: true },
+  { id: 'dry-dock',   label: 'Dry Dock (shutdown)', danger: true },
 ] as const
 
 type GearId = (typeof GEAR_ITEMS)[number]['id']
@@ -75,11 +81,11 @@ export function Panel({ onNavigate }: Props) {
 
   const handleGearSelect = (id: GearId) => {
     closePopovers()
+    // Gear menu routes only to app-preference screens.
+    // Operator management surfaces live in the Console tab (design-review F1.3).
     const map: Partial<Record<GearId, DetailId>> = {
       appearance: 'dock-settings',
-      logs: 'engine-room',
       'dry-dock': 'dry-dock',
-      plugins: 'bundles',
     }
     const detailId = map[id]
     if (detailId) onNavigate({ kind: 'detail', id: detailId })
@@ -221,9 +227,10 @@ export function Panel({ onNavigate }: Props) {
 
       {/* Tab body — F1.2: panel height clamped in MenuShell; this scrolls */}
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-        {tab === 'fleet' && <FleetTab onNavigate={handleNavigate} />}
+        {tab === 'fleet'    && <FleetTab    onNavigate={handleNavigate} />}
         {tab === 'projects' && <ProjectsTab />}
         {tab === 'services' && <ServicesTab onNavigate={handleNavigate} />}
+        {tab === 'console'  && <ConsoleTab  onNavigate={handleNavigate} />}
       </div>
 
       {/* Bottom separator + Dry Dock */}

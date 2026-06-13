@@ -1,11 +1,20 @@
+/**
+ * TabStrip — top-level tab navigation.
+ *
+ * R8 Console tab added (design-review F1.3 + F6): operator management
+ * surfaces (Bundles, Backups, Sync/Relay, Diagnostics) now live in the
+ * Console tab instead of the gear menu grab-bag. Four tabs fit 360px at
+ * 90px each without cramping.
+ */
 import { useTheme } from '@/theme/ThemeProvider'
 
-export type TabId = 'fleet' | 'projects' | 'services'
+export type TabId = 'fleet' | 'projects' | 'services' | 'console'
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'fleet', label: 'Fleet' },
+  { id: 'fleet',    label: 'Fleet' },
   { id: 'projects', label: 'Projects' },
   { id: 'services', label: 'Services' },
+  { id: 'console',  label: 'Console' },
 ]
 
 interface Props {
