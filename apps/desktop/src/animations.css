@@ -18,3 +18,14 @@
   40%  { box-shadow: 0 0 0 6px transparent; opacity: 1; }
   100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
 }
+
+/* F4.2 / P1: respect prefers-reduced-motion — stop all animations when the
+   user has requested reduced motion. This disables the dot pulse, fiber
+   pulse, and status-transition ring. Colors and layout are unaffected. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

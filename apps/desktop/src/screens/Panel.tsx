@@ -1,3 +1,13 @@
+/**
+ * Panel — main tray panel with header, tab strip, and tab body.
+ *
+ * Changes (design-review 2026-06):
+ * - MenuShell now clamps to calc(100vh - 44px) so lists don't run off the
+ *   bottom of the screen (F1.2). The popover also gets a maxHeight + overflow.
+ * - updatesAvailable stub removed; update badge hidden until real data wires
+ *   in (F8.2: never render fictional data as fact).
+ * - All font literals replaced with theme token references (F3.1).
+ */
 import { useState, useEffect } from 'react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { getDevices, type DeviceData } from '@/ipc/tauri'
@@ -47,7 +57,9 @@ export function Panel({ onNavigate }: Props) {
   const a = theme.accent
   const m = theme.metalBright
 
-  const updatesAvailable = 3  // stub; wired to real data in M3
+  // F8.2: update badge is hidden until real update data is wired (M3).
+  // Never show "3 updates" that is a hardcoded stub — that misleads operators.
+  const updatesAvailable = 0  // will be populated from IPC in M3
 
   const closePopovers = () => { setWsOpen(false); setGearOpen(false) }
 
@@ -87,9 +99,9 @@ export function Panel({ onNavigate }: Props) {
         <Logomark size={26} />
 
         <div style={{
-          fontFamily: "'Cormorant Garamond', serif",
+          fontFamily: theme.fontDisplay,
           fontStyle: 'italic',
-          fontSize: 16,
+          fontSize: theme.sizeDisplay,
           fontWeight: 600,
           lineHeight: 1,
           letterSpacing: 0.2,
@@ -113,8 +125,8 @@ export function Panel({ onNavigate }: Props) {
             alignItems: 'center',
             gap: 5,
             color: theme.text,
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 10,
+            fontFamily: theme.fontMono,
+            fontSize: theme.sizeMetric,
             letterSpacing: 0.6,
             cursor: 'pointer',
             boxShadow: `0 0 6px ${a}22, inset 0 0 4px ${a}1a`,
@@ -132,7 +144,7 @@ export function Panel({ onNavigate }: Props) {
           </svg>
         </button>
 
-        {/* Update icon — only when updates pending */}
+        {/* Update icon — only when updates are actually available */}
         {updatesAvailable > 0 && (
           <button
             onClick={() => handleNavigate('release-notes')}
@@ -207,7 +219,7 @@ export function Panel({ onNavigate }: Props) {
 
       <FiberDivider />
 
-      {/* Tab body — scrollable, fills remaining space so Dry Dock stays pinned */}
+      {/* Tab body — F1.2: panel height clamped in MenuShell; this scrolls */}
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {tab === 'fleet' && <FleetTab onNavigate={handleNavigate} />}
         {tab === 'projects' && <ProjectsTab />}
@@ -221,17 +233,19 @@ export function Panel({ onNavigate }: Props) {
         onClick={() => handleNavigate('dry-dock')}
       />
 
-      {/* Workspace popover */}
+      {/* Workspace popover — F1.2: clamped height + internal scroll for long device lists */}
       {wsOpen && (
         <div style={{
           position: 'absolute', right: 78, top: 48,
           zIndex: 10, width: 268,
+          maxHeight: 'calc(100vh - 100px)',
+          overflowY: 'auto',
           background: theme.bg,
           border: `1px solid ${theme.border}`,
           borderRadius: 5,
           boxShadow: `0 12px 30px ${theme.shadow}, 0 0 16px ${a}33`,
           overflow: 'hidden',
-          fontFamily: "'Space Grotesk', sans-serif",
+          fontFamily: theme.fontRow,
         }}>
           <div style={{
             padding: '8px 12px 6px',
@@ -239,13 +253,23 @@ export function Panel({ onNavigate }: Props) {
             background: `linear-gradient(180deg, ${theme.bgSoft} 0%, ${theme.bg} 100%)`,
             borderBottom: `1px solid ${theme.border}`,
           }}>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8.5, letterSpacing: 1.4, textTransform: 'uppercase', color: theme.textMuted }}>
+            <span style={{ fontFamily: theme.fontMono, fontSize: theme.sizeLabel, letterSpacing: 1.4, textTransform: 'uppercase', color: theme.textMuted }}>
               Connected Devices
             </span>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8.5, color: a, letterSpacing: 0.6 }}>
+            <span style={{ fontFamily: theme.fontMono, fontSize: theme.sizeLabel, color: a, letterSpacing: 0.6 }}>
               {devices.filter(d => d.online).length} ONLINE
             </span>
           </div>
+          {devices.length === 0 && (
+            <div style={{
+              padding: '16px 12px',
+              fontFamily: theme.fontMono,
+              fontSize: theme.sizeLabel, color: theme.textMuted,
+              textTransform: 'uppercase', letterSpacing: 1.2, textAlign: 'center',
+            }}>
+              No devices on this tailnet
+            </div>
+          )}
           {devices.map((d) => (
             <button key={d.hostname} onClick={() => { setWorkspace(d.hostname); setWsOpen(false) }}
               style={{
@@ -254,24 +278,24 @@ export function Panel({ onNavigate }: Props) {
                 padding: '8px 12px',
                 background: d.hostname === workspace ? `${a}1a` : 'transparent',
                 border: 'none', borderTop: `1px solid ${theme.border}`,
-                color: theme.text, fontSize: 11, cursor: 'pointer',
+                color: theme.text, fontSize: theme.sizeBody, cursor: 'pointer',
                 opacity: d.online ? 1 : 0.45,
               }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: d.online ? a : theme.textMuted, boxShadow: d.online ? `0 0 4px ${a}, 0 0 8px ${a}88` : 'none', flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 11.5 }}>{d.hostname}</span>
+                  <span style={{ fontSize: theme.sizeRowTitle }}>{d.hostname}</span>
                   {d.isCurrentDevice && (
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 7.5, color: a, background: `${a}22`, border: `1px solid ${a}55`, borderRadius: 2, padding: '1px 4px', letterSpacing: 0.8, textTransform: 'uppercase' }}>this</span>
+                    <span style={{ fontFamily: theme.fontMono, fontSize: theme.sizeLabel, color: a, background: `${a}22`, border: `1px solid ${a}55`, borderRadius: 2, padding: '1px 4px', letterSpacing: 0.8, textTransform: 'uppercase' }}>this</span>
                   )}
                 </div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8.5, color: theme.textMuted, marginTop: 2 }}>{d.os.toUpperCase()}</div>
+                <div style={{ fontFamily: theme.fontMono, fontSize: theme.sizeLabel, color: theme.textMuted, marginTop: 2 }}>{d.os.toUpperCase()}</div>
               </div>
             </button>
           ))}
-          <button onClick={() => setWsOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '8px 12px', background: 'transparent', border: 'none', borderTop: `1px solid ${theme.border}`, color: theme.textDim, fontSize: 11, cursor: 'pointer' }}>
+          <button onClick={() => setWsOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '8px 12px', background: 'transparent', border: 'none', borderTop: `1px solid ${theme.border}`, color: theme.textDim, fontSize: theme.sizeBody, cursor: 'pointer' }}>
             <span style={{ flex: 1 }}>Manage devices…</span>
-            <span style={{ color: theme.textMuted, fontSize: 10 }}>↗</span>
+            <span style={{ color: theme.textMuted, fontSize: theme.sizeMetric }}>↗</span>
           </button>
         </div>
       )}
@@ -286,7 +310,7 @@ export function Panel({ onNavigate }: Props) {
           borderRadius: 5,
           boxShadow: `0 12px 30px ${theme.shadow}, 0 0 16px ${a}33`,
           overflow: 'hidden',
-          fontFamily: "'Space Grotesk', sans-serif",
+          fontFamily: theme.fontRow,
         }}>
           {GEAR_ITEMS.map((item, i) => (
             <button
@@ -304,7 +328,7 @@ export function Panel({ onNavigate }: Props) {
                   : 'muted' in item && item.muted
                     ? theme.textDim
                     : theme.text,
-                fontSize: 11, cursor: 'pointer',
+                fontSize: theme.sizeBody, cursor: 'pointer',
               }}
               onMouseEnter={(e) => {
                 const el = e.currentTarget as HTMLElement
