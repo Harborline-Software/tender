@@ -24,7 +24,7 @@ import type {
   ProviderHealthRecord,
   ProbeStatus,
 } from '@/ipc/tauri'
-import type { BundleCategory, BundleStatus } from '@sunfish/contracts'
+import type { BundleCategory, BundleStatus } from '@/vendor/sunfish-contracts'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

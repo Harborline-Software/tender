@@ -1,4 +1,4 @@
-use crate::{bundles, devices, telemetry};
+use crate::{bundles, devices, projects, telemetry};
 
 // ── Log file path resolution ───────────────────────────────────────────────
 
@@ -372,4 +372,19 @@ pub fn get_plugin_health() -> Result<Vec<bundles::PluginHealthRecord>, String> {
 pub async fn get_live_provider_health(
 ) -> Result<Vec<crate::provider_health::ProviderHealthRecord>, String> {
     crate::provider_health::fetch_provider_health().await
+}
+
+// ── Projects ───────────────────────────────────────────────────────────────
+
+/// Return the operator's project list.
+///
+/// Resolution order:
+///   1. `~/Library/Application Support/Tender/projects.json` (curated list)
+///   2. Autodiscovery: git repos under `~/Projects/` (depth ≤ 2)
+///
+/// Returns an empty list when neither source is available. Never returns
+/// an error — the frontend shows an empty state instead.
+#[tauri::command]
+pub fn get_projects() -> Vec<projects::ProjectEntry> {
+    projects::get_projects()
 }

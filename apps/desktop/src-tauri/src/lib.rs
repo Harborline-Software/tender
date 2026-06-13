@@ -9,6 +9,7 @@ mod commands;
 mod devices;
 mod notifications;
 pub mod provider_health;
+mod projects;
 mod telemetry;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -100,6 +101,7 @@ pub fn run() {
             commands::get_bundle_manifests,
             commands::get_plugin_health,
             commands::get_live_provider_health,
+            commands::get_projects,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tender");

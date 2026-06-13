@@ -372,7 +372,6 @@ function RestoreConfirm({
 
 export function BackupsDetail({ onBack }: Props) {
   const { theme } = useTheme()
-  const a = theme.accent
 
   const [entries, setEntries] = useState<BackupEntry[]>([])
   const [loading, setLoading] = useState(true)
