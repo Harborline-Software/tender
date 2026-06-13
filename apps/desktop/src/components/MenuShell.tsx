@@ -1,3 +1,10 @@
+/**
+ * MenuShell — outer container for all Tender panel views.
+ *
+ * F1.2: clamp height to calc(100vh - 44px) so the panel never runs off the
+ * bottom of the screen when anchored to a macOS menu bar (~24px) plus a safe
+ * margin. Content scrolls inside; the header + Dry Dock stay pinned.
+ */
 import React from 'react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { FiberDivider } from './FiberDivider'
@@ -14,7 +21,9 @@ export function MenuShell({ children }: Props) {
     <div
       style={{
         width: 360,
-        minHeight: '100vh',
+        // F1.2: clamp to viewport minus menubar height; panel hangs below ~24px bar
+        maxHeight: 'calc(100vh - 44px)',
+        minHeight: 200,
         position: 'relative',
         background: `linear-gradient(180deg, ${theme.bgSoft}f0 0%, ${theme.bg}f4 100%)`,
         backdropFilter: 'blur(20px) saturate(180%)',
@@ -24,7 +33,7 @@ export function MenuShell({ children }: Props) {
         boxShadow: `0 28px 60px ${theme.shadow}, 0 0 32px ${a}28, 0 0 0 1px ${a}1a`,
         color: theme.text,
         overflow: 'hidden',
-        fontFamily: "'Space Grotesk', sans-serif",
+        fontFamily: theme.fontRow,
         display: 'flex',
         flexDirection: 'column',
         userSelect: 'none',

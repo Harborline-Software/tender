@@ -50,20 +50,22 @@ interface Props {
 function HealthDot({ status }: { status: PluginHealthStatus }) {
   const { theme } = useTheme()
   // T1: typed as Record<PluginHealthStatus, string> for discriminated-union safety
+  // F4.3: degraded amber now uses theme.warn token (no more hardcoded #f0b370)
   const colors: Record<PluginHealthStatus, string> = {
     unknown: theme.textMuted,
-    ok: theme.accent,
-    degraded: '#f0b370',
+    ok: theme.healthy,
+    degraded: theme.warn,
     missing: theme.danger,
   }
   const color = colors[status] ?? theme.textMuted
-  // U1: tooltip explains "unknown" status in H4.A framing; aria-label for screen readers
+  // F5.5: fix aria-hidden/aria-label contradiction — the dot is decorative;
+  // the text status label in the same table cell carries the accessible meaning.
+  // aria-hidden="true" is correct; remove aria-label from the hidden element.
   const tooltip = status === 'unknown'
     ? 'Status check not implemented in Q6 v1 — provider health probing ships in Q6 v2'
     : `Provider health: ${status}`
   return (
     <span
-      aria-label={tooltip}
       aria-hidden="true"
       title={tooltip}
       style={{
@@ -93,9 +95,10 @@ function BundleCard({
   // A1: stable id for aria-controls linkage
   const detailPanelId = `bundle-detail-${manifest.key}`
 
+  // F4.3: Preview (amber/warn) now uses theme.warn token — no hardcoded hex
   const statusColor =
     manifest.status === 'GA' ? a
-      : manifest.status === 'Preview' ? '#f0b370'
+      : manifest.status === 'Preview' ? theme.warn
         : manifest.status === 'Deprecated' ? theme.danger
           : theme.textMuted
 
