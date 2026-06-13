@@ -1,12 +1,14 @@
 /**
  * BundlesDetail — Q6 bundle manifest viewer and plugin health surface.
  *
- * Loads bundle manifests + plugin health on mount (H3.A: load-on-panel-open,
+ * Loads bundle manifests + live provider health on mount (H3.A: load-on-panel-open,
  * no persistent caching). Displays each bundle's category, status, and the
- * health status of each declared provider requirement.
+ * live health status of each declared provider requirement sourced from the
+ * Bridge /api/v1/admin/providers endpoint (R10 Q6 v2 live-probing feature).
  *
- * Q6 v1: all plugin health statuses are "unknown" (H4.A ruling). The UX
- * surfaces this honestly rather than masking with false confidence.
+ * Provider slots are matched by the provider category string — the contract name
+ * (e.g. "IEmailProvider") maps to a ProviderCategory declared in the bundle manifest.
+ * When Bridge is unreachable all slots show bridgeUnreachable with honest framing.
  */
 import { useState, useEffect } from 'react'
 import { useTheme } from '@/theme/ThemeProvider'
@@ -14,11 +16,13 @@ import { MenuShell } from '@/components/MenuShell'
 import { DetailHeader } from '@/components/DetailHeader'
 import { StatusPill } from '@/components/StatusPill'
 import { FiberDivider } from '@/components/FiberDivider'
-import { getBundleManifests, getPluginHealth } from '@/ipc/tauri'
+import { getBundleManifests, getPluginHealth, getLiveProviderHealth } from '@/ipc/tauri'
 import type {
   BusinessCaseBundleManifest,
   PluginHealthRecord,
   PluginHealthStatus,
+  ProviderHealthRecord,
+  ProbeStatus,
 } from '@/ipc/tauri'
 import type { BundleCategory, BundleStatus } from '@sunfish/contracts'
 
@@ -47,6 +51,80 @@ interface Props {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
+/** Returns the theme color for a live ProbeStatus. */
+function probeStatusColor(status: ProbeStatus, theme: ReturnType<typeof useTheme>['theme']): string {
+  switch (status) {
+    case 'ok': return theme.healthy
+    case 'error': return theme.danger
+    case 'notProbed': return theme.textMuted
+    case 'unconfigured': return theme.textMuted
+    case 'authRequired': return theme.warn
+    case 'bridgeUnreachable': return theme.warn
+    case 'unknown': return theme.textMuted
+  }
+}
+
+/** Short text label for a live ProbeStatus — surfaces in the status column. */
+function probeStatusLabel(status: ProbeStatus): string {
+  switch (status) {
+    case 'ok': return 'ok'
+    case 'error': return 'error'
+    case 'notProbed': return 'not probed'
+    case 'unconfigured': return 'unconfigured'
+    case 'authRequired': return 'auth required'
+    case 'bridgeUnreachable': return 'bridge down'
+    case 'unknown': return 'unknown'
+  }
+}
+
+/** Tooltip text for a live ProbeStatus. */
+function probeStatusTooltip(rec: ProviderHealthRecord): string {
+  if (rec.status === 'bridgeUnreachable') {
+    return rec.statusDetail ?? 'Bridge is not reachable — check that Signal Bridge is running'
+  }
+  if (rec.status === 'authRequired') {
+    return rec.statusDetail ?? 'Bridge returned 401/403 — Tender is not authenticated as an admin/operator'
+  }
+  if (rec.status === 'error') {
+    return rec.statusDetail ?? `${rec.providerSlot} reachability probe failed`
+  }
+  if (rec.status === 'unconfigured') {
+    return `${rec.envVarKey} not set — mock fallback active`
+  }
+  if (rec.status === 'notProbed') {
+    return `${rec.providerSlot} is configured but has no reachability probe registered`
+  }
+  if (rec.status === 'ok') {
+    return `${rec.providerSlot} is configured and reachable`
+  }
+  return `${rec.providerSlot}: ${rec.status}`
+}
+
+/**
+ * Dot indicator for live ProbeStatus (Path-A multimodal: color+title; the
+ * text status label in the same cell carries the accessible meaning).
+ *
+ * F5.5: aria-hidden="true" is correct — decorative dot, no aria-label clash.
+ */
+function ProbeDot({ rec }: { rec: ProviderHealthRecord }) {
+  const { theme } = useTheme()
+  const color = probeStatusColor(rec.status, theme)
+  return (
+    <span
+      aria-hidden="true"
+      title={probeStatusTooltip(rec)}
+      style={{
+        display: 'inline-block',
+        width: 6, height: 6, borderRadius: '50%',
+        background: color,
+        boxShadow: rec.status === 'ok' ? `0 0 4px ${color}` : 'none',
+        flexShrink: 0,
+      }}
+    />
+  )
+}
+
+/** Legacy dot for bundle-manifest health (Q6 v1 PluginHealthRecord, always "unknown"). */
 function HealthDot({ status }: { status: PluginHealthStatus }) {
   const { theme } = useTheme()
   // T1: typed as Record<PluginHealthStatus, string> for discriminated-union safety
@@ -61,9 +139,7 @@ function HealthDot({ status }: { status: PluginHealthStatus }) {
   // F5.5: fix aria-hidden/aria-label contradiction — the dot is decorative;
   // the text status label in the same table cell carries the accessible meaning.
   // aria-hidden="true" is correct; remove aria-label from the hidden element.
-  const tooltip = status === 'unknown'
-    ? 'Status check not implemented in Q6 v1 — provider health probing ships in Q6 v2'
-    : `Provider health: ${status}`
+  const tooltip = `Provider health: ${status}`
   return (
     <span
       aria-hidden="true"
@@ -82,9 +158,11 @@ function HealthDot({ status }: { status: PluginHealthStatus }) {
 function BundleCard({
   manifest,
   healthRecords,
+  liveHealth,
 }: {
   manifest: BusinessCaseBundleManifest
   healthRecords: PluginHealthRecord[]
+  liveHealth: ProviderHealthRecord[]
 }) {
   const { theme } = useTheme()
   const a = theme.accent
@@ -244,66 +322,95 @@ function BundleCard({
                         color: theme.textMuted, fontWeight: 'normal',
                         textTransform: 'uppercase',
                         paddingBottom: 3,
-                        width: 60,
+                        width: 70,
                       }}>
                         Status
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {bundleHealth.map((rec, i) => (
-                      <tr key={i} style={{
-                        background: `${theme.bgSoft}88`,
-                      }}>
-                        <td style={{
-                          padding: '3px 6px 3px 0',
-                          borderBottom: `1px solid ${theme.border}33`,
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <HealthDot status={rec.status} />
-                            <span style={{
-                              fontFamily: "'Space Grotesk', sans-serif",
-                              fontSize: 10.5, color: theme.text,
-                            }}>
-                              {rec.providerCategory}
-                            </span>
-                            {rec.purpose && (
+                    {bundleHealth.map((rec, i) => {
+                      // Attempt to find a matching live provider health record.
+                      // The providerCategory from the manifest (e.g. "Email") is compared
+                      // case-insensitively to the providerSlot contract suffix
+                      // (e.g. "IEmailProvider" → "email"). Falls back to null when Bridge
+                      // is unreachable or the slot has no live record.
+                      const liveRec = liveHealth.find((lr) => {
+                        const category = rec.providerCategory.toLowerCase()
+                        const slot = lr.providerSlot.toLowerCase()
+                        // Match "IEmailProvider" ↔ "email" or direct name match
+                        return slot.includes(category) || category.includes(slot)
+                      }) ?? null
+
+                      return (
+                        <tr key={i} style={{ background: `${theme.bgSoft}88` }}>
+                          <td style={{
+                            padding: '3px 6px 3px 0',
+                            borderBottom: `1px solid ${theme.border}33`,
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {liveRec
+                                ? <ProbeDot rec={liveRec} />
+                                : <HealthDot status={rec.status} />
+                              }
                               <span style={{
                                 fontFamily: "'Space Grotesk', sans-serif",
-                                fontSize: 9.5, color: theme.textMuted,
+                                fontSize: 10.5, color: theme.text,
                               }}>
-                                — {rec.purpose}
+                                {rec.providerCategory}
+                              </span>
+                              {rec.purpose && (
+                                <span style={{
+                                  fontFamily: "'Space Grotesk', sans-serif",
+                                  fontSize: 9.5, color: theme.textMuted,
+                                }}>
+                                  — {rec.purpose}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{
+                            textAlign: 'center',
+                            padding: '3px 4px',
+                            borderBottom: `1px solid ${theme.border}33`,
+                          }}>
+                            {rec.isRequired && (
+                              <span style={{
+                                fontFamily: "'JetBrains Mono', monospace",
+                                fontSize: 7, letterSpacing: 0.6,
+                                color: theme.textMuted, background: `${theme.border}88`,
+                                borderRadius: 2, padding: '1px 4px',
+                                textTransform: 'uppercase',
+                              }}>req</span>
+                            )}
+                          </td>
+                          <td style={{
+                            textAlign: 'right',
+                            padding: '3px 0 3px 4px',
+                            borderBottom: `1px solid ${theme.border}33`,
+                          }}>
+                            {liveRec ? (
+                              <span style={{
+                                fontFamily: "'JetBrains Mono', monospace",
+                                fontSize: 8,
+                                color: probeStatusColor(liveRec.status, theme),
+                                textTransform: 'uppercase',
+                              }}>
+                                {probeStatusLabel(liveRec.status)}
+                              </span>
+                            ) : (
+                              <span style={{
+                                fontFamily: "'JetBrains Mono', monospace",
+                                fontSize: 8, color: theme.textMuted,
+                                textTransform: 'uppercase',
+                              }}>
+                                {rec.status}
                               </span>
                             )}
-                          </div>
-                        </td>
-                        <td style={{
-                          textAlign: 'center',
-                          padding: '3px 4px',
-                          borderBottom: `1px solid ${theme.border}33`,
-                        }}>
-                          {rec.isRequired && (
-                            <span style={{
-                              fontFamily: "'JetBrains Mono', monospace",
-                              fontSize: 7, letterSpacing: 0.6,
-                              color: theme.textMuted, background: `${theme.border}88`,
-                              borderRadius: 2, padding: '1px 4px',
-                              textTransform: 'uppercase',
-                            }}>req</span>
-                          )}
-                        </td>
-                        <td style={{
-                          textAlign: 'right',
-                          padding: '3px 0 3px 4px',
-                          borderBottom: `1px solid ${theme.border}33`,
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: 8, color: theme.textMuted,
-                          textTransform: 'uppercase',
-                        }}>
-                          {rec.status}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -348,20 +455,29 @@ export function BundlesDetail({ onBack }: Props) {
 
   const [manifests, setManifests] = useState<BusinessCaseBundleManifest[]>([])
   const [health, setHealth] = useState<PluginHealthRecord[]>([])
+  const [liveHealth, setLiveHealth] = useState<ProviderHealthRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // H3.A: load on panel open — no caching, no polling
+  // H3.A: load on panel open — no caching, no polling.
+  // R10: also load live provider health from Bridge admin endpoint.
+  // Live health load is best-effort — failure populates liveHealth with
+  // a synthetic bridgeUnreachable record, not a component-level error.
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
 
-    Promise.all([getBundleManifests(), getPluginHealth()])
-      .then(([m, h]) => {
+    Promise.all([
+      getBundleManifests(),
+      getPluginHealth(),
+      getLiveProviderHealth(),
+    ])
+      .then(([m, h, lh]) => {
         if (cancelled) return
         setManifests(m)
         setHealth(h)
+        setLiveHealth(lh)
         setLoading(false)
       })
       .catch((err: unknown) => {
@@ -374,12 +490,17 @@ export function BundlesDetail({ onBack }: Props) {
   }, [])
 
   const bundleCount = manifests.length
-  const healthUnknownCount = health.filter((r) => r.status === 'unknown').length
+  // Derive live health summary for sub-label
+  const bridgeDown = liveHealth.some((r) => r.status === 'bridgeUnreachable')
+  const liveOkCount = liveHealth.filter((r) => r.status === 'ok').length
+  const liveErrCount = liveHealth.filter((r) => r.status === 'error').length
   const subLabel = loading
     ? 'Loading…'
     : error
       ? 'Load error'
-      : `${bundleCount} bundles · ${healthUnknownCount} provider slots`
+      : bridgeDown
+        ? `${bundleCount} bundles · bridge unreachable`
+        : `${bundleCount} bundles · ${liveOkCount} ok · ${liveErrCount} error`
 
   return (
     <MenuShell>
@@ -468,10 +589,12 @@ export function BundlesDetail({ onBack }: Props) {
               </span>
               <span style={{
                 fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 9, color: a, letterSpacing: 0.6,
+                fontSize: 9,
+                color: bridgeDown ? theme.warn : liveErrCount > 0 ? theme.danger : a,
+                letterSpacing: 0.6,
               }}>
-                {/* H4.A: honest "unknown" surface — no false confidence */}
-                probing: off
+                {/* R10: live probing from Bridge admin/providers endpoint */}
+                {bridgeDown ? 'bridge: down' : `probing: live`}
               </span>
             </div>
 
@@ -479,18 +602,20 @@ export function BundlesDetail({ onBack }: Props) {
 
             {/* Bundle cards */}
             {manifests.map((m) => (
-              <BundleCard key={m.key} manifest={m} healthRecords={health} />
+              <BundleCard key={m.key} manifest={m} healthRecords={health} liveHealth={liveHealth} />
             ))}
 
-            {/* Q6 v1 footer note */}
+            {/* R10 footer note */}
             <div style={{ padding: '8px 14px 10px' }}>
               <div style={{
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: 8, letterSpacing: 0.8, color: theme.textMuted,
                 textTransform: 'uppercase', lineHeight: 1.5,
               }}>
-                Plugin health probing is not enabled in this release.
-                Provider slots show "unknown" until Q6 v2 probing is added.
+                {bridgeDown
+                  ? 'Bridge is not reachable — start Signal Bridge to see live provider health.'
+                  : 'Provider health sourced from Bridge admin/providers endpoint (R10 live probing).'
+                }
               </div>
             </div>
           </>
