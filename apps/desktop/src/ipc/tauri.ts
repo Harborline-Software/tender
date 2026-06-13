@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { BusinessCaseBundleManifest, ProviderCategory } from '@sunfish/contracts'
+import type { BusinessCaseBundleManifest, ProviderCategory } from '@/vendor/sunfish-contracts'
 
 export type { BusinessCaseBundleManifest, ProviderCategory }
 
@@ -91,6 +91,13 @@ export interface DeviceData {
   isCurrentDevice: boolean
 }
 
+export interface ProjectData {
+  name: string
+  path: string
+  status: 'active' | 'paused' | 'archived'
+  lastOpened?: string | null
+}
+
 // ── Invoke wrappers ──────────────────────────────────────────────────────────
 
 export async function getAppearance(): Promise<'dark' | 'light'> {
@@ -136,6 +143,17 @@ export async function collectDiagnostics(): Promise<string> {
 
 export async function getLogTail(serviceId: string, lines?: number): Promise<string[]> {
   return invoke<string[]>('get_log_tail', { serviceId, lines })
+}
+
+/**
+ * Return projects discovered from the operator's app support directory or fleet layout.
+ *
+ * Reads `~/Library/Application Support/Tender/projects.json` when present.
+ * Falls back to autodiscovering git repos in `~/Projects/` (depth 2).
+ * Returns an empty list when neither source is available — never errors.
+ */
+export async function getProjects(): Promise<ProjectData[]> {
+  return invoke<ProjectData[]>('get_projects')
 }
 
 // ── Q6 bundle manifest commands ───────────────────────────────────────────────

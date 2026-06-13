@@ -1,24 +1,25 @@
 /**
  * ProjectsTab — local project directory list.
  *
- * Projects are sourced from the Tauri backend (getProjects IPC).
- * Until that command lands, a graceful "not yet configured" empty state
- * is shown rather than hardcoded fictional data.
+ * Projects are sourced from the Tauri backend (getProjects IPC) via
+ * useProjects hook in useTelemetry. Resolution order:
+ *   1. ~/Library/Application Support/Tender/projects.json (curated list)
+ *   2. Autodiscovery: git repos under ~/Projects/ (depth ≤ 2)
  *
  * Status encoding is multimodal: active/paused/archived map to HealthState
  * so StatusPill renders glyph+text+color (not color alone — WCAG 1.4.1).
  */
-import { useState, useEffect } from 'react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { ConsoleRow } from '@/components/ConsoleRow'
 import { FiberDivider } from '@/components/FiberDivider'
 import { StatusPill } from '@/components/StatusPill'
-import type { Project } from '@/state/types'
+import { useProjects } from '@/ipc/useTelemetry'
 import type { HealthState } from '@/state/health'
+import type { ProjectData } from '@/ipc/tauri'
 
 // Projects don't have a "health" in the systems sense, but we map lifecycle
 // states to HealthState so StatusPill handles encoding uniformly.
-function projectStatusToHealth(status: Project['status']): HealthState {
+function projectStatusToHealth(status: ProjectData['status']): HealthState {
   switch (status) {
     case 'active': return 'healthy'
     case 'paused': return 'stopped'
@@ -26,25 +27,12 @@ function projectStatusToHealth(status: Project['status']): HealthState {
   }
 }
 
-// Projects IPC is not yet implemented — this hook returns null (loading)
-// or throws into an error state. When getProjects is wired, swap this stub.
-function useProjects(): { projects: Project[] | null; error: string | null } {
-  const [projects, setProjects] = useState<Project[] | null>(null)
-  const [error] = useState<string | null>(null)
-  useEffect(() => {
-    // Projects list IPC not yet implemented; surface empty state
-    // rather than hardcoded fictional data. Resolved as empty array.
-    setProjects([])
-  }, [])
-  return { projects, error }
-}
-
 export function ProjectsTab() {
   const { theme } = useTheme()
-  const { projects, error } = useProjects()
+  const projects = useProjects()
 
   // ── Loading state ────────────────────────────────────────────────────────────
-  if (projects === null && !error) {
+  if (projects === null) {
     return (
       <div>
         <SectionHeader />
@@ -58,42 +46,8 @@ export function ProjectsTab() {
     )
   }
 
-  // ── Error state ──────────────────────────────────────────────────────────────
-  if (error) {
-    return (
-      <div>
-        <SectionHeader />
-        <div style={{ padding: '10px 14px' }}>
-          <div
-            role="alert"
-            style={{
-              background: `${theme.danger}1a`,
-              border: `1px solid ${theme.danger}44`,
-              borderRadius: 5,
-              padding: '10px 12px',
-            }}
-          >
-            <div style={{
-              fontFamily: theme.fontMono,
-              fontSize: theme.sizeLabel, letterSpacing: 1.2, color: theme.danger,
-              textTransform: 'uppercase', marginBottom: 5,
-            }}>
-              Projects unavailable
-            </div>
-            <div style={{
-              fontFamily: theme.fontRow,
-              fontSize: theme.sizeBody, color: theme.textDim, lineHeight: 1.5,
-            }}>
-              {error}
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   // ── Empty state ──────────────────────────────────────────────────────────────
-  if (!projects || projects.length === 0) {
+  if (projects.length === 0) {
     return (
       <div>
         <SectionHeader />
@@ -103,7 +57,7 @@ export function ProjectsTab() {
           fontSize: theme.sizeLabel, letterSpacing: 1.2, color: theme.textMuted,
           textTransform: 'uppercase',
         }}>
-          No projects yet — add one to get started.
+          No projects yet — add repos to ~/Library/Application Support/Tender/projects.json
         </div>
       </div>
     )

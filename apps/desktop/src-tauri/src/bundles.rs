@@ -195,13 +195,49 @@ pub struct PluginHealthRecord {
 
 // ── Bundle manifest reader ────────────────────────────────────────────────────
 
-/// Fleet-layout discovery path for canonical bundle manifests.
+/// Resolve the bundle manifests directory.
 ///
-/// Per H2.A ruling: filesystem discovery from the sibling fleet layout.
-/// Sibling `shipyard/` must be cloned alongside `tender/` (standard fleet layout).
+/// Resolution order (first that exists wins):
+///
+///  1. **Tauri resource directory** — `<app-resources>/resources/bundles/`
+///     Populated by the build script from the shipyard snapshot.
+///     Available in shipped builds and in `cargo tauri dev` after the first build.
+///
+///  2. **Dev sibling fleet layout** — `$HOME/Projects/Harborline-Software/shipyard/…`
+///     Fallback for bare `cargo build` / `cargo check` without a full tauri context.
+///
+/// Returns `Err` only when neither location exists.
 fn bundle_manifests_dir() -> Result<std::path::PathBuf, String> {
+    // (1) Resource directory — resolve relative to the current executable.
+    if let Ok(exe) = std::env::current_exe() {
+        // In shipped .app:  Tender.app/Contents/MacOS/tender
+        // Resources are at: Tender.app/Contents/Resources/resources/bundles/
+        let resource_path = exe
+            .parent() // MacOS/
+            .and_then(|p| p.parent()) // Contents/
+            .map(|p| p.join("Resources").join("resources").join("bundles"));
+
+        if let Some(rp) = resource_path {
+            if rp.exists() {
+                return Ok(rp);
+            }
+        }
+
+        // In `cargo tauri dev` the exe lives under target/; the resources dir
+        // is placed next to it by Tauri's dev runner.
+        let dev_resource = exe
+            .parent()
+            .map(|p| p.join("resources").join("bundles"));
+        if let Some(drp) = dev_resource {
+            if drp.exists() {
+                return Ok(drp);
+            }
+        }
+    }
+
+    // (2) Dev sibling fleet layout fallback.
     let home = std::env::var("HOME").map_err(|_| "HOME environment variable not set".to_string())?;
-    let path = std::path::PathBuf::from(home)
+    let sibling = std::path::PathBuf::from(home)
         .join("Projects")
         .join("Harborline-Software")
         .join("shipyard")
@@ -209,10 +245,20 @@ fn bundle_manifests_dir() -> Result<std::path::PathBuf, String> {
         .join("foundation-catalog")
         .join("Manifests")
         .join("Bundles");
-    Ok(path)
+
+    if sibling.exists() {
+        return Ok(sibling);
+    }
+
+    Err(
+        "Bundle manifest directory not found. \
+         Expected either the bundled resources/bundles/ inside the .app, \
+         or a sibling shipyard/ clone at ~/Projects/Harborline-Software/."
+            .to_string(),
+    )
 }
 
-/// Read all `*.bundle.json` files from the fleet-layout bundles directory.
+/// Read all `*.bundle.json` files from the resolved bundles directory.
 ///
 /// Per H3.A ruling: no caching — re-reads on each call (panel-open cadence).
 /// Returns an error string if the directory is absent or no manifests are found.
@@ -221,8 +267,7 @@ pub fn read_bundle_manifests() -> Result<Vec<BusinessCaseBundleManifest>, String
 
     if !dir.exists() {
         return Err(format!(
-            "Bundle manifest directory not found: {}. \
-             Ensure shipyard/ is cloned at the sibling fleet-layout path.",
+            "Bundle manifest directory not found: {}.",
             dir.display()
         ));
     }
