@@ -3910,6 +3910,7 @@ dependencies = [
  "tauri-plugin-notification",
  "tauri-plugin-positioner",
  "tokio",
+ "url",
 ]
 
 [[package]]

@@ -21,6 +21,7 @@
 //! this is surfaced as `ProbeStatus::AuthRequired` (honest UX; not "unknown").
 
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 // ── DTO shapes (mirror the Bridge wire contract) ────────────────────────────
 
@@ -99,13 +100,28 @@ fn bridge_base_url() -> String {
 /// individual slot errors are captured in each record's `status` field.
 /// Returns `Err(String)` only when the fetch is completely unresolvable
 /// (e.g., Bridge is not running).
+/// Returns `true` only when running a debug build AND the target host resolves
+/// to loopback (localhost, 127.0.0.1, or ::1). Release builds always return
+/// `false` — TLS certificate validation is never relaxed for remote targets.
+fn allow_invalid_certs_for(base: &str) -> bool {
+    cfg!(debug_assertions)
+        && Url::parse(base)
+            .ok()
+            .and_then(|u| u.host_str().map(|h| h == "localhost" || h == "127.0.0.1" || h == "::1"))
+            .unwrap_or(false)
+}
+
 pub async fn fetch_provider_health() -> Result<Vec<ProviderHealthRecord>, String> {
-    let url = format!("{}/api/v1/admin/providers", bridge_base_url());
+    let base = bridge_base_url();
+    let url = format!("{}/api/v1/admin/providers", base);
+
+    // Relax cert validation ONLY for loopback targets in debug builds.
+    // Release builds never accept invalid certs regardless of target host.
+    let allow_invalid = allow_invalid_certs_for(&base);
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(6))
-        // Dev Bridge uses HTTP; accept self-signed for HTTPS dev certs.
-        .danger_accept_invalid_certs(true)
+        .danger_accept_invalid_certs(allow_invalid)
         .build()
         .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
 
