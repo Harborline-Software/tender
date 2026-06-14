@@ -374,6 +374,18 @@ pub async fn get_live_provider_health(
     crate::provider_health::fetch_provider_health().await
 }
 
+// ── Hardware probe (ADR 0116 D1) ─────────────────────────────────────────────
+
+/// Probe the host hardware and return a `HardwareProfile` plus probe-quality
+/// metadata (ADR 0116 D1). Read-only, side-effect-free, and **never errors** —
+/// a partial probe returns best-effort values with `keyingComplete: false` so
+/// the profile mapping can fail safe to `minimum` (ADR 0116 H2). Best-effort
+/// GPU/battery fields are honestly `null` (unknown) rather than guessed (H1).
+#[tauri::command]
+pub async fn probe_hardware() -> crate::probe::ProbeResult {
+    crate::probe::probe_hardware().await
+}
+
 // ── Projects ───────────────────────────────────────────────────────────────
 
 /// Return the operator's project list.
