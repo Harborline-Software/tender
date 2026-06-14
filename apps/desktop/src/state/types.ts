@@ -125,3 +125,62 @@ export interface SyncStatus {
   lastCoordSyncAt: number | null
   state: SyncStateValue
 }
+
+// ── Hardware probe (ADR 0116 D1) ─────────────────────────────────────────────
+// Mirror of the Rust `probe::*` IPC contract. Returned by the `probe_hardware`
+// Tauri command. The named-profile mapping that consumes this is C1.
+
+/** CPU architecture (ADR 0116 D1). `other` = unrecognised keying value. */
+export type Architecture = 'arm64' | 'x64' | 'other'
+
+/** Host OS family (ADR 0116 D1). */
+export type OsFamily = 'macos' | 'windows' | 'linux' | 'other'
+
+/** Free + total space on one non-removable data volume. */
+export interface DiskVolume {
+  mountPoint: string
+  freeBytes: number
+  totalBytes: number
+}
+
+/** The host hardware profile (ADR 0116 D1) — field-for-field the D1 contract. */
+export interface HardwareProfile {
+  totalRamBytes: number
+  /** Advisory only (volatile) — never a keying field (H1). */
+  availableRamBytes: number
+  /** `0` ⇒ unobtainable (drives `keyingComplete: false`). */
+  physicalCores: number
+  logicalCores: number
+  diskVolumes: DiskVolume[]
+  architecture: Architecture
+  /** Best-effort (H1) — `null` = unknown, never a guess. */
+  hasDiscreteGpu: boolean | null
+  gpuVramBytes: number | null
+  isBatteryPowered: boolean | null
+  osFamily: OsFamily
+}
+
+/**
+ * Probe result: the profile plus probe-quality metadata. `keyingComplete` is
+ * `false` when any stable keying field was unobtainable — the ADR 0116 H2
+ * trigger for the C1 mapping to recommend `minimum`.
+ */
+export interface ProbeResult {
+  profile: HardwareProfile
+  keyingComplete: boolean
+  warnings: string[]
+}
+
+/**
+ * Named capability profile (ADR 0116 D2), ordered floor → ceiling. The record
+ * type; the probe→profile mapping is C1.
+ */
+export type ProfileName = 'minimum' | 'standard' | 'capable' | 'max'
+
+/** A resolved capability profile (ADR 0116 D2). Persisted to install config. */
+export interface CapabilityProfile {
+  name: ProfileName
+  /** Per-axis selections keyed by axis `key` (e.g. `persistence` → `sqlite`). */
+  axes: Record<string, string>
+  userOverridden: boolean
+}

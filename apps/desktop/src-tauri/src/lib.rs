@@ -8,6 +8,8 @@ pub mod bundles;
 mod commands;
 mod devices;
 mod notifications;
+pub mod probe;
+pub mod profile;
 pub mod provider_health;
 mod projects;
 mod telemetry;
@@ -102,6 +104,7 @@ pub fn run() {
             commands::get_plugin_health,
             commands::get_live_provider_health,
             commands::get_projects,
+            commands::probe_hardware,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tender");
