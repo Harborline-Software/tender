@@ -7,6 +7,7 @@ use tauri_plugin_positioner::{Position, WindowExt};
 pub mod bundles;
 mod commands;
 mod devices;
+pub mod install_config;
 mod notifications;
 pub mod probe;
 pub mod profile;
@@ -105,6 +106,8 @@ pub fn run() {
             commands::get_live_provider_health,
             commands::get_projects,
             commands::probe_hardware,
+            commands::recommend_profile,
+            commands::get_install_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tender");

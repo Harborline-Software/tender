@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+use crate::install_config::{self, InstalledApp};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HarborlineService {
     pub id: String,
@@ -91,18 +93,42 @@ fn read_aspire_token() -> Option<String> {
 // ── Service health aggregation ─────────────────────────────────────────────
 
 pub async fn get_services() -> Vec<HarborlineService> {
+    // Install config is the source of truth for honest `installed`/`version`
+    // (retiring the former hardcoded fictions). Fail-soft: a missing config
+    // yields an empty record, so unmanaged-but-running apps still surface via
+    // process/health detection below.
+    let config = install_config::load();
     let (sb, sf, fd) = tokio::join!(
-        detect_signal_bridge(),
-        detect_sunfish(),
-        detect_flight_deck(),
+        detect_signal_bridge(config.app("signal-bridge")),
+        detect_sunfish(config.app("sunfish")),
+        detect_flight_deck(config.app("flight-deck")),
     );
     vec![sb, sf, fd]
 }
 
-async fn detect_signal_bridge() -> HarborlineService {
+/// Honest `installed`/`version` for a service.
+///
+/// `installed` is true when Tender **manages** the app (recorded in install
+/// config) **or** the app is currently **detectable** (running) — i.e. present
+/// on this box in some form. A box with neither reports `installed: false`
+/// (the former code hardcoded `true`, which lied on a fresh machine).
+///
+/// `version` is the **recorded** version of a Tender-managed install; for an
+/// unmanaged-but-running app Tender does not yet know the real version
+/// (a probe is a C3 concern), so it reports `"unknown"` rather than a fiction.
+fn honest_install(managed: Option<&InstalledApp>, running: bool) -> (bool, String) {
+    match managed {
+        Some(app) => (true, app.version.clone()),
+        None if running => (true, "unknown".to_string()),
+        None => (false, String::new()),
+    }
+}
+
+async fn detect_signal_bridge(managed: Option<&InstalledApp>) -> HarborlineService {
     let running = tokio::task::spawn_blocking(|| is_running("Sunfish.Bridge.AppHost"))
         .await
         .unwrap_or(false);
+    let (installed, version) = honest_install(managed, running);
 
     let (status, throughput_mbps, history) = if running {
         // Try Aspire OTLP endpoint for rich metrics
@@ -132,8 +158,8 @@ async fn detect_signal_bridge() -> HarborlineService {
     HarborlineService {
         id: "signal-bridge".to_string(),
         display_name: "Signal-Bridge".to_string(),
-        version: "2.3.1".to_string(),
-        installed: true,
+        version,
+        installed,
         status,
         throughput_mbps,
         history,
@@ -143,17 +169,18 @@ async fn detect_signal_bridge() -> HarborlineService {
     }
 }
 
-async fn detect_sunfish() -> HarborlineService {
+async fn detect_sunfish(managed: Option<&InstalledApp>) -> HarborlineService {
     // No /health endpoint yet — process detection only (per Admiral ruling)
     let running = tokio::task::spawn_blocking(|| is_running("Sunfish.Anchor"))
         .await
         .unwrap_or(false);
+    let (installed, version) = honest_install(managed, running);
 
     HarborlineService {
         id: "sunfish".to_string(),
         display_name: "Sunfish".to_string(),
-        version: "1.8.4".to_string(),
-        installed: true,
+        version,
+        installed,
         status: if running { "running" } else { "stopped" }.to_string(),
         throughput_mbps: None,
         history: None,
@@ -163,11 +190,12 @@ async fn detect_sunfish() -> HarborlineService {
     }
 }
 
-async fn detect_flight_deck() -> HarborlineService {
+async fn detect_flight_deck(managed: Option<&InstalledApp>) -> HarborlineService {
     let running =
         tokio::task::spawn_blocking(|| is_running("book-server") || is_running("flight-deck"))
             .await
             .unwrap_or(false);
+    let (installed, version) = honest_install(managed, running);
 
     let (status, airborne, total) = if running {
         // Poll Flight-Deck book-server health
@@ -187,8 +215,8 @@ async fn detect_flight_deck() -> HarborlineService {
     HarborlineService {
         id: "flight-deck".to_string(),
         display_name: "Flight-Deck".to_string(),
-        version: "3.0.0".to_string(),
-        installed: true,
+        version,
+        installed,
         status,
         throughput_mbps: None,
         history: None,
@@ -297,4 +325,50 @@ pub async fn get_local_services() -> Vec<LocalService> {
     tokio::task::spawn_blocking(get_top_processes_sync)
         .await
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::install_config::LaunchContract;
+    use crate::profile::CapabilityProfile;
+
+    fn managed(version: &str) -> InstalledApp {
+        InstalledApp {
+            id: "sunfish".to_string(),
+            version: version.to_string(),
+            install_path: "/opt/sunfish".to_string(),
+            profile: CapabilityProfile::minimum_floor(),
+            launch: LaunchContract {
+                program: "/opt/sunfish/run".to_string(),
+                args: vec![],
+                health_url: None,
+            },
+        }
+    }
+
+    #[test]
+    fn managed_app_reports_recorded_version() {
+        let app = managed("0.3.0-dev");
+        let (installed, version) = honest_install(Some(&app), false);
+        assert!(installed, "a Tender-managed app is installed even if stopped");
+        assert_eq!(version, "0.3.0-dev");
+    }
+
+    #[test]
+    fn unmanaged_running_app_is_installed_with_unknown_version() {
+        // Dev-from-source: not Tender-managed but running ⇒ present, version
+        // honestly unknown (no fiction).
+        let (installed, version) = honest_install(None, true);
+        assert!(installed);
+        assert_eq!(version, "unknown");
+    }
+
+    #[test]
+    fn unmanaged_stopped_app_is_not_installed() {
+        // The case the old hardcoded `installed: true` lied about.
+        let (installed, version) = honest_install(None, false);
+        assert!(!installed);
+        assert_eq!(version, "");
+    }
 }

@@ -386,6 +386,24 @@ pub async fn probe_hardware() -> crate::probe::ProbeResult {
     crate::probe::probe_hardware().await
 }
 
+/// Probe the host and return the profile Tender recommends for it (ADR 0116
+/// D2/H4), paired with the probe so the UI can show the recommendation's basis.
+/// Fail-safe to `minimum` when the probe's keying is incomplete (H2).
+#[tauri::command]
+pub async fn recommend_profile() -> crate::profile::ProfileRecommendation {
+    let probe = crate::probe::probe_hardware().await;
+    let recommended = crate::profile::CapabilityProfile::recommend(&probe);
+    crate::profile::ProfileRecommendation { probe, recommended }
+}
+
+/// Return Tender's persisted install config — the source of truth for what
+/// Tender manages (honest `installed`/`version`, launch contracts). Fail-soft:
+/// a missing/unreadable config yields an empty record (nothing managed).
+#[tauri::command]
+pub fn get_install_config() -> crate::install_config::InstallConfig {
+    crate::install_config::load()
+}
+
 // ── Projects ───────────────────────────────────────────────────────────────
 
 /// Return the operator's project list.
