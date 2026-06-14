@@ -10,6 +10,7 @@
       "exclude_patterns": [
         "node_modules",
         ".git",
+        ".worktrees",
         "dist",
         "build",
         ".wolf",
