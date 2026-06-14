@@ -184,3 +184,42 @@ export interface CapabilityProfile {
   axes: Record<string, string>
   userOverridden: boolean
 }
+
+/**
+ * A probe paired with the profile Tender recommends for it. Returned by the
+ * `recommend_profile` command. `probe.keyingComplete: false` ⇒ the
+ * recommendation is the H2 fail-safe `minimum`.
+ */
+export interface ProfileRecommendation {
+  probe: ProbeResult
+  recommended: CapabilityProfile
+}
+
+// ── Install config (C1) ──────────────────────────────────────────────────────
+// Mirror of the Rust `install_config::*` contract. Returned by the
+// `get_install_config` command. The source of truth for honest
+// `installed`/`version` detection and the C2 launch contract.
+
+/** How Tender launches a managed service (C2 reads this). */
+export interface LaunchContract {
+  program: string
+  args: string[]
+  healthUrl?: string
+}
+
+/** One Tender-managed app install. */
+export interface InstalledApp {
+  /** Matches `HarborlineService['id']`. */
+  id: HarborlineService['id']
+  version: string
+  installPath: string
+  profile: CapabilityProfile
+  launch: LaunchContract
+}
+
+/** Tender's persisted install config — what Tender manages. */
+export interface InstallConfig {
+  schemaVersion: number
+  /** Installed apps keyed by service id. */
+  apps: Record<string, InstalledApp>
+}
