@@ -404,6 +404,40 @@ pub fn get_install_config() -> crate::install_config::InstallConfig {
     crate::install_config::load()
 }
 
+// ── Local install (C3) ───────────────────────────────────────────────────────
+
+/// Install a Harborline app from a LOCAL source: place the bundle under Tender's
+/// managed apps dir + record it in install config (honest installed/version +
+/// launch contract). Does NOT launch — call `launch_app` for the ADR 0115
+/// hand-off. Runs on a blocking thread (filesystem copy).
+#[tauri::command]
+pub async fn install_app_local(
+    request: crate::install::InstallRequest,
+) -> crate::install::InstallOutcome {
+    tokio::task::spawn_blocking(move || crate::install::install_app_local(&request))
+        .await
+        .unwrap_or_else(|e| crate::install::InstallOutcome {
+            app_id: String::new(),
+            status: crate::install::InstallStatus::Failed,
+            install_path: None,
+            detail: Some(format!("install task did not complete: {e}")),
+        })
+}
+
+/// Launch a Tender-managed app off its recorded launch contract and hand off to
+/// the app's OWN ADR 0115 supervisor (Tender does not supervise the sidecar).
+#[tauri::command]
+pub async fn launch_app(app_id: String) -> crate::install::InstallOutcome {
+    tokio::task::spawn_blocking(move || crate::install::launch_app(&app_id))
+        .await
+        .unwrap_or_else(|e| crate::install::InstallOutcome {
+            app_id: String::new(),
+            status: crate::install::InstallStatus::Failed,
+            install_path: None,
+            detail: Some(format!("launch task did not complete: {e}")),
+        })
+}
+
 // ── Projects ───────────────────────────────────────────────────────────────
 
 /// Return the operator's project list.

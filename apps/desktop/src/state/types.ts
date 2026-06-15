@@ -223,3 +223,37 @@ export interface InstallConfig {
   /** Installed apps keyed by service id. */
   apps: Record<string, InstalledApp>
 }
+
+// ── Local install engine (C3) ────────────────────────────────────────────────
+// Mirror of the Rust `install::*` contract. `install_app_local` places a bundle
+// from a LOCAL source + records it; `launch_app` hands off to the app's own
+// ADR 0115 supervisor.
+
+/** Kind of local artifact an install source points at. */
+export type InstallSourceKind = 'appBundle' | 'tarGz'
+
+/** Where Tender fetches an app from (local-first ⇒ a path on this machine). */
+export interface InstallSource {
+  kind: InstallSourceKind
+  /** Absolute path to the local artifact. */
+  path: string
+}
+
+/** A request to install one app from a local source under a resolved profile. */
+export interface InstallRequest {
+  appId: HarborlineService['id']
+  version: string
+  source: InstallSource
+  profile: CapabilityProfile
+}
+
+/** Where an install/launch step landed. */
+export type InstallStatus = 'installed' | 'launched' | 'failed'
+
+/** Outcome of an install or launch operation. */
+export interface InstallOutcome {
+  appId: string
+  status: InstallStatus
+  installPath?: string | null
+  detail?: string | null
+}
