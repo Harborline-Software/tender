@@ -68,7 +68,10 @@ export function ConsoleRow({ name, subLabel, meter, indicator, active = false, d
 
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12.5, color: danger ? theme.danger : theme.text, letterSpacing: 0.1, lineHeight: 1.2 }}>
+        <div style={{
+          fontSize: 12.5, color: danger ? theme.danger : theme.text, letterSpacing: 0.1, lineHeight: 1.2,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
           {name}
         </div>
         {subLabel && (
@@ -79,6 +82,7 @@ export function ConsoleRow({ name, subLabel, meter, indicator, active = false, d
             textTransform: 'uppercase',
             color: theme.textMuted,
             marginTop: 3,
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {subLabel}
           </div>

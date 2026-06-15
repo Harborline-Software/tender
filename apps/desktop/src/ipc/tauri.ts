@@ -1,5 +1,22 @@
-import { invoke } from '@tauri-apps/api/core'
+import { invoke as tauriInvoke } from '@tauri-apps/api/core'
+import { DEV_MOCKS } from './devMocks'
 import type { BusinessCaseBundleManifest, ProviderCategory } from '@/vendor/sunfish-contracts'
+
+/** True only inside the Tauri runtime (the built app); false in a plain browser. */
+const IN_TAURI = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+
+/**
+ * IPC call wrapper. In a browser dev session (DEV + not Tauri) it returns mock
+ * data for commands in `DEV_MOCKS` so the panel renders without the backend;
+ * otherwise it delegates to the real Tauri `invoke`. Never mocks in the built
+ * app (`IN_TAURI` is true there).
+ */
+function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  if (!IN_TAURI && import.meta.env.DEV && cmd in DEV_MOCKS) {
+    return Promise.resolve(DEV_MOCKS[cmd] as T)
+  }
+  return tauriInvoke<T>(cmd, args)
+}
 import type { FleetEntry } from '@/state/types'
 
 export type { BusinessCaseBundleManifest, ProviderCategory }

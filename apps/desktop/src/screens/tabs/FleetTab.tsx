@@ -295,28 +295,27 @@ function ActionButton({ label, onClick, tone = 'accent' }: ActionButtonProps) {
   )
 }
 
-// ── Caveat pill ───────────────────────────────────────────────────────────────
+// ── Caveat line ───────────────────────────────────────────────────────────────
+// A full-width note BELOW the row (not crammed into the row badge — that
+// overflowed the 360px panel + wrapped the app name). Wraps cleanly; the
+// indent aligns it under the row's title column.
 
-function CaveatPill({ caveat }: { caveat: Caveat }) {
+function CaveatLine({ caveat }: { caveat: Caveat }) {
   const { theme } = useTheme()
   const color = caveat.severity === 'blocker' ? theme.danger
     : caveat.severity === 'warning' ? theme.warn
     : theme.textDim
   return (
     <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '2px 6px',
-      borderRadius: 99,
-      background: `${color}1a`,
-      border: `1px solid ${color}44`,
+      display: 'flex', gap: 5,
+      padding: '0 14px 8px 37px',
       fontFamily: theme.fontMono,
-      fontSize: theme.sizeLabel,
-      letterSpacing: 0.8,
+      fontSize: 9,
+      lineHeight: 1.45,
+      letterSpacing: 0.3,
       color,
-      textTransform: 'uppercase',
-      flexShrink: 0,
     }}>
-      <span aria-hidden="true">!</span>
+      <span aria-hidden="true" style={{ flexShrink: 0, fontWeight: 600 }}>!</span>
       <span>{caveat.summary}</span>
     </div>
   )
@@ -518,36 +517,24 @@ export function FleetTab({ onNavigate }: Props) {
               active={isRunning(entry)}
               onClick={handleRowClick}
               badge={
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {/* Caveat pills — show on installable rows */}
-                  {hasCaveats && isInstallable(entry) && !isCommissioning && (
-                    <CaveatPill caveat={manifest.caveats[0]} />
-                  )}
-
-                  {/* Running + has caveats → caveat indicator */}
-                  {hasCaveats && isRunning(entry) && (
-                    <div style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 3,
-                      fontFamily: theme.fontMono,
-                      fontSize: theme.sizeLabel,
-                      color: theme.warn,
-                      letterSpacing: 0.6,
-                    }}>
-                      ! {manifest.caveats[0].summary}
-                    </div>
-                  )}
-
-                  {/* Action buttons */}
-                  {isInstallable(entry) && !isCommissioning && (
-                    <ActionButton label="Commission" onClick={() => handleStartCommission(manifest.id)} />
-                  )}
-
-                  {isStopped(entry) && !isCommissioning && (
-                    <ActionButton label="Launch" onClick={() => handleLaunch(entry)} />
-                  )}
-                </div>
+                !isCommissioning && (isInstallable(entry) || isStopped(entry)) ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    {isInstallable(entry) && (
+                      <ActionButton label="Commission" onClick={() => handleStartCommission(manifest.id)} />
+                    )}
+                    {isStopped(entry) && (
+                      <ActionButton label="Launch" onClick={() => handleLaunch(entry)} />
+                    )}
+                  </div>
+                ) : undefined
               }
             />
+
+            {/* Caveat — full-width line below the row (wraps cleanly; never crammed
+                into the row badge). Shown for installable or running apps. */}
+            {hasCaveats && !isCommissioning && (isInstallable(entry) || isRunning(entry)) && (
+              <CaveatLine caveat={manifest.caveats[0]} />
+            )}
 
             {/* Commission inline flow */}
             {isCommissioning && commStep.kind !== 'idle' && (
