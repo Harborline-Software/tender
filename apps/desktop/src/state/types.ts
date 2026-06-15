@@ -257,3 +257,85 @@ export interface InstallOutcome {
   installPath?: string | null
   detail?: string | null
 }
+
+// ── App catalog (CFG-1) ────────────────────────────────────────────────────────
+// Mirror of the Rust `catalog::*` contract. The declarative "available" layer:
+// one app manifest per app (bundled default + user override). The
+// `get_fleet` command returns the resolved per-app state (`FleetEntry`) the
+// state-driven Fleet tab consumes — distinct from the legacy `HarborlineService`
+// list `get_services` still returns. Additive; nothing here replaces existing types.
+
+/** Where an app sits on the readiness ladder (§5). */
+export type Availability = 'planned' | 'packaged' | 'released' | 'deprecated'
+
+/** Severity of a structured caveat (§6). */
+export type CaveatSeverity = 'blocker' | 'warning' | 'info'
+
+/** How Tender detects whether the app is running (§8). */
+export interface DetectSpec {
+  /** The `pgrep -f` pattern that identifies the app's process. */
+  processPattern: string
+  /** Optional health URL. Absent ⇒ process-only detection. */
+  healthUrl?: string | null
+}
+
+/** Where + how Tender installs the app (§4). Reuses the C3 `InstallSourceKind`. */
+export interface InstallSpec {
+  sourceKind: InstallSourceKind
+  /** Local build ref (`local:auto`), a path, or (later) a feed ref. */
+  source?: string | null
+  requiresSigning: boolean
+}
+
+/** A sub-service the app owns (§9), with its own boot + health scope. */
+export interface ServiceDef {
+  id: string
+  /** e.g. `self-supervised` | `supervised` | `process`. */
+  boot: string
+  /** e.g. `internal` | `local-port` | `remote`. */
+  healthScope: string
+}
+
+/** A declarative app action (§4) — generalises emergency-stop / restart. */
+export interface ActionDef {
+  id: string
+  /** e.g. `process-restart` | `http-post`. */
+  kind: string
+}
+
+/** A structured routed finding (§6). */
+export interface Caveat {
+  id: string
+  severity: CaveatSeverity
+  summary: string
+  appliesWhen?: string | null
+}
+
+/** One declarative app manifest (`<id>.app.json`). Open `id` string replaces
+ *  the closed `HarborlineService['id']` union for catalog-driven surfaces. */
+export interface AppManifest {
+  id: string
+  displayName: string
+  vendor?: string | null
+  icon?: string | null
+  availability: Availability
+  detect: DetectSpec
+  install: InstallSpec
+  services: ServiceDef[]
+  actions: ActionDef[]
+  caveats: Caveat[]
+}
+
+/** Resolved per-app Fleet state: the manifest plus honest live install/run
+ *  state. Returned (as a list) by the `get_fleet` command. */
+export interface FleetEntry {
+  manifest: AppManifest
+  /** C1 honest `installed` (Tender-managed OR currently running). */
+  installed: boolean
+  /** C1 honest `version` (recorded, else `"unknown"`/`""`). */
+  version: string
+  /** `running` | `stopped`. */
+  status: string
+  /** Whether shown in end-user mode (`availability === 'released'`). */
+  visibleInEndUserMode: boolean
+}

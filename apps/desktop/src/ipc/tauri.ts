@@ -1,7 +1,9 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { BusinessCaseBundleManifest, ProviderCategory } from '@/vendor/sunfish-contracts'
+import type { FleetEntry } from '@/state/types'
 
 export type { BusinessCaseBundleManifest, ProviderCategory }
+export type { FleetEntry } from '@/state/types'
 
 /** Health status for a provider slot — Q6 v1 always returns "unknown" (H4.A). */
 export type PluginHealthStatus = 'unknown' | 'ok' | 'degraded' | 'missing'
@@ -107,6 +109,16 @@ export async function getAppearance(): Promise<'dark' | 'light'> {
 
 export async function getServices(): Promise<ServiceData[]> {
   return invoke<ServiceData[]>('get_services')
+}
+
+/**
+ * Resolved per-app Fleet state (CFG-1) for the state-driven Fleet tab:
+ * `{ manifest, installed, version, status, visibleInEndUserMode }` per catalog
+ * app. The NEW catalog-driven surface, distinct from `getServices` (which the
+ * current UI still consumes). Fail-soft: an empty list when no catalog/config.
+ */
+export async function getFleet(): Promise<FleetEntry[]> {
+  return invoke<FleetEntry[]>('get_fleet')
 }
 
 export async function getSystemStats(): Promise<StatsData> {
