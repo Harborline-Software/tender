@@ -134,7 +134,7 @@ const SYSTEM_STATS = {
 
 const DEVICES = [
   { hostname: 'harbor-mac-studio', tailscaleIPs: ['100.74.12.1'], online: true, os: 'macos', isCurrentDevice: true },
-  { hostname: 'desktop-umt08rn', tailscaleIPs: ['100.74.12.7'], online: true, os: 'windows', isCurrentDevice: false },
+  { hostname: 'harbor-win-01', tailscaleIPs: ['100.74.12.7'], online: true, os: 'windows', isCurrentDevice: false },
   { hostname: 'harbor-prod-01', tailscaleIPs: ['100.74.12.9'], online: false, os: 'linux', isCurrentDevice: false },
 ]
 
