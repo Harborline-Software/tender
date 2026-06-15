@@ -108,6 +108,17 @@ pub async fn get_services() -> Vec<telemetry::HarborlineService> {
     telemetry::get_services().await
 }
 
+/// Return the resolved per-app Fleet state (CFG-1) for the state-driven Fleet
+/// tab: for each catalog app, `{ manifest, installed, version, status,
+/// visibleInEndUserMode }`. This is the NEW catalog-driven surface, distinct
+/// from the legacy `get_services` `HarborlineService` list (which the current
+/// frontend still consumes unchanged). Fail-soft: a missing catalog/config
+/// yields an empty list, never an error.
+#[tauri::command]
+pub async fn get_fleet() -> Vec<crate::catalog::FleetEntry> {
+    telemetry::get_fleet().await
+}
+
 #[tauri::command]
 pub async fn get_system_stats() -> telemetry::SystemStats {
     telemetry::get_system_stats().await

@@ -6,6 +6,7 @@ use tauri_plugin_positioner::{Position, WindowExt};
 
 pub mod autostart;
 pub mod bundles;
+pub mod catalog;
 mod commands;
 mod devices;
 pub mod install;
@@ -94,6 +95,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_appearance,
             commands::get_services,
+            commands::get_fleet,
             commands::get_system_stats,
             commands::get_local_services,
             commands::get_devices,
