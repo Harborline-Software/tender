@@ -220,21 +220,16 @@ fn bundled_catalog_dir() -> Option<PathBuf> {
         }
     }
 
-    // Dev sibling fleet layout: read straight from the source tree so bare
-    // `cargo test` / `cargo check` (no Tauri bundling) still see the manifests.
-    if let Ok(home) = std::env::var("HOME") {
-        let sibling = PathBuf::from(home)
-            .join("Projects")
-            .join("Harborline-Software")
-            .join("tender")
-            .join("apps")
-            .join("desktop")
-            .join("src-tauri")
-            .join("resources")
-            .join("catalog");
-        if sibling.exists() {
-            return Some(sibling);
-        }
+    // Source-tree fallback so bare `cargo test` / `cargo check` (no Tauri
+    // bundling) still see the manifests — resolved from the crate root at COMPILE
+    // time (`CARGO_MANIFEST_DIR`), NOT a hardcoded fleet-layout path (we retired
+    // those dev-isms). In a shipped build the Resources candidate above wins; the
+    // baked crate path simply won't exist on an end-user box (fail-soft → None).
+    let crate_local = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("resources")
+        .join("catalog");
+    if crate_local.exists() {
+        return Some(crate_local);
     }
 
     None
