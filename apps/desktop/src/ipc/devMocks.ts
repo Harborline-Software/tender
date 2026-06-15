@@ -42,9 +42,16 @@ const FLEET: FleetEntry[] = [
       actions: [],
       caveats: [
         {
-          id: 'bookserver-not-bundled',
+          id: 'signed-build-pending',
           severity: 'blocker',
-          summary: 'Backend boots only from the repo tree / GALLEY_BOOK_SERVER_PATH — not yet bundled.',
+          summary:
+            'Backend now bundled (book-server + embedded Node runtime ship in the .app). Remaining gate: a signed/notarized build + install-through-Tender verification.',
+        },
+        {
+          id: 'audiobook-prose-need-python',
+          severity: 'info',
+          summary:
+            'Audiobook + prose-telemetry are optional features that need a local python3; they degrade gracefully when absent. Core API is self-contained.',
         },
       ],
     },
