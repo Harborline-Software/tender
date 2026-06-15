@@ -108,6 +108,35 @@ const INSTALL_CONFIG: InstallConfig = {
   },
 }
 
+const SYSTEM_STATS = {
+  cpu: 23.4,
+  memUsedBytes: 9663676416,
+  memTotalBytes: 17179869184,
+  diskUsedBytes: 505424653312,
+  diskTotalBytes: 1000204886016,
+  netMbps: 4.2,
+  netMaxMbps: 1000,
+  topProcesses: [
+    { name: 'WindowServer', pid: 184, cpu: 12.4, memBytes: 612368384, isHarborline: false },
+    { name: 'local-node-host', pid: 4821, cpu: 3.1, memBytes: 248512512, isHarborline: true },
+    { name: 'book-server', pid: 46770, cpu: 1.8, memBytes: 96337920, isHarborline: true },
+    { name: 'Tender', pid: 5210, cpu: 0.4, memBytes: 84934656, isHarborline: true },
+    { name: 'Finder', pid: 612, cpu: 0.2, memBytes: 142606336, isHarborline: false },
+  ],
+}
+
+const DEVICES = [
+  { hostname: 'harbor-mac-studio', tailscaleIPs: ['100.74.12.1'], online: true, os: 'macos', isCurrentDevice: true },
+  { hostname: 'desktop-umt08rn', tailscaleIPs: ['100.74.12.7'], online: true, os: 'windows', isCurrentDevice: false },
+  { hostname: 'harbor-prod-01', tailscaleIPs: ['100.74.12.9'], online: false, os: 'linux', isCurrentDevice: false },
+]
+
+const PROJECTS = [
+  { name: 'harborline-software', path: '~/Projects/Harborline-Software', status: 'active', lastOpened: null },
+  { name: 'sunfish', path: '~/Projects/Harborline-Software/sunfish', status: 'active', lastOpened: null },
+  { name: 'old-sloop-prototype', path: '~/Code/old-sloop', status: 'archived', lastOpened: null },
+]
+
 /** Per-command mock results. Commands not listed fall through to real `invoke` (which fail-soft in the browser). */
 export const DEV_MOCKS: Record<string, unknown> = {
   get_appearance: 'dark',
@@ -116,6 +145,8 @@ export const DEV_MOCKS: Record<string, unknown> = {
   get_install_config: INSTALL_CONFIG,
   recommend_profile: RECOMMENDATION,
   get_services: [],
-  get_projects: [],
-  get_devices: [],
+  get_system_stats: SYSTEM_STATS,
+  get_local_services: SYSTEM_STATS.topProcesses,
+  get_projects: PROJECTS,
+  get_devices: DEVICES,
 }

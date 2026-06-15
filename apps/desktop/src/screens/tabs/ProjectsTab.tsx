@@ -6,25 +6,44 @@
  *   1. ~/Library/Application Support/Tender/projects.json (curated list)
  *   2. Autodiscovery: git repos under ~/Projects/ (depth ≤ 2)
  *
- * Status encoding is multimodal: active/paused/archived map to HealthState
- * so StatusPill renders glyph+text+color (not color alone — WCAG 1.4.1).
+ * Status shows the project's honest lifecycle (ACTIVE / PAUSED / ARCHIVED) —
+ * NOT a health pill (a project isn't "degraded"; it's archived). Label + colour
+ * (text is always shown, so it's not colour-alone — WCAG 1.4.1).
  */
 import { useTheme } from '@/theme/ThemeProvider'
 import { ConsoleRow } from '@/components/ConsoleRow'
 import { FiberDivider } from '@/components/FiberDivider'
-import { StatusPill } from '@/components/StatusPill'
 import { useProjects } from '@/ipc/useTelemetry'
-import type { HealthState } from '@/state/health'
 import type { ProjectData } from '@/ipc/tauri'
 
-// Projects don't have a "health" in the systems sense, but we map lifecycle
-// states to HealthState so StatusPill handles encoding uniformly.
-function projectStatusToHealth(status: ProjectData['status']): HealthState {
-  switch (status) {
-    case 'active': return 'healthy'
-    case 'paused': return 'stopped'
-    case 'archived': return 'degraded'
-  }
+// Honest lifecycle label + tone per project status.
+const STATUS_LABEL: Record<ProjectData['status'], string> = {
+  active: 'ACTIVE',
+  paused: 'PAUSED',
+  archived: 'ARCHIVED',
+}
+
+function ProjectStatusPill({ status }: { status: ProjectData['status'] }) {
+  const { theme } = useTheme()
+  const color = status === 'active' ? theme.accent
+    : status === 'paused' ? theme.textMuted
+    : theme.textDim
+  return (
+    <div style={{
+      fontFamily: theme.fontMono,
+      fontSize: theme.sizeLabel,
+      letterSpacing: 1.1,
+      textTransform: 'uppercase',
+      color,
+      background: `${color}14`,
+      border: `1px solid ${color}44`,
+      borderRadius: 99,
+      padding: '2px 8px',
+      flexShrink: 0,
+    }}>
+      {STATUS_LABEL[status]}
+    </div>
+  )
 }
 
 export function ProjectsTab() {
@@ -86,21 +105,18 @@ export function ProjectsTab() {
         </span>
       </div>
 
-      {projects.map((p, i) => {
-        const health = projectStatusToHealth(p.status)
-        return (
-          <div key={p.name}>
-            <ConsoleRow
-              indicator="grid"
-              name={p.name}
-              subLabel={p.path}
-              active={health === 'healthy'}
-              badge={<StatusPill health={health} />}
-            />
-            {i < projects.length - 1 && <FiberDivider dim />}
-          </div>
-        )
-      })}
+      {projects.map((p, i) => (
+        <div key={p.name}>
+          <ConsoleRow
+            indicator="grid"
+            name={p.name}
+            subLabel={p.path}
+            active={p.status === 'active'}
+            badge={<ProjectStatusPill status={p.status} />}
+          />
+          {i < projects.length - 1 && <FiberDivider dim />}
+        </div>
+      ))}
     </div>
   )
 }
