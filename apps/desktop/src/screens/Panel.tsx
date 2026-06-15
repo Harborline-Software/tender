@@ -15,7 +15,7 @@
  */
 import { useState, useEffect } from 'react'
 import { useTheme } from '@/theme/ThemeProvider'
-import { getDevices, type DeviceData } from '@/ipc/tauri'
+import { getDevices, getSettings, type DeviceData, type Mode } from '@/ipc/tauri'
 import { MenuShell } from '@/components/MenuShell'
 import { FiberDivider } from '@/components/FiberDivider'
 import { Logomark } from '@/components/Logomark'
@@ -51,6 +51,7 @@ export function Panel({ onNavigate }: Props) {
   const [gearOpen, setGearOpen] = useState(false)
   const [workspace, setWorkspace] = useState('Local')
   const [devices, setDevices] = useState<DeviceData[]>([])
+  const [mode, setMode] = useState<Mode>('dev')
 
   useEffect(() => {
     getDevices().then((ds) => {
@@ -58,6 +59,15 @@ export function Panel({ onNavigate }: Props) {
       const current = ds.find(d => d.isCurrentDevice)
       if (current) setWorkspace(current.hostname)
     }).catch(() => {})
+  }, [])
+
+  // Read mode on mount; re-read when navigating back from dock-settings.
+  const refreshMode = () => {
+    getSettings().then(s => setMode(s.mode)).catch(() => {})
+  }
+
+  useEffect(() => {
+    refreshMode()
   }, [])
 
   const a = theme.accent
@@ -78,6 +88,12 @@ export function Panel({ onNavigate }: Props) {
     closePopovers()
     onNavigate({ kind: 'detail', id })
   }
+
+  // Poll mode every 3 s — lightweight; picks up changes made in DockSettings.
+  useEffect(() => {
+    const id = setInterval(refreshMode, 3000)
+    return () => clearInterval(id)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleGearSelect = (id: GearId) => {
     closePopovers()
@@ -150,22 +166,38 @@ export function Panel({ onNavigate }: Props) {
           </svg>
         </button>
 
-        {/* DEV pill — static mode indicator (CFG-3a); live Mode toggle wires in CFG-2 */}
-        <div style={{
-          fontFamily: theme.fontMono,
-          fontSize: theme.sizeLabel,
-          letterSpacing: 1.4,
-          textTransform: 'uppercase',
-          color: '#22d3ee',
-          background: 'rgba(34,211,238,0.12)',
-          border: '1px solid rgba(34,211,238,0.35)',
-          borderRadius: 3,
-          padding: '2px 6px',
-          flexShrink: 0,
-          userSelect: 'none',
-        }}>
-          DEV
-        </div>
+        {/* DEV pill — live mode indicator (CFG-3b). Shown in dev mode only. */}
+        {mode === 'dev' ? (
+          <div style={{
+            fontFamily: theme.fontMono,
+            fontSize: theme.sizeLabel,
+            letterSpacing: 1.4,
+            textTransform: 'uppercase',
+            color: '#22d3ee',
+            background: 'rgba(34,211,238,0.12)',
+            border: '1px solid rgba(34,211,238,0.35)',
+            borderRadius: 3,
+            padding: '2px 6px',
+            flexShrink: 0,
+            userSelect: 'none',
+          }}>
+            DEV
+          </div>
+        ) : (
+          <div style={{
+            fontFamily: theme.fontMono,
+            fontSize: theme.sizeLabel,
+            letterSpacing: 1.1,
+            textTransform: 'uppercase',
+            color: theme.textMuted,
+            borderRadius: 3,
+            padding: '2px 6px',
+            flexShrink: 0,
+            userSelect: 'none',
+          }}>
+            USR
+          </div>
+        )}
 
         {/* Update icon — only when updates are actually available */}
         {updatesAvailable > 0 && (

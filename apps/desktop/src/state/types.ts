@@ -90,7 +90,7 @@ export type DetailId =
   | 'backups'
   | 'relay'
 
-export type Screen = { kind: 'main' } | { kind: 'detail'; id: DetailId }
+export type Screen = { kind: 'main' } | { kind: 'detail'; id: DetailId } | { kind: 'outfitting' }
 
 // ── Backup types (R8 operator-companion) ─────────────────────────────────────
 
