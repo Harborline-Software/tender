@@ -297,3 +297,17 @@ export async function getSettings(): Promise<TenderSettings> {
 export async function setMode(mode: Mode): Promise<TenderSettings> {
   return invoke<TenderSettings>('set_mode', { mode })
 }
+
+// ── CFG-3b install config read ────────────────────────────────────────────────
+
+import type { InstallConfig } from '@/state/types'
+export type { InstallConfig }
+
+/**
+ * Read Tender's persisted install config (managed apps + profiles).
+ * Fail-soft: returns a config with an empty `apps` record when no config
+ * exists yet (fresh box / first run).
+ */
+export async function getInstallConfig(): Promise<InstallConfig> {
+  return invoke<InstallConfig>('get_install_config')
+}

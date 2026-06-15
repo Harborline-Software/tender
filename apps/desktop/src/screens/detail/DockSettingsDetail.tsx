@@ -5,7 +5,7 @@
  * panel opens / app restarts without a full IPC round-trip.
  * Key: `tender:dock-settings-toggles` (JSON array of booleans, index-stable).
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { MenuShell } from '@/components/MenuShell'
 import { DetailHeader } from '@/components/DetailHeader'
@@ -14,11 +14,13 @@ import { FiberDivider } from '@/components/FiberDivider'
 import { ActionFooter } from '@/components/ActionFooter'
 import { DataLine } from '@/components/DataLine'
 import { ToggleSwitch } from '@/components/ToggleSwitch'
+import { getSettings, setMode } from '@/ipc/tauri'
+import type { Mode } from '@/ipc/tauri'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const TOGGLE_LABELS = [
-  'Auto-start with login',
+  'Start at login',
   'Notifications · sound',
   'Notifications · banner',
   'Pulse animations',
@@ -71,6 +73,25 @@ export function DockSettingsDetail({ onBack }: Props) {
 
   // Lazy initial state from localStorage (falls back to defaults if absent/invalid).
   const [toggles, setToggles] = useState(loadToggles)
+  const [mode, setModeState] = useState<Mode>('dev')
+  const [modeChanging, setModeChanging] = useState(false)
+
+  useEffect(() => {
+    getSettings().then(s => setModeState(s.mode)).catch(() => {})
+  }, [])
+
+  const handleModeToggle = async (newMode: Mode) => {
+    if (modeChanging || newMode === mode) return
+    setModeChanging(true)
+    try {
+      const updated = await setMode(newMode)
+      setModeState(updated.mode)
+    } catch {
+      // Fail silently — mode stays unchanged; next poll in Panel will reconcile
+    } finally {
+      setModeChanging(false)
+    }
+  }
 
   const flip = (i: number) => {
     setToggles((t) => {
@@ -94,6 +115,68 @@ export function DockSettingsDetail({ onBack }: Props) {
         onBack={onBack}
         badge={<StatusPill text="Saved" />}
       />
+
+      {/* ↳ MODE — dev / end-user toggle */}
+      <div style={{
+        padding: '8px 14px 4px',
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 9, letterSpacing: 1.4, textTransform: 'uppercase',
+        color: theme.textMuted,
+      }}>
+        ↳ Mode
+      </div>
+
+      <div style={{
+        padding: '8px 14px 10px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+      }}>
+        <div>
+          <span style={{ fontSize: 11.5, color: theme.text }}>Dev / End-User</span>
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 9, color: theme.textMuted, marginTop: 3, lineHeight: 1.4,
+          }}>
+            Dev installs packaged builds + shows caveats.
+          </div>
+        </div>
+        {/* Segmented control: Dev | End-User */}
+        <div style={{
+          display: 'flex',
+          border: `1px solid ${theme.border}`,
+          borderRadius: 4,
+          overflow: 'hidden',
+          opacity: modeChanging ? 0.55 : 1,
+          transition: 'opacity 0.15s',
+          flexShrink: 0,
+        }}>
+          {(['dev', 'end-user'] as const).map((m, i) => {
+            const active = mode === m
+            return (
+              <button
+                key={m}
+                onClick={() => handleModeToggle(m)}
+                disabled={modeChanging}
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 9,
+                  letterSpacing: 1.1,
+                  textTransform: 'uppercase',
+                  padding: '4px 9px',
+                  border: 'none',
+                  borderLeft: i > 0 ? `1px solid ${theme.border}` : 'none',
+                  background: active ? `${theme.accent}22` : 'transparent',
+                  color: active ? theme.accent : theme.textMuted,
+                  cursor: modeChanging ? 'default' : 'pointer',
+                  transition: 'background 0.12s, color 0.12s',
+                }}
+              >
+                {m === 'dev' ? 'Dev' : 'End-User'}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       <div style={{
         padding: '8px 14px 4px',
