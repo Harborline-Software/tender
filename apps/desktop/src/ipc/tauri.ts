@@ -250,3 +250,32 @@ export async function restoreBackupFromArchive(archivePath: string): Promise<str
 export async function getSyncStatus(): Promise<SyncStatus> {
   return invoke<SyncStatus>('get_sync_status')
 }
+
+// ── CFG-3a install / commission commands ─────────────────────────────────────
+
+import type { ProfileRecommendation, InstallRequest, InstallOutcome } from '@/state/types'
+export type { ProfileRecommendation, InstallRequest, InstallOutcome }
+
+/**
+ * Probe the host hardware and recommend a CapabilityProfile.
+ * Used during Commission to pre-fill the install profile.
+ */
+export async function recommendProfile(): Promise<ProfileRecommendation> {
+  return invoke<ProfileRecommendation>('recommend_profile')
+}
+
+/**
+ * Install a locally-sourced app bundle under a resolved capability profile.
+ * Corresponds to the C3 `install_app_local` command.
+ */
+export async function installAppLocal(request: InstallRequest): Promise<InstallOutcome> {
+  return invoke<InstallOutcome>('install_app_local', { request })
+}
+
+/**
+ * Launch an already-installed app via its recorded launch contract.
+ * Corresponds to the C3 `launch_app` command.
+ */
+export async function launchApp(appId: string): Promise<InstallOutcome> {
+  return invoke<InstallOutcome>('launch_app', { appId })
+}

@@ -150,6 +150,23 @@ export function Panel({ onNavigate }: Props) {
           </svg>
         </button>
 
+        {/* DEV pill — static mode indicator (CFG-3a); live Mode toggle wires in CFG-2 */}
+        <div style={{
+          fontFamily: theme.fontMono,
+          fontSize: theme.sizeLabel,
+          letterSpacing: 1.4,
+          textTransform: 'uppercase',
+          color: '#22d3ee',
+          background: 'rgba(34,211,238,0.12)',
+          border: '1px solid rgba(34,211,238,0.35)',
+          borderRadius: 3,
+          padding: '2px 6px',
+          flexShrink: 0,
+          userSelect: 'none',
+        }}>
+          DEV
+        </div>
+
         {/* Update icon — only when updates are actually available */}
         {updatesAvailable > 0 && (
           <button
