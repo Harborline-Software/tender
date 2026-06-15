@@ -23,10 +23,16 @@
   ],
   "caveats": [
     {
-      "id": "bookserver-not-bundled",
+      "id": "signed-build-pending",
       "severity": "blocker",
-      "summary": "Backend boots only from the repo tree / GALLEY_BOOK_SERVER_PATH — not yet bundled.",
+      "summary": "Backend now bundled (book-server + embedded Node runtime ship in the .app via the Tauri sidecar). Remaining gate: a signed/notarized `tauri build` + install-through-Tender verification (po-mac; macOS Developer-ID cert).",
       "appliesWhen": "availability < released"
+    },
+    {
+      "id": "audiobook-prose-need-python",
+      "severity": "info",
+      "summary": "Audiobook (ffmpeg + python3) and prose-telemetry (python3) are optional features that spawn local tools at request time; they degrade gracefully (clear error) when absent. The core HTTP API is fully self-contained.",
+      "appliesWhen": null
     }
   ]
 }
