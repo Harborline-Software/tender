@@ -158,30 +158,46 @@ pub async fn emergency_stop() -> Result<String, String> {
     }
 }
 
-/// Kill any running Signal-Bridge AppHost processes and restart the AppHost
-/// from the fleet-standard location relative to the user's home directory.
-/// Returns Ok("restarting") when the restart process launches, Err on failure.
+/// Resolve the start command (program + args) for a Tender-managed service from
+/// its recorded install contract. Retires the former hardcoded dev-path coupling
+/// — Tender starts only what it manages, off the install-config launch contract
+/// (C2). Returns an honest error for an unmanaged id (never a baked-in dev path).
+fn resolve_start_command(
+    config: &crate::install_config::InstallConfig,
+    id: &str,
+) -> Result<(String, Vec<String>), String> {
+    match config.app(id) {
+        Some(app) => Ok((app.launch.program.clone(), app.launch.args.clone())),
+        None => Err(format!(
+            "{id} is not Tender-managed (no install config entry). Install it via Tender first."
+        )),
+    }
+}
+
+/// Restart Signal-Bridge: stop any running instance, then start it from its
+/// Tender-managed install contract. The former implementation shelled
+/// `dotnet run --project ~/Projects/Harborline-Software/signal-bridge/...` — a
+/// dev-layout coupling that only worked on the fleet-dev machine. This retires
+/// it: Tender starts Bridge off the recorded launch contract, or returns an
+/// honest error. (Bridge install is deferred — ONR §6 — so Bridge is typically
+/// not yet managed; the error says so rather than assuming a dev checkout.)
 #[tauri::command]
 pub async fn restart_signal_bridge() -> Result<String, String> {
-    // Kill existing Bridge processes
+    // Stop any running Bridge. Bridge is the Aspire AppHost (not a
+    // self-supervising ADR-0115 app), so a plain kill is the correct stop.
     let _ = std::process::Command::new("pkill")
         .args(["-f", "Sunfish.Bridge"])
         .output();
 
-    // Short settle delay before relaunch
+    // Short settle delay before relaunch.
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
-    // Construct fleet-standard AppHost path
-    let home = std::env::var("HOME").map_err(|_| "HOME not set".to_string())?;
-    let apphost = format!(
-        "{}/Projects/Harborline-Software/signal-bridge/Sunfish.Bridge.AppHost",
-        home
-    );
-
-    std::process::Command::new("dotnet")
-        .args(["run", "--project", &apphost])
+    let config = crate::install_config::load();
+    let (program, args) = resolve_start_command(&config, "signal-bridge")?;
+    std::process::Command::new(&program)
+        .args(&args)
         .spawn()
-        .map_err(|e| format!("Failed to restart Bridge: {}", e))?;
+        .map_err(|e| format!("Failed to start Signal-Bridge from install contract: {e}"))?;
 
     Ok("restarting".to_string())
 }
@@ -451,4 +467,62 @@ pub async fn launch_app(app_id: String) -> crate::install::InstallOutcome {
 #[tauri::command]
 pub fn get_projects() -> Vec<projects::ProjectEntry> {
     projects::get_projects()
+}
+
+// ── Login-item (auto-start at login) ─────────────────────────────────────────
+
+/// Enable or disable Tender auto-starting at login (a per-user LaunchAgent).
+/// When enabling, the LaunchAgent points at the currently-running Tender binary
+/// (`current_exe`), so it works wherever Tender is installed. Returns the
+/// resulting enabled state.
+#[tauri::command]
+pub fn set_autostart(enabled: bool) -> Result<bool, String> {
+    if enabled {
+        let exe = std::env::current_exe().map_err(|e| format!("resolve current exe: {e}"))?;
+        crate::autostart::enable(&exe.to_string_lossy())?;
+    } else {
+        crate::autostart::disable()?;
+    }
+    Ok(crate::autostart::is_enabled())
+}
+
+/// Whether Tender is currently set to auto-start at login.
+#[tauri::command]
+pub fn get_autostart() -> bool {
+    crate::autostart::is_enabled()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::install_config::{InstallConfig, InstalledApp, LaunchContract};
+    use crate::profile::CapabilityProfile;
+
+    #[test]
+    fn resolve_start_command_uses_the_install_contract_when_managed() {
+        let mut config = InstallConfig::default();
+        config.upsert(InstalledApp {
+            id: "signal-bridge".to_string(),
+            version: "1.0.0".to_string(),
+            install_path: "/opt/bridge".to_string(),
+            profile: CapabilityProfile::minimum_floor(),
+            launch: LaunchContract {
+                program: "/opt/bridge/run".to_string(),
+                args: vec!["--serve".to_string()],
+                health_url: None,
+            },
+        });
+        let (program, args) = resolve_start_command(&config, "signal-bridge").unwrap();
+        assert_eq!(program, "/opt/bridge/run");
+        assert_eq!(args, vec!["--serve".to_string()]);
+    }
+
+    #[test]
+    fn resolve_start_command_errors_honestly_when_unmanaged() {
+        // No baked-in dev path — an unmanaged id is an honest error.
+        let config = InstallConfig::default();
+        let err = resolve_start_command(&config, "signal-bridge").unwrap_err();
+        assert!(err.contains("not Tender-managed"));
+        assert!(!err.contains("Projects"), "must not reference a dev-layout path");
+    }
 }

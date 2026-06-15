@@ -4,6 +4,7 @@ use tauri::{
 };
 use tauri_plugin_positioner::{Position, WindowExt};
 
+pub mod autostart;
 pub mod bundles;
 mod commands;
 mod devices;
@@ -111,6 +112,8 @@ pub fn run() {
             commands::get_install_config,
             commands::install_app_local,
             commands::launch_app,
+            commands::set_autostart,
+            commands::get_autostart,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tender");
