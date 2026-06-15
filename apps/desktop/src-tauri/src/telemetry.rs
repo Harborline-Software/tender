@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::time::Duration;
 
+use crate::catalog::{self, AppManifest};
 use crate::install_config::{self, InstalledApp};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,17 +95,35 @@ fn read_aspire_token() -> Option<String> {
 // ── Service health aggregation ─────────────────────────────────────────────
 
 pub async fn get_services() -> Vec<HarborlineService> {
-    // Install config is the source of truth for honest `installed`/`version`
-    // (retiring the former hardcoded fictions). Fail-soft: a missing config
-    // yields an empty record, so unmanaged-but-running apps still surface via
-    // process/health detection below.
+    // Generic detection (CFG-1 §8): loop the catalog ∪ install-state instead of
+    // hardcoding three apps. The catalog (`<id>.app.json`) supplies id, display
+    // name, process pattern, and health URL — no more magic constants. Adding an
+    // app is now dropping a manifest.
+    //
+    // Fail-soft throughout: a missing catalog OR a missing install config yields
+    // empty records; an unmanaged-but-running app still surfaces via the
+    // manifest's process/health detection below.
+    let catalog = catalog::load_catalog();
     let config = install_config::load();
-    let (sb, sf, fd) = tokio::join!(
-        detect_signal_bridge(config.app("signal-bridge")),
-        detect_sunfish(config.app("sunfish")),
-        detect_flight_deck(config.app("flight-deck")),
-    );
-    vec![sb, sf, fd]
+
+    // Detect each catalog app concurrently. Each task owns its manifest +
+    // managed record (cheap clones) so it is `'static` — no extra crate needed.
+    let mut set = tokio::task::JoinSet::new();
+    for (idx, manifest) in catalog.iter().enumerate() {
+        let manifest = manifest.clone();
+        let managed = config.app(&manifest.id).cloned();
+        set.spawn(async move { (idx, detect_from_manifest(&manifest, managed.as_ref()).await) });
+    }
+
+    // Collect, then restore the catalog's (id-sorted) order so the UI is stable.
+    let mut results: Vec<(usize, HarborlineService)> = Vec::with_capacity(catalog.len());
+    while let Some(joined) = set.join_next().await {
+        if let Ok(pair) = joined {
+            results.push(pair);
+        }
+    }
+    results.sort_by_key(|(idx, _)| *idx);
+    results.into_iter().map(|(_, svc)| svc).collect()
 }
 
 /// Honest `installed`/`version` for a service.
@@ -116,123 +136,97 @@ pub async fn get_services() -> Vec<HarborlineService> {
 /// `version` is the **recorded** version of a Tender-managed install; for an
 /// unmanaged-but-running app Tender does not yet know the real version
 /// (a probe is a C3 concern), so it reports `"unknown"` rather than a fiction.
+///
+/// This is the C1 honest rule; the catalog DTO resolution shares the same logic
+/// (`catalog::honest_install`).
 fn honest_install(managed: Option<&InstalledApp>, running: bool) -> (bool, String) {
-    match managed {
-        Some(app) => (true, app.version.clone()),
-        None if running => (true, "unknown".to_string()),
-        None => (false, String::new()),
-    }
+    catalog::honest_install(managed, running)
 }
 
-async fn detect_signal_bridge(managed: Option<&InstalledApp>) -> HarborlineService {
-    let running = tokio::task::spawn_blocking(|| is_running("Sunfish.Bridge.AppHost"))
-        .await
-        .unwrap_or(false);
-    let (installed, version) = honest_install(managed, running);
-
-    let (status, throughput_mbps, history) = if running {
-        // Try Aspire OTLP endpoint for rich metrics
+/// Whether the app's process is running, per its manifest's detection spec.
+///
+/// When the manifest declares a `healthUrl`, an HTTP-200 from it is the running
+/// signal (Aspire self-signed certs are tolerated in dev); otherwise the
+/// `pgrep -f <processPattern>` match is the signal. This replaces the three
+/// hardcoded `is_running(...)` constants with the per-manifest values.
+async fn detect_running(detect: &catalog::DetectSpec) -> bool {
+    if let Some(url) = &detect.health_url {
+        // A health URL is the canonical liveness signal when present. Fall back
+        // to the process match if the probe fails (the app may be up with the
+        // health endpoint not yet bound, or behind auth — process is honest).
         let token = read_aspire_token();
-
-        // Simple health probe — Aspire dashboard health endpoint
-        let health_ok = poll_json::<serde_json::Value>(
-            "https://localhost:17101/health",
-            token.as_deref(),
-        )
-        .await
-        .is_some();
-
-        if health_ok {
-            // In M2 we return a plausible stub reading; real sparkline data
-            // comes from the OTLP metrics stream in M3.
-            let mbps = 12.3_f64;
-            let hist = fake_sparkline(mbps, 30);
-            ("running".to_string(), Some(mbps), Some(hist))
-        } else {
-            ("running".to_string(), None, None)
+        if poll_json::<serde_json::Value>(url, token.as_deref())
+            .await
+            .is_some()
+        {
+            return true;
         }
-    } else {
-        ("stopped".to_string(), None, None)
-    };
-
-    HarborlineService {
-        id: "signal-bridge".to_string(),
-        display_name: "Signal-Bridge".to_string(),
-        version,
-        installed,
-        status,
-        throughput_mbps,
-        history,
-        active_tasks: None,
-        airborne: None,
-        total_workers: None,
     }
+    let pattern = detect.process_pattern.clone();
+    tokio::task::spawn_blocking(move || is_running(&pattern))
+        .await
+        .unwrap_or(false)
 }
 
-async fn detect_sunfish(managed: Option<&InstalledApp>) -> HarborlineService {
-    // No /health endpoint yet — process detection only (per Admiral ruling)
-    let running = tokio::task::spawn_blocking(|| is_running("Sunfish.Anchor"))
-        .await
-        .unwrap_or(false);
+/// Generic per-manifest detection (CFG-1 §8). Produces one `HarborlineService`
+/// from a manifest:
+///   - `id` / `displayName`  ← the manifest (de-hardcoded);
+///   - `installed` / `version` ← the C1 honest rule (UNCHANGED);
+///   - `status` ← the manifest's `processPattern` / `healthUrl`.
+///
+/// The former per-app rich-metric enrichment (signal-bridge throughput /
+/// sunfish task counts / flight-deck airborne stub fields) is dropped to `None`
+/// — those were M2-era stub fictions; the contract field stays so the current
+/// frontend keeps working unchanged. Real metrics return in a later cohort.
+async fn detect_from_manifest(
+    manifest: &AppManifest,
+    managed: Option<&InstalledApp>,
+) -> HarborlineService {
+    let running = detect_running(&manifest.detect).await;
     let (installed, version) = honest_install(managed, running);
 
     HarborlineService {
-        id: "sunfish".to_string(),
-        display_name: "Sunfish".to_string(),
+        id: manifest.id.clone(),
+        display_name: manifest.display_name.clone(),
         version,
         installed,
         status: if running { "running" } else { "stopped" }.to_string(),
         throughput_mbps: None,
         history: None,
-        active_tasks: if running { Some(7) } else { None },
+        active_tasks: None,
         airborne: None,
         total_workers: None,
     }
 }
 
-async fn detect_flight_deck(managed: Option<&InstalledApp>) -> HarborlineService {
-    let running =
-        tokio::task::spawn_blocking(|| is_running("book-server") || is_running("flight-deck"))
-            .await
-            .unwrap_or(false);
-    let (installed, version) = honest_install(managed, running);
+// ── Fleet DTO resolution (CFG-1 — the state-driven Fleet tab surface) ───────
 
-    let (status, airborne, total) = if running {
-        // Poll Flight-Deck book-server health
-        let healthy = poll_json::<serde_json::Value>("http://localhost:3080/health", None)
-            .await
-            .is_some();
+/// Resolve the per-app Fleet state for the future state-driven Fleet UI
+/// (CFG-1 deliverable 4). For each catalog app it composes the manifest with
+/// the honest live install/run state (`installed`/`version` per the C1 rule,
+/// `status` per the manifest's detect spec, `visibleInEndUserMode` per the §5
+/// readiness gate). This is the NEW surface (`FleetEntry`) distinct from the
+/// legacy `HarborlineService` list `get_services` returns.
+pub async fn get_fleet() -> Vec<catalog::FleetEntry> {
+    let catalog = catalog::load_catalog();
+    let config = install_config::load();
 
-        if healthy {
-            ("running".to_string(), Some(7u32), Some(7u32))
-        } else {
-            ("running".to_string(), None, None)
-        }
-    } else {
-        ("stopped".to_string(), None, None)
-    };
-
-    HarborlineService {
-        id: "flight-deck".to_string(),
-        display_name: "Flight-Deck".to_string(),
-        version,
-        installed,
-        status,
-        throughput_mbps: None,
-        history: None,
-        active_tasks: None,
-        airborne,
-        total_workers: total,
+    // Probe each app's running state concurrently (each task owns its detect
+    // spec ⇒ `'static`), then fold the (pure) catalog ∪ install-state composition.
+    let mut set = tokio::task::JoinSet::new();
+    for manifest in &catalog {
+        let id = manifest.id.clone();
+        let detect = manifest.detect.clone();
+        set.spawn(async move { (id, detect_running(&detect).await) });
     }
-}
+    let mut running_by_id: BTreeMap<String, bool> = BTreeMap::new();
+    while let Some(joined) = set.join_next().await {
+        if let Ok((id, running)) = joined {
+            running_by_id.insert(id, running);
+        }
+    }
 
-/// Build a plausible 30-sample sparkline centered around `center`.
-fn fake_sparkline(center: f64, samples: usize) -> Vec<f64> {
-    // Deterministic small variation — no random dep needed
-    let offsets = [-0.8, 0.4, 1.2, -0.3, 0.9, -0.5, 0.7, 1.1, -0.2, 0.6];
-    (0..samples)
-        .map(|i| (center + offsets[i % offsets.len()]).max(0.0))
-        .collect()
+    catalog::resolve_fleet_entries(&catalog, &config, &running_by_id)
 }
 
 // ── System stats ───────────────────────────────────────────────────────────
@@ -370,5 +364,56 @@ mod tests {
         let (installed, version) = honest_install(None, false);
         assert!(!installed);
         assert_eq!(version, "");
+    }
+
+    // ── Generic detection (CFG-1 §8) ────────────────────────────────────────
+
+    /// A manifest whose process pattern will never match a real process and
+    /// declares no health URL ⇒ a deterministic `running = false` probe.
+    fn absent_manifest(id: &str, display: &str) -> AppManifest {
+        let json = format!(
+            r#"{{
+              "id": "{id}",
+              "displayName": "{display}",
+              "availability": "packaged",
+              "detect": {{ "processPattern": "tender-nonexistent-proc-{id}-zzz", "healthUrl": null }},
+              "install": {{ "sourceKind": "appBundle", "requiresSigning": false }}
+            }}"#
+        );
+        serde_json::from_str(&json).expect("parse absent manifest")
+    }
+
+    #[tokio::test]
+    async fn generic_detection_managed_app_is_installed_with_recorded_version() {
+        // Managed but its (nonexistent) process is not running ⇒ installed via
+        // the C1 managed rule, recorded version, status stopped. Carries the
+        // manifest's id + displayName (de-hardcoded).
+        let manifest = absent_manifest("sunfish", "Sunfish");
+        let app = managed("0.4.0-dev");
+        let svc = detect_from_manifest(&manifest, Some(&app)).await;
+
+        assert_eq!(svc.id, "sunfish");
+        assert_eq!(svc.display_name, "Sunfish");
+        assert!(svc.installed, "managed ⇒ installed even when stopped");
+        assert_eq!(svc.version, "0.4.0-dev");
+        assert_eq!(svc.status, "stopped");
+    }
+
+    #[tokio::test]
+    async fn generic_detection_absent_app_is_not_installed() {
+        // Neither managed nor running ⇒ not installed, empty version, stopped.
+        // The case the old hardcoded `installed: true` lied about, now driven
+        // generically from the manifest.
+        let manifest = absent_manifest("signal-bridge", "Signal-Bridge");
+        let svc = detect_from_manifest(&manifest, None).await;
+
+        assert_eq!(svc.id, "signal-bridge");
+        assert!(!svc.installed);
+        assert_eq!(svc.version, "");
+        assert_eq!(svc.status, "stopped");
+        // The dropped M2-era rich-metric fields are honestly None now.
+        assert!(svc.throughput_mbps.is_none());
+        assert!(svc.active_tasks.is_none());
+        assert!(svc.airborne.is_none());
     }
 }

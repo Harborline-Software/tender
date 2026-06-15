@@ -1,0 +1,32 @@
+{
+  "id": "flight-deck",
+  "displayName": "Flight-Deck",
+  "vendor": "Harborline",
+  "icon": "flight-deck",
+  "availability": "packaged",
+  "detect": {
+    "processPattern": "book-server",
+    "healthUrl": "http://localhost:3080/health"
+  },
+  "install": {
+    "sourceKind": "appBundle",
+    "source": "local:auto",
+    "requiresSigning": false
+  },
+  "services": [
+    { "id": "book-server", "boot": "supervised", "healthScope": "local-port" },
+    { "id": "gpu-workers", "boot": "process", "healthScope": "remote" }
+  ],
+  "actions": [
+    { "id": "restart", "kind": "process-restart" },
+    { "id": "emergency-stop", "kind": "http-post" }
+  ],
+  "caveats": [
+    {
+      "id": "bookserver-not-bundled",
+      "severity": "blocker",
+      "summary": "Backend boots only from the repo tree / GALLEY_BOOK_SERVER_PATH — not yet bundled.",
+      "appliesWhen": "availability < released"
+    }
+  ]
+}

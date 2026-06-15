@@ -41,7 +41,8 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "resources/bundles/*.bundle.json": "resources/bundles"
+      "resources/bundles/*.bundle.json": "resources/bundles",
+      "resources/catalog/*.app.json": "resources/catalog"
     }
   }
 }

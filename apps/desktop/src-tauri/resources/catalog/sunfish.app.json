@@ -1,0 +1,30 @@
+{
+  "id": "sunfish",
+  "displayName": "Sunfish",
+  "vendor": "Harborline",
+  "icon": "sunfish",
+  "availability": "packaged",
+  "detect": {
+    "processPattern": "Sunfish.Anchor",
+    "healthUrl": null
+  },
+  "install": {
+    "sourceKind": "appBundle",
+    "source": "local:auto",
+    "requiresSigning": false
+  },
+  "services": [
+    { "id": "local-node", "boot": "self-supervised", "healthScope": "internal" }
+  ],
+  "actions": [
+    { "id": "restart", "kind": "process-restart" }
+  ],
+  "caveats": [
+    {
+      "id": "unsigned-keychain-boot",
+      "severity": "blocker",
+      "summary": "Unsigned build: macOS Keychain seed not minted → sidecar won't boot.",
+      "appliesWhen": "availability < released"
+    }
+  ]
+}

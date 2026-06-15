@@ -1,0 +1,23 @@
+{
+  "id": "signal-bridge",
+  "displayName": "Signal-Bridge",
+  "vendor": "Harborline",
+  "icon": "signal-bridge",
+  "availability": "planned",
+  "detect": {
+    "processPattern": "Sunfish.Bridge.AppHost",
+    "healthUrl": "https://localhost:17101/health"
+  },
+  "install": {
+    "sourceKind": "appBundle",
+    "source": null,
+    "requiresSigning": false
+  },
+  "services": [
+    { "id": "relay", "boot": "process", "healthScope": "local-port" }
+  ],
+  "actions": [
+    { "id": "restart", "kind": "process-restart" }
+  ],
+  "caveats": []
+}
