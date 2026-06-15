@@ -52,7 +52,9 @@ function availabilityLabel(entry: FleetEntry): string {
   const { availability } = entry.manifest
   if (availability === 'planned') return 'planned · no package'
   if (!entry.installed) return `${availability} · not installed`
-  return `v${formatVersion(entry.version)} · ${entry.status}`
+  // Honest version: prefix "v" only when we actually know it (avoid "v—").
+  const v = formatVersion(entry.version)
+  return v === '—' ? `— · ${entry.status}` : `v${v} · ${entry.status}`
 }
 
 function isActionable(entry: FleetEntry): boolean {
@@ -415,7 +417,7 @@ export function FleetTab({ onNavigate }: Props) {
       : '0.1.0'
 
     const request: InstallRequest = {
-      appId: entry.manifest.id as 'signal-bridge' | 'sunfish' | 'flight-deck',
+      appId: entry.manifest.id,
       version,
       source: { kind: entry.manifest.install.sourceKind, path: inputPath },
       profile,

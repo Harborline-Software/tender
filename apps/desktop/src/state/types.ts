@@ -241,7 +241,8 @@ export interface InstallSource {
 
 /** A request to install one app from a local source under a resolved profile. */
 export interface InstallRequest {
-  appId: HarborlineService['id']
+  /** Open catalog id (mirrors the Rust `String`); any `AppManifest.id`. */
+  appId: string
   version: string
   source: InstallSource
   profile: CapabilityProfile
