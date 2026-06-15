@@ -226,7 +226,27 @@ pub async fn get_fleet() -> Vec<catalog::FleetEntry> {
         }
     }
 
-    catalog::resolve_fleet_entries(&catalog, &config, &running_by_id)
+    let entries = catalog::resolve_fleet_entries(&catalog, &config, &running_by_id);
+    // Apply the dev/end-user mode gate (CFG-2 / §10): end-user mode shows only
+    // `released` apps (`visibleInEndUserMode`), so not-ready apps are honestly
+    // hidden; dev mode shows everything (caveats surfaced in the UI).
+    filter_fleet_by_mode(entries, crate::settings::load().mode)
+}
+
+/// Apply the §10 readiness gate to a resolved fleet. End-user mode retains only
+/// entries visible in end-user mode (`released`); dev mode passes all through.
+/// Pure (mode in) so it is unit-testable without touching the settings file.
+fn filter_fleet_by_mode(
+    entries: Vec<catalog::FleetEntry>,
+    mode: crate::settings::Mode,
+) -> Vec<catalog::FleetEntry> {
+    match mode {
+        crate::settings::Mode::Dev => entries,
+        crate::settings::Mode::EndUser => entries
+            .into_iter()
+            .filter(|e| e.visible_in_end_user_mode)
+            .collect(),
+    }
 }
 
 // ── System stats ───────────────────────────────────────────────────────────
@@ -415,5 +435,40 @@ mod tests {
         assert!(svc.throughput_mbps.is_none());
         assert!(svc.active_tasks.is_none());
         assert!(svc.airborne.is_none());
+    }
+
+    // ── Mode gate (CFG-2 §10) ────────────────────────────────────────────────
+
+    fn fleet_entry(id: &str, released: bool) -> catalog::FleetEntry {
+        let json = format!(
+            r#"{{ "id":"{id}", "displayName":"{id}",
+                  "availability":"{}",
+                  "detect":{{ "processPattern":"x" }},
+                  "install":{{ "sourceKind":"appBundle", "requiresSigning":false }} }}"#,
+            if released { "released" } else { "packaged" }
+        );
+        let manifest: AppManifest = serde_json::from_str(&json).expect("manifest");
+        catalog::FleetEntry {
+            manifest,
+            installed: false,
+            version: String::new(),
+            status: "stopped".to_string(),
+            visible_in_end_user_mode: released,
+        }
+    }
+
+    #[test]
+    fn dev_mode_shows_all_apps() {
+        let entries = vec![fleet_entry("a", true), fleet_entry("b", false)];
+        let out = filter_fleet_by_mode(entries, crate::settings::Mode::Dev);
+        assert_eq!(out.len(), 2);
+    }
+
+    #[test]
+    fn end_user_mode_hides_non_released_apps() {
+        let entries = vec![fleet_entry("released-app", true), fleet_entry("packaged-app", false)];
+        let out = filter_fleet_by_mode(entries, crate::settings::Mode::EndUser);
+        assert_eq!(out.len(), 1, "end-user shows only released apps");
+        assert_eq!(out[0].manifest.id, "released-app");
     }
 }

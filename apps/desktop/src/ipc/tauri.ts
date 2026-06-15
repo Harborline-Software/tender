@@ -279,3 +279,21 @@ export async function installAppLocal(request: InstallRequest): Promise<InstallO
 export async function launchApp(appId: string): Promise<InstallOutcome> {
   return invoke<InstallOutcome>('launch_app', { appId })
 }
+
+// ── CFG-2 settings / mode commands ───────────────────────────────────────────
+
+import type { TenderSettings, Mode } from '@/state/types'
+export type { TenderSettings, Mode }
+
+/** Read Tender's persisted settings (mode, …). Fail-soft to `dev`. */
+export async function getSettings(): Promise<TenderSettings> {
+  return invoke<TenderSettings>('get_settings')
+}
+
+/**
+ * Set the dev/end-user mode + persist; returns the updated settings.
+ * End-user mode gates `get_fleet` to `released` apps only.
+ */
+export async function setMode(mode: Mode): Promise<TenderSettings> {
+  return invoke<TenderSettings>('set_mode', { mode })
+}

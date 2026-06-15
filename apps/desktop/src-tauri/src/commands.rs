@@ -503,6 +503,22 @@ pub fn get_autostart() -> bool {
     crate::autostart::is_enabled()
 }
 
+// ── Settings + dev/end-user mode (CFG-2) ──────────────────────────────────────
+
+/// Return Tender's persisted settings (mode, …). Fail-soft: a missing/unreadable
+/// file yields the default (`dev`).
+#[tauri::command]
+pub fn get_settings() -> crate::settings::TenderSettings {
+    crate::settings::load()
+}
+
+/// Set the dev/end-user mode + persist; returns the updated settings. End-user
+/// mode gates `get_fleet` to `released` apps only (§10).
+#[tauri::command]
+pub fn set_mode(mode: crate::settings::Mode) -> Result<crate::settings::TenderSettings, String> {
+    crate::settings::set_mode(mode)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
