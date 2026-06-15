@@ -16,6 +16,7 @@ pub mod probe;
 pub mod profile;
 pub mod provider_health;
 mod projects;
+pub mod settings;
 mod telemetry;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -116,6 +117,8 @@ pub fn run() {
             commands::launch_app,
             commands::set_autostart,
             commands::get_autostart,
+            commands::get_settings,
+            commands::set_mode,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tender");

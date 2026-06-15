@@ -224,6 +224,20 @@ export interface InstallConfig {
   apps: Record<string, InstalledApp>
 }
 
+// ── Settings + dev/end-user mode (CFG-2) ──────────────────────────────────────
+// Mirror of the Rust `settings::*` contract. `get_settings` reads, `set_mode`
+// writes. `mode` gates the fleet (`get_fleet` returns released-only in end-user)
+// + backs the header DEV pill.
+
+/** Dev vs end-user posture (§10). */
+export type Mode = 'dev' | 'end-user'
+
+/** Tender's persisted settings. */
+export interface TenderSettings {
+  schemaVersion: number
+  mode: Mode
+}
+
 // ── Local install engine (C3) ────────────────────────────────────────────────
 // Mirror of the Rust `install::*` contract. `install_app_local` places a bundle
 // from a LOCAL source + records it; `launch_app` hands off to the app's own
