@@ -23,9 +23,9 @@
   ],
   "caveats": [
     {
-      "id": "signed-build-pending",
-      "severity": "blocker",
-      "summary": "Backend now bundled (book-server + embedded Node runtime ship in the .app via the Tauri sidecar). Remaining gate: a signed/notarized `tauri build` + install-through-Tender verification (po-mac; macOS Developer-ID cert).",
+      "id": "unsigned-local-build",
+      "severity": "warning",
+      "summary": "Self-contained bundle verified booting from the Tender-managed location (po-mac, flight-deck PR 155): book-server + embedded Node sidecar serve /health from ~/Library/Application Support/Tender. Remaining: unsigned dev/eval build — first launch needs right-click → Open to clear Gatekeeper quarantine. Signing/notarization is the separate `released`-rung gate.",
       "appliesWhen": "availability < released"
     },
     {
