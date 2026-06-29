@@ -4,7 +4,7 @@ Tender — tray-resident toolbox for managing the Harborline fleet.
 
 ## Fleet context
 
-This repo is part of the **Harborline Software fleet**. Fleet-level conventions, agent definitions, and rules live at the parent folder `/Users/christopherwood/Projects/Harborline-Software/CLAUDE.md`.
+This repo is part of the **Harborline Software fleet**. Fleet-level conventions, agent definitions, and rules live at the parent folder `CLAUDE.md`.
 
 Always read the parent fleet CLAUDE.md first for cross-fleet protocols (coordination inbox, pre-authorization, standing patterns, effort policy).
 
