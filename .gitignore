@@ -46,3 +46,6 @@ __pycache__/
 
 # OpenWolf additional runtime state
 .wolf/cron-state.json
+
+# internal tooling state — not for public history (SEC-1)
+.wolf/
