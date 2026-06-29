@@ -1,0 +1,16 @@
+name: security — no personal paths
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  no-personal-paths:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail on committed personal absolute paths
+        run: |
+          hits=$(git grep -nIE '/(Users|home)/[a-z][a-z0-9_-]+/' -- . 2>/dev/null | grep -vE '/(Users|home)/runner/|<user>' || true)
+          if [ -n "$hits" ]; then
+            echo "::error::Committed personal absolute paths found — relativize them:"; echo "$hits"; exit 1
+          fi
+          echo "no personal paths ✓"
