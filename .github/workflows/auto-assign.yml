@@ -1,16 +1,19 @@
-# Auto-assign newly-opened (or reopened) PRs to ctwoodwa.
+# Auto-request review from the org team on newly-opened (or reopened) PRs.
 #
 # Uses the `pull_request` trigger (NOT `pull_request_target`) because this
 # repo's `ban-pull-request-target.yml` forbids that trigger. With
-# `pull_request`, fork-PR runs get a read-only GITHUB_TOKEN and assignment
-# may fail silently — that's acceptable since this is a single-maintainer
-# fleet with no external contributors yet.
+# `pull_request`, fork-PR runs get a read-only GITHUB_TOKEN and the review
+# request may fail silently — that's acceptable since this is a
+# single-maintainer fleet with no external contributors yet.
 #
-# Dependabot PRs are ALSO assigned via the `assignees:` field in each
-# repo's dependabot.yml as a belt-and-suspenders measure (Dependabot's own
-# config runs at PR-creation time with Dependabot's elevated permissions,
-# which the workflow GITHUB_TOKEN may not have under default Dependabot
-# secret settings).
+# NOTE: `--add-assignee` only accepts individual users, not teams, so this
+# workflow requests a TEAM REVIEW instead of assigning a personal handle.
+# Dependabot PRs are ALSO routed to the team via the `reviewers:` field in
+# each repo's dependabot.yml as a belt-and-suspenders measure (Dependabot's
+# own config runs at PR-creation time with Dependabot's elevated
+# permissions, which the workflow GITHUB_TOKEN may not have under default
+# Dependabot secret settings). CODEOWNERS also auto-requests the team on
+# every PR; this workflow is a third, explicit belt-and-suspenders layer.
 
 name: Auto-assign PR
 
@@ -24,16 +27,16 @@ permissions:
 
 jobs:
   assign:
-    name: Assign PR to maintainer
+    name: Request team review
     runs-on: ubuntu-latest
-    # Skip if the PR already has any assignee (re-opens shouldn't clobber).
-    if: github.event.pull_request.assignees[0] == null
+    # Skip if the PR already has any requested reviewer (re-opens shouldn't clobber).
+    if: github.event.pull_request.requested_reviewers[0] == null && github.event.pull_request.requested_teams[0] == null
     steps:
-      - name: Add ctwoodwa as assignee
+      - name: Add Harborline-Software/owners as reviewer
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          gh pr edit "$PR_NUMBER" --repo "$REPO" --add-assignee ctwoodwa || \
-            echo "::warning::Failed to add assignee (fork PR? insufficient token scope?)"
+          gh pr edit "$PR_NUMBER" --repo "$REPO" --add-reviewer "Harborline-Software/owners" || \
+            echo "::warning::Failed to request team review (fork PR? insufficient token scope?)"
