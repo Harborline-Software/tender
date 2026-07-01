@@ -6,7 +6,7 @@ jobs:
   no-personal-paths:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Fail on committed personal absolute paths
         run: |
           hits=$(git grep -nIE '/(Users|home)/[a-z][a-z0-9_-]+/' -- . 2>/dev/null | grep -vE '/(Users|home)/runner/|<user>' || true)
