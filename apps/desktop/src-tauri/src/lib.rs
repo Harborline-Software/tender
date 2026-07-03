@@ -35,7 +35,7 @@ pub fn run() {
 
             TrayIconBuilder::new()
                 .icon(app.default_window_icon().cloned().unwrap())
-                .tooltip("Tender")
+                .tooltip("Harborline Toolbox")
                 .on_tray_icon_event(move |tray, event| {
                     // The positioner plugin must capture every tray event so it
                     // can track the icon's screen rect. Without this call,

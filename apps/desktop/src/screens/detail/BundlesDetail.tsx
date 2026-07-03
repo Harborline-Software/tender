@@ -83,7 +83,7 @@ function probeStatusTooltip(rec: ProviderHealthRecord): string {
     return rec.statusDetail ?? 'Bridge is not reachable — check that Signal Bridge is running'
   }
   if (rec.status === 'authRequired') {
-    return rec.statusDetail ?? 'Bridge returned 401/403 — Tender is not authenticated as an admin/operator'
+    return rec.statusDetail ?? 'Bridge returned 401/403 — Harborline Toolbox is not authenticated as an admin/operator'
   }
   if (rec.status === 'error') {
     return rec.statusDetail ?? `${rec.providerSlot} reachability probe failed`

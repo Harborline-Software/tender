@@ -10,7 +10,7 @@ const WILL_STOP = [
   'Sunfish Operations',
   'Flight-Deck Control · 7 workers',
   'Fiber trace collector',
-  'Tender helm process',
+  'Harborline Toolbox helm process',
 ]
 
 interface Props {
@@ -37,7 +37,7 @@ export function DryDockDetail({ onBack }: Props) {
           <circle cx="9" cy="13.5" r="0.8" fill={d} />
         </svg>
         <div style={{ fontSize: 11.5, color: theme.text, lineHeight: 1.4 }}>
-          Stops Tender and all wired Harborline services on this node. Logs and state are preserved.
+          Stops Harborline Toolbox and all wired Harborline services on this node. Logs and state are preserved.
         </div>
       </div>
 

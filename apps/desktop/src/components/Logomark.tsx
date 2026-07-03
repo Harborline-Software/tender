@@ -1,4 +1,4 @@
-import fleurMark from '@/assets/fleur-mark.png'
+import logomark from '@/assets/logomark.png'
 import { useTheme } from '@/theme/ThemeProvider'
 
 interface Props {
@@ -21,8 +21,8 @@ export function Logomark({ size = 26, borderRadius = 5 }: Props) {
       }}
     >
       <img
-        src={fleurMark}
-        alt="Tender"
+        src={logomark}
+        alt="Harborline Toolbox"
         style={{ width: size, height: size, display: 'block' }}
         draggable={false}
       />

@@ -26,7 +26,7 @@ const RELEASES = [
     ],
   },
   {
-    service: 'Tender',
+    service: 'Harborline Toolbox',
     from: 'v7.0.2', to: 'v7.1.0', size: '6.1 MB',
     notes: [
       { kind: 'new'  as NoteKind, text: 'Engine Room console + fiber-optic traces' },

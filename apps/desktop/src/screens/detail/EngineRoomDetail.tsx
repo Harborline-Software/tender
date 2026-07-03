@@ -75,7 +75,7 @@ export function EngineRoomDetail({ onBack }: Props) {
 
       <ActionFooter
         primary="Full Diagnostics"
-        secondary="Restart Tender"
+        secondary="Restart Toolbox"
         onPrimary={() => collectDiagnostics().then((path) => openExternal(path)).catch(() => {})}
         onSecondary={() => quitApp().catch(() => {})}
       />

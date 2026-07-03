@@ -30,7 +30,7 @@ import { type Screen, type DetailId } from '@/state/types'
 // Gear menu: app preferences only (design-review F1.3).
 // Operator management (Plugins, Backups, Relay, Diagnostics) moved to Console tab.
 const GEAR_ITEMS = [
-  { id: 'about',      label: 'About Tender' },
+  { id: 'about',      label: 'About Harborline Toolbox' },
   { id: 'faq',        label: 'FAQ' },
   { id: 'proxy',      label: 'Proxy settings' },
   { id: 'appearance', label: 'Appearance & behavior' },

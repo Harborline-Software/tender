@@ -11,8 +11,10 @@ Harborline services.
   + `menu-variants.jsx` + `detail-screens.jsx`. **Use this as the visual
   source of truth.** Open it and click around — every interaction is
   represented.
-- `assets/fleur-mark.png` — the locked logomark (PNG, 512×512). Don't
-  redraw. Use as-is at menu-bar sizes (16/18/22) and hero sizes (64+).
+- `assets/logomark.png` — the locked logomark (PNG, 512×512; waterline +
+  beacon mark, CIC ruling 2026-07-03 — supersedes the fleur-de-lis
+  described below, see `spec/DESIGN.md`). Don't redraw. Use as-is at
+  menu-bar sizes (16/18/22) and hero sizes (64+).
 - `spec/` — implementation documentation (this is the contract):
   - [`README.md`](spec/README.md) — how to read this spec
   - [`PRODUCT.md`](spec/PRODUCT.md) — what Tender is, features, user stories
@@ -28,7 +30,9 @@ Harborline services.
 - **Palette:** Engine Room (single palette, dark + light modes — follows
   the system appearance). Tokens in `spec/DESIGN.md`. Do not introduce
   other palettes.
-- **Logomark:** `assets/fleur-mark.png` (steampunk fleur-de-lis). Used in
+- **Logomark:** `assets/logomark.png` (waterline + beacon mark; the
+  steampunk fleur-de-lis this doc originally described is retired
+  fleet-wide per CIC ruling 2026-07-03 — see `spec/DESIGN.md`). Used in
   the menu bar accessory icon, panel header, and hero brand plate.
 - **Layout:** Telegraph (Variant D in the prototype). Three dial gauges
   for Signal-Bridge / Sunfish / Flight-Deck at the top of the body,

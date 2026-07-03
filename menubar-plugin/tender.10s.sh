@@ -6,7 +6,8 @@
 # SC2034 at file-level keeps the placeholders without forcing a remove-now /
 # rename-when-consumed cycle.
 #
-# Tender — Harborline Fleet tray-resident toolbox (SwiftBar menubar plugin)
+# Harborline Toolbox — Harborline Fleet tray-resident toolbox (SwiftBar menubar plugin)
+# (this plugin file keeps its "tender" name; see repo README for the display-name note)
 #
 # Organized control surface for all Harborline services. Three top-level
 # groups: Coordination services (sync/archive/qm), Dev services (Bridge/
@@ -20,7 +21,7 @@
 # Install: symlink into ~/Library/Application Support/SwiftBar/Plugins/
 # Refresh: every 10s (encoded in filename .10s.sh)
 #
-# <swiftbar.title>Tender — Harborline Fleet</swiftbar.title>
+# <swiftbar.title>Harborline Toolbox — Fleet</swiftbar.title>
 # <swiftbar.version>4.0</swiftbar.version>
 # <swiftbar.author>Admiral</swiftbar.author>
 # <swiftbar.desc>Unified control surface for Harborline coordination + dev services</swiftbar.desc>
@@ -315,7 +316,7 @@ echo "---"
 # ============================================================
 # Header (size=13 + Menlo info lines)
 # ============================================================
-echo "Harborline Tender — Fleet Operations | size=13 color=$SYNC_COLOR"
+echo "Harborline Toolbox — Fleet Operations | size=13 color=$SYNC_COLOR"
 echo "Sync: $SYNC_STATE  ·  $INBOX_COUNT inbox  ·  $ARCHIVE_COUNT archived  ·  $DEEP_COUNT deep-archived | font=Menlo size=11 color=#666"
 echo "LaunchAgents: sync=$SYNC_LOADED  archive-rollup=$AR_LOADED  qm-daemon=$QM_LOADED | font=Menlo size=11 color=#666"
 echo "---"

@@ -310,8 +310,19 @@ primary glow.
 
 ## The Mark (logomark)
 
-Use `assets/fleur-mark.png` (PNG, 512 × 512) — do not redraw or re-render
-as SVG. Scale it as `<img>` inside a rounded-square container.
+**Locked mark: the waterline + beacon device** (CIC ruling 2026-07-03;
+cultural-safety review — the fleur-de-lis mark is retired from all
+public/product branding fleet-wide; display name is now "Harborline
+Toolbox"). The single source of the mark is
+`harborline-www/src/assets/logo-mark.svg` — a confident waterline with two
+moorings and a lit beacon, no ethnic-emblem baggage. Do not redraw or
+re-derive the device; rasterize from that source.
+
+Use `assets/logomark.png` (PNG, 512 × 512) — a fixed-color raster of the
+source SVG (white waterline/moorings, fixed coral-amber `#e97c48` beacon;
+`currentColor` resolved because the app doesn't carry the source's
+CSS-variable theming). Scale it as `<img>` inside a rounded-square
+container.
 
 Required sizes (PNG fits all via CSS scaling):
 
@@ -329,4 +340,4 @@ The `.icns` is the app bundle's primary icon; the menu-bar accessory
 uses the in-bundle PNG at runtime.
 
 The mark must always sit on a dark gunmetal tile. Don't ever put it on a
-light or cyan field — the brass + glow read incorrectly.
+light or cyan field — the beacon glow reads incorrectly.

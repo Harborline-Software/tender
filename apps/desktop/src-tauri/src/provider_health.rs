@@ -153,7 +153,7 @@ pub async fn fetch_provider_health() -> Result<Vec<ProviderHealthRecord>, String
             using_mock: false,
             status: ProbeStatus::AuthRequired,
             status_detail: Some(format!(
-                "Bridge returned {} — Tender is not authenticated as an admin/operator.",
+                "Bridge returned {} — Harborline Toolbox is not authenticated as an admin/operator.",
                 status_code
             )),
         }]);
