@@ -38,7 +38,7 @@ workstation, who needs to:
 
 | Feature | Notes |
 |---|---|
-| Menu-bar status item (the fleur logomark) | Always present; left-click toggles the panel |
+| Menu-bar status item (the waterline+beacon logomark) | Always present; left-click toggles the panel |
 | Panel header | Logomark, "Tender" wordmark, workspace dropdown, update icon, gear icon |
 | Workspace dropdown (Connected Devices) | Tailnet device list, status dots, OS pills, "Manage devices…" footer |
 | Update icon (conditional) | Only shows when updates pending; click → Release Notes screen |

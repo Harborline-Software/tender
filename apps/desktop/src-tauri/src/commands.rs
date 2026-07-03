@@ -229,7 +229,7 @@ pub async fn collect_diagnostics() -> Result<String, String> {
         .as_secs();
 
     let mut out = String::new();
-    let _ = writeln!(out, "Tender Fleet Diagnostics");
+    let _ = writeln!(out, "Harborline Toolbox — Fleet Diagnostics");
     let _ = writeln!(out, "Timestamp : {}", now);
     let _ = writeln!(out, "");
     let _ = writeln!(out, "── System ──────────────────────────────────────");

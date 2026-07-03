@@ -46,7 +46,7 @@ internal scroll for v1 — content is sized to fit common cases).
 
 Left → right, gap 8 px, padding `11px 10px 11px 12px`:
 
-1. **Logomark** — `<img src="assets/fleur-mark.png">` in a 26 × 26
+1. **Logomark** — `<img src="assets/logomark.png">` in a 26 × 26
    rounded-5 container. Box shadow `0 2px 8px {shadow}, 0 0 10px {accent}33`.
 2. **Wordmark** — "Tender" in Cormorant italic 600, 16 px.
 3. **Spacer** (flex: 1)

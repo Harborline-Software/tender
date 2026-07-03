@@ -39,8 +39,8 @@ DESIGN   ──┘
   - *idle* — service is on but inactive (no traffic / 0 tasks)
   - *offline* — service is not running
   - *paused* — manually stopped, will resume on user action
-- "Engine Room" is the palette name. The whole product is named "Tender".
-  Don't confuse the two.
+- "Engine Room" is the palette name. The whole product's display name is
+  "Harborline Toolbox" (repo name stays `tender`). Don't confuse the two.
 
 ## Process for spec changes
 

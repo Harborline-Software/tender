@@ -66,7 +66,7 @@ tender/
 │   │   ├── shutdown.rs         # Graceful shutdown logic
 │   │   ├── projects.rs         # Read projects.json
 │   │   └── commands.rs         # Tauri command exports
-│   ├── icons/                  # icon.icns, generated from fleur-mark.png
+│   ├── icons/                  # icon.icns, generated from logomark.png
 │   ├── Info.plist              # LSUIElement=true (no Dock icon)
 │   ├── Cargo.toml
 │   └── tauri.conf.json
@@ -124,7 +124,7 @@ tender/
 │   │       └── useProjects.ts
 │   ├── ipc/tauri.ts            # Typed wrappers around invoke()
 │   ├── assets/
-│   │   ├── fleur-mark.png      # Copied verbatim from this repo
+│   │   ├── logomark.png        # Copied verbatim from this repo
 │   │   └── fonts/
 │   ├── animations.css          # Keyframes (consoleFiberPulse, etc.)
 │   └── index.tsx
@@ -308,12 +308,12 @@ the higher-level wrapper):
 // Pseudocode
 let item = NSStatusBar::system().statusItem(withLength: NSVariableStatusItemLength);
 let button = item.button();
-button.setImage(NSImage::imageWithContentsOfFile("fleur-mark@2x.png"));
+button.setImage(NSImage::imageWithContentsOfFile("logomark@2x.png"));
 button.setAction(/* on click, toggle panel */);
 ```
 
 Use a **template-friendly** monochrome variant of the mark? No — the
-fleur PNG already carries the brand color and looks correct in both
+logomark PNG already carries the brand color and looks correct in both
 appearance modes. Don't strip it to a template image. macOS Sonoma+
 shows colored status-item images correctly.
 
@@ -435,7 +435,7 @@ Suggested phasing:
 
 **Milestone 1 — Shell**
 1. Tauri scaffold + `LSUIElement` + Developer ID code signing
-2. NSStatusItem with the fleur PNG (16/32/64)
+2. NSStatusItem with the logomark PNG (16/32/64)
 3. NSPanel that opens on click, anchored under the status item
 4. Theme provider with Engine Room dark + light tokens; subscribe to
    `effectiveAppearance` changes

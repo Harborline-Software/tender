@@ -1,10 +1,10 @@
-# Tender
+# Harborline Toolbox
 
-Tender is the tray-resident toolbox for managing the Harborline fleet from the Mac menu bar. It surfaces service health, Tailscale device status, log viewers, and (from Q6) bundle-manifest inspection.
+Harborline Toolbox (repo name: `tender`) is the tray-resident toolbox for managing the Harborline fleet from the Mac menu bar. It surfaces service health, Tailscale device status, log viewers, and (from Q6) bundle-manifest inspection.
 
 ## Standalone install
 
-Tender ships as a self-contained `.app` — no sibling clone of `shipyard` or any other fleet repo is required on the operator's machine.
+Harborline Toolbox ships as a self-contained `.app` — no sibling clone of `shipyard` or any other fleet repo is required on the operator's machine.
 
 ```bash
 git clone https://github.com/Harborline-Software/tender.git
@@ -34,7 +34,7 @@ cargo build   # build.rs copies fresh manifests from shipyard if present
 
 ## TypeScript contracts — vendored types
 
-The `@sunfish/contracts` types used by Tender are vendored in
+The `@sunfish/contracts` types used by Harborline Toolbox are vendored in
 `apps/desktop/src/vendor/sunfish-contracts/`. Only the bundle manifest subset
 (`BusinessCaseBundleManifest`, `BundleCategory`, `BundleStatus`, `ProviderCategory`,
 etc.) is included — the full ERP/property-management contracts are not needed.

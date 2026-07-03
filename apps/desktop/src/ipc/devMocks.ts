@@ -127,7 +127,7 @@ const SYSTEM_STATS = {
     { name: 'WindowServer', pid: 184, cpu: 12.4, memBytes: 612368384, isHarborline: false },
     { name: 'local-node-host', pid: 4821, cpu: 3.1, memBytes: 248512512, isHarborline: true },
     { name: 'book-server', pid: 46770, cpu: 1.8, memBytes: 96337920, isHarborline: true },
-    { name: 'Tender', pid: 5210, cpu: 0.4, memBytes: 84934656, isHarborline: true },
+    { name: 'Harborline Toolbox', pid: 5210, cpu: 0.4, memBytes: 84934656, isHarborline: true },
     { name: 'Finder', pid: 612, cpu: 0.2, memBytes: 142606336, isHarborline: false },
   ],
 }
