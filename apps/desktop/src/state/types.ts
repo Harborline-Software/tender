@@ -90,6 +90,7 @@ export type DetailId =
   | 'backups'
   | 'relay'
   | 'model-inventory'
+  | 'model-residency'
 
 export type Screen = { kind: 'main' } | { kind: 'detail'; id: DetailId } | { kind: 'outfitting' }
 
@@ -388,5 +389,56 @@ export interface InventoryGroup {
   /** Present on non-`ok` statuses — a short, honest, human-readable reason. */
   detail: string | null
   /** ISO 8601 UTC — when this probe ran (the "as of last probe" freshness stamp). */
+  probedAt: string
+}
+
+// ── VRAM residency (Toolbox #137, ONR survey slice G2) ──────────────────────
+// Mirror of the Rust `residency::*` contract. Returned by the
+// `get_gpu_residency` command — the correlated "what's loaded right now"
+// view over the same zoo G1 inventories.
+
+/** Aggregate GPU memory — always available, even when per-process reads aren't. */
+export interface GpuHeadline {
+  totalVramMb: number
+  usedVramMb: number
+  freeVramMb: number
+}
+
+/** Honest per-service residency outcome — never a guessed "loaded". */
+export type ResidencyStatus = 'loaded' | 'idle' | 'unreachable' | 'unknown'
+
+/** One row of the residency pane: service | model | VRAM MB | since-when. */
+export interface ResidencyRow {
+  serviceId: string
+  displayName: string
+  backendKind: BackendKind
+  status: ResidencyStatus
+  modelName: string | null
+  /** Best-known VRAM figure for this row — backend-self-reported takes
+   *  priority over a `nvidia-smi` per-PID read (`null` when the driver
+   *  doesn't report per-process memory, or nothing is attributable). */
+  vramMb: number | null
+  /** The `nvidia-smi` PID this row was correlated to, when known. */
+  pid: number | null
+  /** Backend-reported freshness signal (e.g. Ollama's idle-unload
+   *  `expires_at`) — NOT a "loaded since" timestamp. `null` when the
+   *  backend carries no timing signal. */
+  since: string | null
+  /** Present on `unreachable` / `unknown` — a short, honest reason. */
+  detail: string | null
+}
+
+/** The full residency pane payload. */
+export interface GpuResidencySnapshot {
+  gpu: GpuHeadline
+  /** `false` on drivers that don't report per-process VRAM for compute
+   *  apps (the common case on consumer WDDM drivers) — degrade-to-
+   *  aggregate is then in effect for every row's `vramMb`. */
+  perProcessAttributionAvailable: boolean
+  /** `usedVramMb` minus the sum of every row's own known `vramMb`. `null`
+   *  when nothing is attributable at all — never a fabricated zero. A
+   *  large positive value is the GPU-accounting-drift finding. */
+  unattributedVramMb: number | null
+  rows: ResidencyRow[]
   probedAt: string
 }

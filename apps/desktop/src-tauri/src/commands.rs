@@ -530,6 +530,19 @@ pub async fn get_model_inventory() -> Vec<crate::inventory::InventoryGroup> {
     crate::inventory::get_model_inventory().await
 }
 
+// ── VRAM residency (Toolbox #137, ONR survey slice G2) ───────────────────────
+
+/// Probe `nvidia-smi` (headline + per-PID list, degrading honestly to
+/// aggregate-only when the driver doesn't report per-process memory) and
+/// each backend's own "what's loaded" signal, and return one correlated
+/// residency snapshot. Never errors — a GPU-host-unreachable probe is
+/// captured honestly in the snapshot's rows (see
+/// `residency::get_gpu_residency`).
+#[tauri::command]
+pub async fn get_gpu_residency() -> crate::residency::GpuResidencySnapshot {
+    crate::residency::get_gpu_residency().await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

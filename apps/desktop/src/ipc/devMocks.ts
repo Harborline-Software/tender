@@ -6,7 +6,7 @@
  * Tauri app `__TAURI_INTERNALS__` is present, so these are never used — zero
  * production impact. Lets the panel render representative data in a browser.
  */
-import type { FleetEntry, TenderSettings, InstallConfig, InventoryGroup } from '@/state/types'
+import type { FleetEntry, TenderSettings, InstallConfig, InventoryGroup, GpuResidencySnapshot } from '@/state/types'
 
 const FLEET: FleetEntry[] = [
   {
@@ -209,6 +209,56 @@ const MODEL_INVENTORY: InventoryGroup[] = [
   },
 ]
 
+// Shaped from a real winhub probe (2026-07-07) — Ollama has a model warm
+// (the genuine "loaded" state, correlated via /api/ps size_vram + expires_at),
+// TTS is reachable-but-unknown (no "what's loaded" API — the honest gap),
+// ComfyUI is idle (no GPU-active process matched at probe time). Headline
+// reflects the real driver caveat: per-process nvidia-smi memory is [N/A]
+// on this box (WDDM consumer driver), so perProcessAttributionAvailable is
+// honestly false and Ollama's own self-reported size_vram is the only
+// per-row VRAM figure available.
+const GPU_RESIDENCY: GpuResidencySnapshot = {
+  gpu: { totalVramMb: 12282, usedVramMb: 10448, freeVramMb: 1547 },
+  perProcessAttributionAvailable: false,
+  unattributedVramMb: 4920,
+  rows: [
+    {
+      serviceId: 'ollama',
+      displayName: 'Ollama (LLM)',
+      backendKind: 'llm-serving',
+      status: 'loaded',
+      modelName: 'qwen2.5-coder:7b-instruct-q4_K_M',
+      vramMb: 5528,
+      pid: 25864,
+      since: '2026-07-07T17:10:00Z',
+      detail: null,
+    },
+    {
+      serviceId: 'tts-backend',
+      displayName: 'TTS (Higgs/Kokoro)',
+      backendKind: 'tts',
+      status: 'unknown',
+      modelName: null,
+      vramMb: null,
+      pid: null,
+      since: null,
+      detail: 'TTS proxy is reachable but exposes no "what\'s loaded" API — cannot confirm residency without a GPU-process match.',
+    },
+    {
+      serviceId: 'comfyui',
+      displayName: 'ComfyUI',
+      backendKind: 'image-worker',
+      status: 'idle',
+      modelName: null,
+      vramMb: null,
+      pid: null,
+      since: null,
+      detail: null,
+    },
+  ],
+  probedAt: '2026-07-07T17:07:30Z',
+}
+
 /** Per-command mock results. Commands not listed fall through to real `invoke` (which fail-soft in the browser). */
 export const DEV_MOCKS: Record<string, unknown> = {
   get_appearance: 'dark',
@@ -222,4 +272,5 @@ export const DEV_MOCKS: Record<string, unknown> = {
   get_projects: PROJECTS,
   get_devices: DEVICES,
   get_model_inventory: MODEL_INVENTORY,
+  get_gpu_residency: GPU_RESIDENCY,
 }
