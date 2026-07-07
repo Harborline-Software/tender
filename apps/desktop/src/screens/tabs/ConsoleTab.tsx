@@ -43,6 +43,12 @@ const CONSOLE_ENTRIES: MenuEntry[] = [
     icon: '⬡',
   },
   {
+    id: 'model-inventory',
+    label: 'Model Inventory',
+    sub: 'Installed models across the zoo · Ollama, TTS, ComfyUI',
+    icon: '▤',
+  },
+  {
     id: 'backups',
     label: 'Backups',
     sub: 'Snapshot DB + vault · restore · key-loss notice',

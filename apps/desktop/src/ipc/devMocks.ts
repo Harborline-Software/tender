@@ -6,7 +6,7 @@
  * Tauri app `__TAURI_INTERNALS__` is present, so these are never used — zero
  * production impact. Lets the panel render representative data in a browser.
  */
-import type { FleetEntry, TenderSettings, InstallConfig } from '@/state/types'
+import type { FleetEntry, TenderSettings, InstallConfig, InventoryGroup } from '@/state/types'
 
 const FLEET: FleetEntry[] = [
   {
@@ -157,6 +157,58 @@ const PROJECTS = [
   { name: 'old-sloop-prototype', path: '~/Code/old-sloop', status: 'archived', lastOpened: null },
 ]
 
+// Shaped from a real winhub probe (2026-07-07) — TTS shows the genuine
+// "unreachable" state (both TTS services were stopped at probe time),
+// Stability Matrix shows the genuine "notConfigured" state (not installed).
+const MODEL_INVENTORY: InventoryGroup[] = [
+  {
+    targetId: 'ollama',
+    displayName: 'Ollama (LLM)',
+    backendKind: 'llm-serving',
+    host: 'desktop-umt08rn.taildefd38.ts.net',
+    status: 'ok',
+    models: [
+      { name: 'qwen2.5-coder:14b-instruct-q4_K_M', sizeBytes: 8988124298, lastModifiedAt: '2026-07-03T11:26:29Z' },
+      { name: 'qwen2.5-coder:7b-instruct-q4_K_M', sizeBytes: 4683087561, lastModifiedAt: '2026-07-03T11:24:58Z' },
+      { name: 'qwen2.5:7b-instruct-q4_K_M', sizeBytes: 4683087332, lastModifiedAt: '2026-07-02T12:10:34Z' },
+    ],
+    detail: null,
+    probedAt: '2026-07-07T16:07:27Z',
+  },
+  {
+    targetId: 'tts-proxy',
+    displayName: 'TTS (voices)',
+    backendKind: 'tts',
+    host: 'desktop-umt08rn.taildefd38.ts.net',
+    status: 'unreachable',
+    models: [],
+    detail: 'cannot reach TTS proxy at http://desktop-umt08rn.taildefd38.ts.net:8881/v1/models',
+    probedAt: '2026-07-07T16:07:33Z',
+  },
+  {
+    targetId: 'comfyui-checkpoints',
+    displayName: 'ComfyUI (checkpoints)',
+    backendKind: 'image-worker',
+    host: 'winhub',
+    status: 'ok',
+    models: [
+      { name: 'flux1-schnell-fp8.safetensors', sizeBytes: 17236328572, lastModifiedAt: '2026-07-07T10:59:30Z' },
+    ],
+    detail: null,
+    probedAt: '2026-07-07T16:07:29Z',
+  },
+  {
+    targetId: 'stability-matrix',
+    displayName: 'Stability Matrix (checkpoints)',
+    backendKind: 'image-worker',
+    host: 'winhub',
+    status: 'notConfigured',
+    models: [],
+    detail: 'not configured — set TENDER_STABILITY_MATRIX_DIR if Stability Matrix is installed',
+    probedAt: '2026-07-07T16:07:27Z',
+  },
+]
+
 /** Per-command mock results. Commands not listed fall through to real `invoke` (which fail-soft in the browser). */
 export const DEV_MOCKS: Record<string, unknown> = {
   get_appearance: 'dark',
@@ -169,4 +221,5 @@ export const DEV_MOCKS: Record<string, unknown> = {
   get_local_services: SYSTEM_STATS.topProcesses,
   get_projects: PROJECTS,
   get_devices: DEVICES,
+  get_model_inventory: MODEL_INVENTORY,
 }

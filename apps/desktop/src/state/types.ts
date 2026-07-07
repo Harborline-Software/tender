@@ -89,6 +89,7 @@ export type DetailId =
   | 'bundles'
   | 'backups'
   | 'relay'
+  | 'model-inventory'
 
 export type Screen = { kind: 'main' } | { kind: 'detail'; id: DetailId } | { kind: 'outfitting' }
 
@@ -353,4 +354,39 @@ export interface FleetEntry {
   status: string
   /** Whether shown in end-user mode (`availability === 'released'`). */
   visibleInEndUserMode: boolean
+}
+
+// ── Cross-zoo model inventory (Toolbox #137, ONR survey slice G1) ───────────
+// Mirror of the Rust `inventory::*` contract. Returned by the
+// `get_model_inventory` command — one group per AI backend (Ollama, TTS,
+// ComfyUI, Stability Matrix), each honest about unreachable/missing state.
+
+/** Mirrors the #51 registry's `kind` vocabulary (the subset this slice probes). */
+export type BackendKind = 'llm-serving' | 'tts' | 'image-worker'
+
+/** One installed model/checkpoint/voice, as reported by its own backend. */
+export interface ModelEntry {
+  name: string
+  /** `null` when the backend's own API doesn't expose a size. */
+  sizeBytes: number | null
+  /** Backend-reported modification/write time (ISO 8601). NOT a "last used"
+   *  signal — that is the separate G2 VRAM-residency slice. */
+  lastModifiedAt: string | null
+}
+
+/** Honest probe outcome for one backend target — never a silent empty list. */
+export type InventoryStatus = 'ok' | 'unreachable' | 'dirMissing' | 'notConfigured'
+
+/** One backend's inventory result — the per-row shape the Inventory pane renders. */
+export interface InventoryGroup {
+  targetId: string
+  displayName: string
+  backendKind: BackendKind
+  host: string
+  status: InventoryStatus
+  models: ModelEntry[]
+  /** Present on non-`ok` statuses — a short, honest, human-readable reason. */
+  detail: string | null
+  /** ISO 8601 UTC — when this probe ran (the "as of last probe" freshness stamp). */
+  probedAt: string
 }

@@ -11,6 +11,7 @@ mod commands;
 mod devices;
 pub mod install;
 pub mod install_config;
+pub mod inventory;
 mod notifications;
 pub mod probe;
 pub mod profile;
@@ -136,6 +137,7 @@ pub fn run() {
             commands::get_autostart,
             commands::get_settings,
             commands::set_mode,
+            commands::get_model_inventory,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Harborline Toolbox");

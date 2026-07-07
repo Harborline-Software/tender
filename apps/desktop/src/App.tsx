@@ -13,6 +13,7 @@ import { ReleaseNotesDetail } from '@/screens/detail/ReleaseNotesDetail'
 import { BundlesDetail } from '@/screens/detail/BundlesDetail'
 import { BackupsDetail } from '@/screens/detail/BackupsDetail'
 import { RelayDetail } from '@/screens/detail/RelayDetail'
+import { ModelInventoryDetail } from '@/screens/detail/ModelInventoryDetail'
 import { getInstallConfig } from '@/ipc/tauri'
 import type { CapabilityProfile } from '@/state/types'
 import '@/animations.css'
@@ -32,6 +33,7 @@ function DetailScreen({ id, onBack }: { id: DetailId; onBack: () => void }) {
     case 'bundles':        return <BundlesDetail        onBack={onBack} />
     case 'backups':        return <BackupsDetail        onBack={onBack} />
     case 'relay':          return <RelayDetail          onBack={onBack} />
+    case 'model-inventory': return <ModelInventoryDetail onBack={onBack} />
     default:               return null
   }
 }
