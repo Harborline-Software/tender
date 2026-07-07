@@ -328,3 +328,20 @@ export type { InstallConfig }
 export async function getInstallConfig(): Promise<InstallConfig> {
   return invoke<InstallConfig>('get_install_config')
 }
+
+// ── Cross-zoo model inventory (Toolbox #137, ONR survey slice G1) ────────────
+
+import type { InventoryGroup } from '@/state/types'
+export type { InventoryGroup, ModelEntry, BackendKind, InventoryStatus } from '@/state/types'
+
+/**
+ * Probe every configured AI backend (Ollama, TTS, ComfyUI, Stability Matrix)
+ * and return the union INSTALLED-model inventory, one group per backend.
+ *
+ * Never throws — a per-backend probe failure (unreachable host, missing
+ * directory, unconfigured optional backend) is captured honestly in that
+ * group's `status`/`detail`, never rendered as a silent empty list.
+ */
+export async function getModelInventory(): Promise<InventoryGroup[]> {
+  return invoke<InventoryGroup[]>('get_model_inventory')
+}

@@ -519,6 +519,17 @@ pub fn set_mode(mode: crate::settings::Mode) -> Result<crate::settings::TenderSe
     crate::settings::set_mode(mode)
 }
 
+// ── Cross-zoo model inventory (Toolbox #137, ONR survey slice G1) ────────────
+
+/// Probe every configured AI backend (Ollama, TTS, ComfyUI, Stability Matrix)
+/// and return the union INSTALLED-model inventory view, one group per
+/// backend. Never errors — a per-backend probe failure is captured honestly
+/// in that group's `status`/`detail` (see `inventory::get_model_inventory`).
+#[tauri::command]
+pub async fn get_model_inventory() -> Vec<crate::inventory::InventoryGroup> {
+    crate::inventory::get_model_inventory().await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
