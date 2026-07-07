@@ -104,13 +104,55 @@ pub fn is_enabled() -> bool {
     plist_path().map(|p| is_enabled_at(&p)).unwrap_or(false)
 }
 
+/// Repoint an existing auto-start LaunchAgent at `current_program` if it's
+/// currently pointing somewhere else.
+///
+/// Exists for the "shipped app moved" case (e.g. the Tender → Harborline
+/// Toolbox identity change: `productName`/`mainBinaryName` changed, so a
+/// rebuilt `.app` lands at a new path — `Harborline Toolbox.app` instead of
+/// `Tender.app` — while the LaunchAgent **label** (`AUTOSTART_LABEL`, which
+/// mirrors the stable bundle `identifier`) does not change. A plist already
+/// on disk from a prior install still points at the OLD `.app` path, so
+/// without this it would silently stop working at next login instead of
+/// being cleanly migrated.
+///
+/// No-op (`Ok(false)`) when auto-start isn't enabled, or the plist already
+/// points at `current_program` — so calling this unconditionally at every
+/// startup is safe and idempotent. Returns `Ok(true)` when a rewrite
+/// happened. Best-effort: a read/write failure is returned as `Err`, never
+/// panics — callers should log and continue, not fail app startup over it.
+pub fn migrate_program_path(current_program: &str) -> Result<bool, String> {
+    let path = plist_path().ok_or("cannot resolve LaunchAgents path (HOME unset)")?;
+    migrate_program_path_at(&path, current_program)
+}
+
+/// Testable seam over an explicit plist path — see [`migrate_program_path`].
+fn migrate_program_path_at(path: &Path, current_program: &str) -> Result<bool, String> {
+    if !path.exists() {
+        return Ok(false); // auto-start not enabled — nothing to migrate
+    }
+    let body = std::fs::read_to_string(path)
+        .map_err(|e| format!("read plist {}: {e}", path.display()))?;
+    if body.contains(current_program) {
+        return Ok(false); // already points at the current install
+    }
+    // Same label, same enabled/RunAtLoad shape — only the program path moves.
+    write_plist_at(path, current_program)?;
+    Ok(true)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn tmp_plist() -> PathBuf {
+    /// A per-test-labeled tmp plist path. Tests run in parallel threads within
+    /// the same process, so keying only on `process::id()` (as a prior
+    /// single-consumer version of this helper did) collides once more than
+    /// one test uses it concurrently — `label` keeps each test's fixture dir
+    /// isolated.
+    fn tmp_plist(label: &str) -> PathBuf {
         std::env::temp_dir()
-            .join(format!("tender-autostart-test-{}", std::process::id()))
+            .join(format!("tender-autostart-test-{}-{}", std::process::id(), label))
             .join("io.harborline.tender.plist")
     }
 
@@ -124,13 +166,59 @@ mod tests {
     }
 
     #[test]
+    fn migrate_program_path_noop_when_not_enabled() {
+        let path = tmp_plist("migrate-noop-not-enabled");
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+
+        let migrated = migrate_program_path_at(&path, "/Applications/Harborline Toolbox.app/Contents/MacOS/Harborline Toolbox")
+            .expect("noop ok");
+        assert!(!migrated, "no plist ⇒ nothing to migrate");
+
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn migrate_program_path_noop_when_already_current() {
+        let path = tmp_plist("migrate-noop-current");
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+        let current = "/Applications/Harborline Toolbox.app/Contents/MacOS/Harborline Toolbox";
+        write_plist_at(&path, current).expect("write");
+
+        let migrated = migrate_program_path_at(&path, current).expect("noop ok");
+        assert!(!migrated, "already pointing at current program ⇒ no rewrite");
+
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn migrate_program_path_rewrites_stale_tender_path() {
+        let path = tmp_plist("migrate-rewrite-stale");
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+        // Simulate a pre-rename install: plist points at the old Tender.app.
+        write_plist_at(&path, "/Applications/Tender.app/Contents/MacOS/tender").expect("write");
+
+        let current = "/Applications/Harborline Toolbox.app/Contents/MacOS/Harborline Toolbox";
+        let migrated = migrate_program_path_at(&path, current).expect("migrate ok");
+        assert!(migrated, "stale program path ⇒ rewrite");
+
+        let body = std::fs::read_to_string(&path).unwrap();
+        assert!(body.contains(current), "plist now points at the new install");
+        assert!(
+            body.contains("<string>io.harborline.tender</string>"),
+            "label is unchanged — same LaunchAgent, only the program path moved"
+        );
+
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
     fn xml_escape_escapes_markup_chars() {
         assert_eq!(xml_escape("a&b<c>d"), "a&amp;b&lt;c&gt;d");
     }
 
     #[test]
     fn write_then_is_enabled_then_remove_round_trips() {
-        let path = tmp_plist();
+        let path = tmp_plist("write-enable-remove-roundtrip");
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
 
         assert!(!is_enabled_at(&path));
