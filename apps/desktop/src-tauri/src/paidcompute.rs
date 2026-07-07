@@ -645,9 +645,12 @@ mod tests {
 
     // ── Bifrost governance parsing — the SECRET-DROP guarantee ────────────────
 
-    /// Ground-truthed live shape (winhub internal gateway, 2026-07-07), trimmed
-    /// to two keys and INCLUDING the `value` bearer-secret field the real API
-    /// returns — to prove the parser drops it.
+    /// Shape-matched fixture (winhub internal gateway governance response,
+    /// UUID/count/budget shape preserved) with a SYNTHETIC `value` bearer-secret
+    /// field — to prove the parser drops it. The `value` field only needs to be
+    /// PRESENT for the secret-drop assertion to be meaningful; it does not need
+    /// to be a real credential. Do not paste a real gateway response body into a
+    /// fixture again — see .wolf/buglog.json (live vkey bearer leak, 2026-07-07).
     const REAL_GOV_BODY_WITH_SECRETS: &str = r#"{
         "count": 2, "total_count": 2,
         "virtual_keys": [
@@ -659,7 +662,7 @@ mod tests {
                "last_reset": "2026-07-07T11:16:52.7443096-04:00", "current_usage": 0.42,
                "virtual_key_id": "vk-fleet-code-review"}
             ],
-            "value": "sk-bf-2c2b2897-a33e-4445-a6ed-a06216a9463b"
+            "value": "sk-bf-FAKEFAKE-0000-0000-0000-000000000001"
           },
           {
             "id": "vk-fleet-pilot-dogfood", "name": "pilot-dogfood", "is_active": true,
@@ -667,7 +670,7 @@ mod tests {
               {"id": "budget-pilot-dogfood", "max_limit": 5, "reset_duration": "1M",
                "last_reset": "2026-07-07T11:16:52Z", "current_usage": 0}
             ],
-            "value": "sk-bf-429fdf9f-3c71-41b8-bd62-e1ba0291f72d"
+            "value": "sk-bf-FAKEFAKE-0000-0000-0000-000000000002"
           }
         ]
     }"#;
