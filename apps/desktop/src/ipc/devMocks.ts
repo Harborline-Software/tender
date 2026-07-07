@@ -35,12 +35,18 @@ const FLEET: FleetEntry[] = [
     manifest: {
       id: 'flight-deck',
       displayName: 'Flight-Deck',
-      availability: 'packaged',
+      availability: 'deprecated',
       detect: { processPattern: 'book-server', healthUrl: 'http://localhost:3080/health' },
       install: { sourceKind: 'appBundle', requiresSigning: false },
       services: [],
       actions: [],
       caveats: [
+        {
+          id: 'repo-archived',
+          severity: 'info',
+          summary:
+            'The flight-deck repo was archived on GitHub 2026-06-29 and moved out of the active fleet tree. Retired here rather than removed — no fresh install or management offered.',
+        },
         {
           id: 'signed-build-pending',
           severity: 'blocker',
@@ -64,12 +70,19 @@ const FLEET: FleetEntry[] = [
     manifest: {
       id: 'signal-bridge',
       displayName: 'Signal-Bridge',
-      availability: 'planned',
+      availability: 'deprecated',
       detect: { processPattern: 'Sunfish.Bridge.AppHost', healthUrl: 'https://localhost:17101/health' },
       install: { sourceKind: 'appBundle', requiresSigning: false },
       services: [],
       actions: [],
-      caveats: [],
+      caveats: [
+        {
+          id: 'repo-archived',
+          severity: 'info',
+          summary:
+            'The signal-bridge repo was archived on GitHub 2026-06-29 and moved out of the active fleet tree. Retired here rather than removed — no fresh install or management offered.',
+        },
+      ],
     },
     installed: false,
     version: '',

@@ -31,6 +31,23 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
+            // Identity-rename migration (Tender → Harborline Toolbox): if a
+            // prior install left an auto-start LaunchAgent pointing at the
+            // OLD `.app` path, repoint it at this install so auto-start
+            // keeps working instead of silently going stale. No-op once
+            // already migrated, and no-op when auto-start isn't enabled.
+            #[cfg(target_os = "macos")]
+            if let Ok(exe) = std::env::current_exe() {
+                match autostart::migrate_program_path(&exe.to_string_lossy()) {
+                    Ok(true) => eprintln!(
+                        "[autostart] migrated LaunchAgent program path to {}",
+                        exe.display()
+                    ),
+                    Ok(false) => {}
+                    Err(e) => eprintln!("[autostart] migration check failed (non-fatal): {e}"),
+                }
+            }
+
             let handle = app.handle().clone();
 
             TrayIconBuilder::new()
@@ -121,5 +138,5 @@ pub fn run() {
             commands::set_mode,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Tender");
+        .expect("error while running Harborline Toolbox");
 }

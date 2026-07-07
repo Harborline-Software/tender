@@ -3,7 +3,7 @@
   "displayName": "Signal-Bridge",
   "vendor": "Harborline",
   "icon": "signal-bridge",
-  "availability": "planned",
+  "availability": "deprecated",
   "detect": {
     "processPattern": "Sunfish.Bridge.AppHost",
     "healthUrl": "https://localhost:17101/health"
@@ -19,5 +19,12 @@
   "actions": [
     { "id": "restart", "kind": "process-restart" }
   ],
-  "caveats": []
+  "caveats": [
+    {
+      "id": "repo-archived",
+      "severity": "info",
+      "summary": "The signal-bridge repo was archived on GitHub 2026-06-29 and moved out of the active fleet tree (read-only remote). Marked deprecated here rather than removed: honest about detect/status without offering fresh install or management.",
+      "appliesWhen": null
+    }
+  ]
 }

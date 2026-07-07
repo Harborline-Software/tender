@@ -3,14 +3,14 @@
   "displayName": "Flight-Deck",
   "vendor": "Harborline",
   "icon": "flight-deck",
-  "availability": "packaged",
+  "availability": "deprecated",
   "detect": {
     "processPattern": "book-server",
     "healthUrl": "http://localhost:3080/health"
   },
   "install": {
     "sourceKind": "appBundle",
-    "source": "local:auto",
+    "source": null,
     "requiresSigning": false
   },
   "services": [
@@ -22,6 +22,12 @@
     { "id": "emergency-stop", "kind": "http-post" }
   ],
   "caveats": [
+    {
+      "id": "repo-archived",
+      "severity": "info",
+      "summary": "The flight-deck repo was archived on GitHub 2026-06-29 and moved out of the active fleet tree (read-only remote). Marked deprecated here rather than removed: an install from before the archival may still be present/running on this box, so the entry stays honest about detect/status without offering fresh install or management.",
+      "appliesWhen": null
+    },
     {
       "id": "unsigned-local-build",
       "severity": "warning",

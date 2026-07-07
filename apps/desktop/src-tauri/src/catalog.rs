@@ -564,8 +564,23 @@ mod tests {
             "sunfish carries the unsigned-keychain-boot caveat"
         );
 
+        // signal-bridge + flight-deck retired 2026-07-06: both source repos were
+        // archived 2026-06-29 (moved out of the active fleet tree), so the
+        // Toolbox no longer offers to install/manage them — the catalog's
+        // existing `deprecated` rung (not deletion) marks that honestly.
         let sb = catalog.iter().find(|m| m.id == "signal-bridge").unwrap();
-        assert_eq!(sb.availability, Availability::Planned);
+        assert_eq!(sb.availability, Availability::Deprecated);
         assert_eq!(sb.detect.process_pattern, "Sunfish.Bridge.AppHost");
+        assert!(
+            sb.caveats.iter().any(|c| c.id == "repo-archived"),
+            "signal-bridge carries the repo-archived retirement caveat"
+        );
+
+        let fd = catalog.iter().find(|m| m.id == "flight-deck").unwrap();
+        assert_eq!(fd.availability, Availability::Deprecated);
+        assert!(
+            fd.caveats.iter().any(|c| c.id == "repo-archived"),
+            "flight-deck carries the repo-archived retirement caveat"
+        );
     }
 }

@@ -312,7 +312,21 @@ fn get_top_processes_sync() -> Vec<LocalService> {
     );
     sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
-    let hl_patterns = ["harborline", "Sunfish", "Bridge", "flight-deck", "book-server", "tender"];
+    // "tender" + "Tender" stay for a transition period: an unrestarted prior
+    // install (or a stale process during upgrade) still runs the old
+    // `tender`-named binary. "Harborline Toolbox" is this app's own process
+    // name post-rename (`mainBinaryName` in tauri.conf.json) — self-inclusion
+    // in "is this a Harborline process" is correct, not a bug.
+    let hl_patterns = [
+        "harborline",
+        "Harborline Toolbox",
+        "Sunfish",
+        "Bridge",
+        "flight-deck",
+        "book-server",
+        "tender",
+        "Tender",
+    ];
 
     let mut procs: Vec<LocalService> = sys
         .processes()
