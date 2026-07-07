@@ -49,6 +49,12 @@ const CONSOLE_ENTRIES: MenuEntry[] = [
     icon: '▤',
   },
   {
+    id: 'model-residency',
+    label: 'Model Residency',
+    sub: "What's loaded on the GPU right now · VRAM headline + per-service",
+    icon: '◉',
+  },
+  {
     id: 'backups',
     label: 'Backups',
     sub: 'Snapshot DB + vault · restore · key-loss notice',

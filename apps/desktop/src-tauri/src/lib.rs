@@ -17,6 +17,7 @@ pub mod probe;
 pub mod profile;
 pub mod provider_health;
 mod projects;
+pub mod residency;
 pub mod settings;
 mod telemetry;
 
@@ -138,6 +139,7 @@ pub fn run() {
             commands::get_settings,
             commands::set_mode,
             commands::get_model_inventory,
+            commands::get_gpu_residency,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Harborline Toolbox");

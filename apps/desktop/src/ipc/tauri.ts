@@ -345,3 +345,19 @@ export type { InventoryGroup, ModelEntry, BackendKind, InventoryStatus } from '@
 export async function getModelInventory(): Promise<InventoryGroup[]> {
   return invoke<InventoryGroup[]>('get_model_inventory')
 }
+
+// ── VRAM residency (Toolbox #137, ONR survey slice G2) ───────────────────────
+
+import type { GpuResidencySnapshot } from '@/state/types'
+export type { GpuResidencySnapshot, GpuHeadline, ResidencyRow, ResidencyStatus } from '@/state/types'
+
+/**
+ * Probe `nvidia-smi` (headline + per-PID list) and each backend's own
+ * "what's loaded" signal, correlate, and return the GPU residency snapshot.
+ *
+ * Never throws — a GPU-host-unreachable probe is captured honestly in the
+ * snapshot's rows, never rendered as a silent empty/zeroed pane.
+ */
+export async function getGpuResidency(): Promise<GpuResidencySnapshot> {
+  return invoke<GpuResidencySnapshot>('get_gpu_residency')
+}
