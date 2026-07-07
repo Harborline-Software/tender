@@ -55,6 +55,12 @@ const CONSOLE_ENTRIES: MenuEntry[] = [
     icon: '◉',
   },
   {
+    id: 'paid-compute',
+    label: 'Paid Compute',
+    sub: 'Gateway spend ledger · OpenRouter, fal, Modal, Recraft balances',
+    icon: '$',
+  },
+  {
     id: 'backups',
     label: 'Backups',
     sub: 'Snapshot DB + vault · restore · key-loss notice',

@@ -543,6 +543,19 @@ pub async fn get_gpu_residency() -> crate::residency::GpuResidencySnapshot {
     crate::residency::get_gpu_residency().await
 }
 
+// ── Paid-compute pane (Toolbox #137, ONR survey slice G3) ────────────────────
+
+/// Read the paid-compute view: the Bifrost gateway ledger (per-virtual-key
+/// usage vs budget — the authoritative gateway-routed spend) plus the paid
+/// provider roster (OpenRouter/fal WRAP-API tiles via the winhub key slot;
+/// Modal/Recraft deep-link tiles). Never errors — the ledger's reachability
+/// and each tile's own status carry any failure honestly, and a paid
+/// credential never reaches this process (see `paidcompute::get_paid_compute`).
+#[tauri::command]
+pub async fn get_paid_compute() -> crate::paidcompute::PaidComputeSnapshot {
+    crate::paidcompute::get_paid_compute().await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
