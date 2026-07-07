@@ -91,6 +91,7 @@ export type DetailId =
   | 'relay'
   | 'model-inventory'
   | 'model-residency'
+  | 'paid-compute'
 
 export type Screen = { kind: 'main' } | { kind: 'detail'; id: DetailId } | { kind: 'outfitting' }
 
@@ -440,5 +441,74 @@ export interface GpuResidencySnapshot {
    *  large positive value is the GPU-accounting-drift finding. */
   unattributedVramMb: number | null
   rows: ResidencyRow[]
+  probedAt: string
+}
+
+// ── Paid-compute pane (Toolbox #137, ONR survey slice G3) ────────────────────
+// Mirror of the Rust `paidcompute::*` contract. Returned by the
+// `get_paid_compute` command — the Bifrost gateway ledger (authoritative
+// gateway-routed spend per virtual key) + the paid-provider roster. Never
+// carries a paid credential (secret-drop at the Rust parse boundary) and never
+// a fabricated balance (honest `notConfigured` / `dashboardOnly` states).
+
+/** The gateway ledger's reachability — read (`ok`) or not (`unreachable`). */
+export type LedgerStatus = 'ok' | 'unreachable'
+
+/** One virtual key's budget window (spend unit = USD). */
+export interface BudgetInfo {
+  maxLimit: number
+  currentUsage: number
+  /** The reset window token, e.g. `"1M"` (monthly). */
+  resetDuration: string
+  /** ISO 8601 of the last budget reset, when reported. */
+  lastReset: string | null
+}
+
+/** One virtual key row — identity + budget ONLY, never its bearer secret. */
+export interface VkeyRow {
+  id: string
+  name: string
+  isActive: boolean
+  budget: BudgetInfo | null
+}
+
+/** The Bifrost gateway ledger — the authoritative gateway-routed spend view. */
+export interface GatewayLedger {
+  label: string
+  host: string
+  status: LedgerStatus
+  rows: VkeyRow[]
+  /** Present on `unreachable` — a short honest reason (never a raw body). */
+  detail: string | null
+}
+
+/** How a provider tile gets its data. */
+export type ProviderKind = 'wrapApi' | 'deepLink'
+
+/** Honest per-provider tile status — never a fabricated balance. */
+export type ProviderStatus = 'ok' | 'notConfigured' | 'unreachable' | 'dashboardOnly'
+
+/** One provider tile in the roster. */
+export interface ProviderTile {
+  id: string
+  displayName: string
+  kind: ProviderKind
+  status: ProviderStatus
+  /** Remaining balance/credits in `unit` — `null` unless a real value was read. */
+  balance: number | null
+  /** This-period usage in `unit` — `null` unless real. */
+  usage: number | null
+  /** Unit `balance`/`usage` are denominated in ("USD" | "credits" | "units"). */
+  unit: string
+  /** Present on non-`ok` tiles — a short, honest reason. */
+  detail: string | null
+  /** Click-through to the provider's account / subscription / usage page. */
+  subscriptionUrl: string
+}
+
+/** The whole paid-compute pane payload. */
+export interface PaidComputeSnapshot {
+  gatewayLedger: GatewayLedger
+  providers: ProviderTile[]
   probedAt: string
 }

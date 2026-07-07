@@ -361,3 +361,25 @@ export type { GpuResidencySnapshot, GpuHeadline, ResidencyRow, ResidencyStatus }
 export async function getGpuResidency(): Promise<GpuResidencySnapshot> {
   return invoke<GpuResidencySnapshot>('get_gpu_residency')
 }
+
+// ── Paid-compute pane (Toolbox #137, ONR survey slice G3) ────────────────────
+
+import type { PaidComputeSnapshot } from '@/state/types'
+export type {
+  PaidComputeSnapshot, GatewayLedger, VkeyRow, BudgetInfo, LedgerStatus,
+  ProviderTile, ProviderKind, ProviderStatus,
+} from '@/state/types'
+
+/**
+ * Read the paid-compute view: the Bifrost gateway ledger (per-virtual-key usage
+ * vs budget — the authoritative gateway-routed spend) + the paid-provider
+ * roster (OpenRouter/fal WRAP-API tiles read via the winhub key slot;
+ * Modal/Recraft deep-link tiles).
+ *
+ * Never throws — the ledger's reachability and each tile's own status carry any
+ * failure honestly, and a paid credential never reaches this process (secret is
+ * dropped at the Rust parse boundary; balance keys stay on winhub).
+ */
+export async function getPaidCompute(): Promise<PaidComputeSnapshot> {
+  return invoke<PaidComputeSnapshot>('get_paid_compute')
+}

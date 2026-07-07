@@ -6,7 +6,7 @@
  * Tauri app `__TAURI_INTERNALS__` is present, so these are never used — zero
  * production impact. Lets the panel render representative data in a browser.
  */
-import type { FleetEntry, TenderSettings, InstallConfig, InventoryGroup, GpuResidencySnapshot } from '@/state/types'
+import type { FleetEntry, TenderSettings, InstallConfig, InventoryGroup, GpuResidencySnapshot, PaidComputeSnapshot } from '@/state/types'
 
 const FLEET: FleetEntry[] = [
   {
@@ -259,6 +259,60 @@ const GPU_RESIDENCY: GpuResidencySnapshot = {
   probedAt: '2026-07-07T17:07:30Z',
 }
 
+// Shaped from the real winhub probe (2026-07-07): the three fleet virtual keys
+// with their live $5/mo budgets (no gateway spend yet → $0 usage); OpenRouter +
+// fal show the genuine "notConfigured" state (their winhub balance-key slots are
+// empty); Modal + Recraft are honest "dashboardOnly" deep-link tiles.
+const PAID_COMPUTE: PaidComputeSnapshot = {
+  gatewayLedger: {
+    label: 'Bifrost gateway ledger — authoritative gateway-routed spend',
+    host: '100.99.202.114:8892',
+    status: 'ok',
+    rows: [
+      {
+        id: 'vk-fleet-pilot-dogfood', name: 'pilot-dogfood', isActive: true,
+        budget: { maxLimit: 5, currentUsage: 0, resetDuration: '1M', lastReset: '2026-07-07T15:16:52Z' },
+      },
+      {
+        id: 'vk-fleet-code-review', name: 'code-review', isActive: true,
+        budget: { maxLimit: 5, currentUsage: 0, resetDuration: '1M', lastReset: '2026-07-07T15:16:52Z' },
+      },
+      {
+        id: 'vk-fleet-offload', name: 'fleet-offload', isActive: true,
+        budget: { maxLimit: 5, currentUsage: 0, resetDuration: '1M', lastReset: '2026-07-07T15:42:09Z' },
+      },
+    ],
+    detail: null,
+  },
+  providers: [
+    {
+      id: 'openrouter', displayName: 'OpenRouter', kind: 'wrapApi', status: 'notConfigured',
+      balance: null, usage: null, unit: 'USD',
+      detail: 'no balance key configured — add a read-only OpenRouter provisioning/management key to the winhub slot (%USERPROFILE%\\.config\\harborline\\openrouter-management.key) to show account balance + usage here',
+      subscriptionUrl: 'https://openrouter.ai/settings/credits',
+    },
+    {
+      id: 'fal', displayName: 'fal.ai', kind: 'wrapApi', status: 'notConfigured',
+      balance: null, usage: null, unit: 'USD',
+      detail: 'no balance key configured — add a read-only fal platform/admin key to the winhub slot (%USERPROFILE%\\.config\\harborline\\fal.key) to show credit balance here (verify the billing endpoint shape at provisioning)',
+      subscriptionUrl: 'https://fal.ai/dashboard/billing',
+    },
+    {
+      id: 'modal', displayName: 'Modal', kind: 'deepLink', status: 'dashboardOnly',
+      balance: null, usage: null, unit: 'USD',
+      detail: 'balance on the provider dashboard — the billing API is Team/Enterprise-gated; the fleet\'s Starter plan has no balance API',
+      subscriptionUrl: 'https://modal.com/settings/usage',
+    },
+    {
+      id: 'recraft', displayName: 'Recraft', kind: 'deepLink', status: 'dashboardOnly',
+      balance: null, usage: null, unit: 'USD',
+      detail: 'balance on the provider dashboard — prepaid API units, dashboard-checked (no balance API)',
+      subscriptionUrl: 'https://www.recraft.ai/profile',
+    },
+  ],
+  probedAt: '2026-07-07T17:20:00Z',
+}
+
 /** Per-command mock results. Commands not listed fall through to real `invoke` (which fail-soft in the browser). */
 export const DEV_MOCKS: Record<string, unknown> = {
   get_appearance: 'dark',
@@ -273,4 +327,5 @@ export const DEV_MOCKS: Record<string, unknown> = {
   get_devices: DEVICES,
   get_model_inventory: MODEL_INVENTORY,
   get_gpu_residency: GPU_RESIDENCY,
+  get_paid_compute: PAID_COMPUTE,
 }

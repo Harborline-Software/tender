@@ -15,6 +15,7 @@ import { BackupsDetail } from '@/screens/detail/BackupsDetail'
 import { RelayDetail } from '@/screens/detail/RelayDetail'
 import { ModelInventoryDetail } from '@/screens/detail/ModelInventoryDetail'
 import { ModelResidencyDetail } from '@/screens/detail/ModelResidencyDetail'
+import { PaidComputeDetail } from '@/screens/detail/PaidComputeDetail'
 import { getInstallConfig } from '@/ipc/tauri'
 import type { CapabilityProfile } from '@/state/types'
 import '@/animations.css'
@@ -36,6 +37,7 @@ function DetailScreen({ id, onBack }: { id: DetailId; onBack: () => void }) {
     case 'relay':          return <RelayDetail          onBack={onBack} />
     case 'model-inventory': return <ModelInventoryDetail onBack={onBack} />
     case 'model-residency': return <ModelResidencyDetail onBack={onBack} />
+    case 'paid-compute':    return <PaidComputeDetail    onBack={onBack} />
     default:               return null
   }
 }

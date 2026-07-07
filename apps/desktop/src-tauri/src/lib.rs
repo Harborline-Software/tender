@@ -12,6 +12,7 @@ mod devices;
 pub mod install;
 pub mod install_config;
 pub mod inventory;
+pub mod paidcompute;
 mod notifications;
 pub mod probe;
 pub mod profile;
@@ -140,6 +141,7 @@ pub fn run() {
             commands::set_mode,
             commands::get_model_inventory,
             commands::get_gpu_residency,
+            commands::get_paid_compute,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Harborline Toolbox");
