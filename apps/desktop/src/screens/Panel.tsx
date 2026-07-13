@@ -71,7 +71,7 @@ export function Panel({ onNavigate }: Props) {
   }, [])
 
   const a = theme.accent
-  const m = theme.metalBright
+  const m = theme.signal
 
   // F8.2: update badge is hidden until real update data is wired (M3).
   // Never show "3 updates" that is a hardcoded stub — that misleads operators.

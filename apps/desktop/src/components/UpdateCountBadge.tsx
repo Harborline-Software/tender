@@ -6,7 +6,7 @@ interface Props {
 
 export function UpdateCountBadge({ count }: Props) {
   const { theme } = useTheme()
-  const m = theme.metalBright
+  const m = theme.signal
   return (
     <div style={{
       fontFamily: "'JetBrains Mono', monospace",

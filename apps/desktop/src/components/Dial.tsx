@@ -25,7 +25,7 @@ function polar(deg: number): [number, number] {
 export function Dial({ value, max, label, sub, updateAvailable = false }: Props) {
   const { theme } = useTheme()
   const a = theme.accent
-  const m = theme.metalBright
+  const m = theme.signal
 
   const clamped = Math.min(value, max)
   const valDeg = START_DEG + (clamped / max) * (END_DEG - START_DEG)

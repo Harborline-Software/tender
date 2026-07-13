@@ -42,7 +42,7 @@ interface Props {
 
 export function ReleaseNotesDetail({ onBack }: Props) {
   const { theme } = useTheme()
-  const m = theme.metalBright
+  const m = theme.signal
   const a = theme.accent
 
   const kindColor = (k: NoteKind) => k === 'new' ? a : k === 'fix' ? theme.accentBright : m
