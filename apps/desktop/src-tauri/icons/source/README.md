@@ -2,8 +2,9 @@
 
 `app-icon-1024.png` is the source for `tauri icon`, rasterized from
 `app-icon-badge.svg` in this directory (cobalt rounded square + the white-wave
-dark-surface variant of the mark, geometry from harborline-www
-`logo-mark-dark.svg`). Regenerate the PNG with:
+dark-surface variant of the mark, geometry from the central brand repo's
+`brand/assets/marks/sun-wave/harborline-mark-on-dark.svg` — commit 028a639;
+pin a release tag on the next sync). Regenerate the PNG with:
 
 ```
 rsvg-convert -w 1024 -h 1024 app-icon-badge.svg -o app-icon-1024.png
