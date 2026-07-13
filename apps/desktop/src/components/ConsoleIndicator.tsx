@@ -32,7 +32,7 @@ const ICONS: Record<IndicatorKind, LucideIcon> = {
   comms: MessageSquare,
 }
 
-export function ConsoleIndicator({ kind, color, active = false, dimColor = 'rgba(220,230,240,0.32)' }: Props) {
+export function ConsoleIndicator({ kind, color, active = false, dimColor = 'rgba(220,230,240,0.45)' }: Props) {
   const dim = active ? color : dimColor
   const Icon = ICONS[kind]
   return (

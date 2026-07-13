@@ -63,14 +63,14 @@ export function ReleaseNotesDetail({ onBack }: Props) {
         }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
             <div style={{ fontSize: 12, color: theme.text, letterSpacing: 0.1 }}>{r.service}</div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5, color: theme.textDim, letterSpacing: 0.5 }}>
+            <div style={{ fontFamily: theme.fontMono, fontSize: 9.5, color: theme.textDim, letterSpacing: 0.5 }}>
               {r.from} <span style={{ color: m }}>→</span> <span style={{ color: theme.accentBright }}>{r.to}</span> · {r.size}
             </div>
           </div>
           {r.notes.map((n, j) => (
             <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '3px 0' }}>
               <span style={{
-                fontFamily: "'JetBrains Mono', monospace", fontSize: 7.5,
+                fontFamily: theme.fontMono, fontSize: 7.5,
                 color: kindColor(n.kind),
                 background: `${kindColor(n.kind)}1a`,
                 border: `1px solid ${kindColor(n.kind)}55`,

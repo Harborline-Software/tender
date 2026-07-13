@@ -114,7 +114,7 @@ export function LogViewerSheet({ serviceId, serviceLabel, onClose }: Props) {
             {serviceLabel}
           </div>
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: theme.fontMono,
             fontSize: 8,
             letterSpacing: 1.2,
             textTransform: 'uppercase',
@@ -126,7 +126,7 @@ export function LogViewerSheet({ serviceId, serviceLabel, onClose }: Props) {
         </div>
 
         <div style={{
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: theme.fontMono,
           fontSize: 8.5,
           color: theme.textMuted,
           letterSpacing: 0.4,
@@ -164,7 +164,7 @@ export function LogViewerSheet({ serviceId, serviceLabel, onClose }: Props) {
         {error ? (
           <div style={{
             padding: '12px 14px',
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: theme.fontMono,
             fontSize: 10,
             color: theme.danger,
             letterSpacing: 0.3,
@@ -174,7 +174,7 @@ export function LogViewerSheet({ serviceId, serviceLabel, onClose }: Props) {
         ) : loading && lines.length === 0 ? (
           <div style={{
             padding: '12px 14px',
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: theme.fontMono,
             fontSize: 10,
             color: theme.textMuted,
             letterSpacing: 0.3,
@@ -184,7 +184,7 @@ export function LogViewerSheet({ serviceId, serviceLabel, onClose }: Props) {
         ) : lines.length === 0 ? (
           <div style={{
             padding: '12px 14px',
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: theme.fontMono,
             fontSize: 10,
             color: theme.textMuted,
             letterSpacing: 0.3,
@@ -197,7 +197,7 @@ export function LogViewerSheet({ serviceId, serviceLabel, onClose }: Props) {
               key={i}
               style={{
                 padding: '1px 14px',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: theme.fontMono,
                 fontSize: 9.5,
                 color: lineColor(line, theme),
                 letterSpacing: 0.2,

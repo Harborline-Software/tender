@@ -59,8 +59,8 @@ export function SunfishDetail({ onBack }: Props) {
           { label: 'queue',     value: '12',                     tone: theme.text },
         ].map((m) => (
           <div key={m.label}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, letterSpacing: 1.4, color: theme.textMuted, textTransform: 'uppercase' }}>{m.label}</div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, color: m.tone, lineHeight: 1.1, textShadow: m.tone === theme.accentBright ? `0 0 6px ${a}88` : undefined }}>{m.value}</div>
+            <div style={{ fontFamily: theme.fontMono, fontSize: 9, letterSpacing: 1.4, color: theme.textMuted, textTransform: 'uppercase' }}>{m.label}</div>
+            <div style={{ fontFamily: theme.fontMono, fontSize: 18, color: m.tone, lineHeight: 1.1, textShadow: m.tone === theme.accentBright ? `0 0 6px ${a}88` : undefined }}>{m.value}</div>
           </div>
         ))}
       </div>
@@ -74,8 +74,8 @@ export function SunfishDetail({ onBack }: Props) {
           opacity: running ? 1 : 0.4,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: theme.text, letterSpacing: 0.3 }}>{t.name}</span>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: t.status === 'queued' ? theme.textMuted : a, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t.status}</span>
+            <span style={{ fontFamily: theme.fontMono, fontSize: 10, color: theme.text, letterSpacing: 0.3 }}>{t.name}</span>
+            <span style={{ fontFamily: theme.fontMono, fontSize: 9, color: t.status === 'queued' ? theme.textMuted : a, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t.status}</span>
           </div>
           <div style={{ height: 2, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden' }}>
             <div style={{ height: '100%', width: `${t.pct}%`, background: `linear-gradient(90deg, ${a}88, ${a})`, boxShadow: `0 0 4px ${a}aa` }} />

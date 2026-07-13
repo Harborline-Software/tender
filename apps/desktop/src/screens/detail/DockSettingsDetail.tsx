@@ -119,7 +119,7 @@ export function DockSettingsDetail({ onBack }: Props) {
       {/* ↳ MODE — dev / end-user toggle */}
       <div style={{
         padding: '8px 14px 4px',
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: theme.fontMono,
         fontSize: 9, letterSpacing: 1.4, textTransform: 'uppercase',
         color: theme.textMuted,
       }}>
@@ -134,7 +134,7 @@ export function DockSettingsDetail({ onBack }: Props) {
         <div>
           <span style={{ fontSize: 11.5, color: theme.text }}>Dev / End-User</span>
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: theme.fontMono,
             fontSize: 9, color: theme.textMuted, marginTop: 3, lineHeight: 1.4,
           }}>
             Dev installs packaged builds + shows caveats.
@@ -158,7 +158,7 @@ export function DockSettingsDetail({ onBack }: Props) {
                 onClick={() => handleModeToggle(m)}
                 disabled={modeChanging}
                 style={{
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: theme.fontMono,
                   fontSize: 9,
                   letterSpacing: 1.1,
                   textTransform: 'uppercase',
@@ -180,7 +180,7 @@ export function DockSettingsDetail({ onBack }: Props) {
 
       <div style={{
         padding: '8px 14px 4px',
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: theme.fontMono,
         fontSize: 9, letterSpacing: 1.4, textTransform: 'uppercase',
         color: theme.textMuted,
       }}>

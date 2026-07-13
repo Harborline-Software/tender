@@ -81,10 +81,10 @@ export function Dial({ value, max, label, sub, updateAvailable = false }: Props)
 
         {/* Center label */}
         <text x="28" y="30" textAnchor="middle"
-          fontFamily="'JetBrains Mono', monospace" fontSize="11" fontWeight="600"
+          fontFamily={theme.fontMono} fontSize="11" fontWeight="600"
           fill={theme.text}>{label}</text>
         <text x="28" y="40" textAnchor="middle"
-          fontFamily="'JetBrains Mono', monospace" fontSize="6" letterSpacing="1"
+          fontFamily={theme.fontMono} fontSize="6" letterSpacing="1"
           fill={a}>{sub}</text>
       </svg>
 

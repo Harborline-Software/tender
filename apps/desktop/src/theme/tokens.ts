@@ -75,9 +75,13 @@ export const dark: Theme = {
   bg: '#15171c',
   bgSoft: '#1e2128',
   surface: '#1a1d22',
+  // Text — effective contrast vs #15171c after alpha blend:
+  //   text ~13.5:1 · textDim 0.62 → ~6.0:1 · textMuted 0.55 → ~5.0:1 (AA floor
+  //   for the 8.5px label tier; 0.42 measured 3.4:1 and failed — never lower,
+  //   and never stack an opacity multiplier on top of these tokens)
   text: '#dde2ea',
   textDim: 'rgba(221,226,234,0.62)',
-  textMuted: 'rgba(221,226,234,0.42)',
+  textMuted: 'rgba(221,226,234,0.55)',
   border: 'rgba(122,184,255,0.18)',
   shadow: 'rgba(0,0,0,0.7)',
   // Action/selection accent — product interactive blue (dark) #7ab8ff.
@@ -104,9 +108,12 @@ export const light: Theme = {
   bg: '#dde0e6',
   bgSoft: '#c8cdd6',
   surface: '#d2d6df',
+  // Text — effective contrast vs #dde0e6 after alpha blend:
+  //   text ~14.6:1 · textDim 0.7 → ~5.8:1 · textMuted 0.65 → ~5.0:1 (AA floor;
+  //   0.55 measured 3.7:1 and failed — same no-stacked-opacity rule as dark)
   text: '#15171c',
   textDim: 'rgba(21,23,28,0.7)',
-  textMuted: 'rgba(21,23,28,0.55)',
+  textMuted: 'rgba(21,23,28,0.65)',
   border: 'rgba(21,23,28,0.18)',
   shadow: 'rgba(21,23,28,0.22)',
   // Action/selection accent — product interactive blue #0f62fe.
