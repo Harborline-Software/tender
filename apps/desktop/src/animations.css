@@ -14,7 +14,7 @@
 }
 
 @keyframes statusTransition {
-  0%   { box-shadow: 0 0 0 0 var(--status-color, #00e5ff); opacity: 1; }
+  0%   { box-shadow: 0 0 0 0 var(--status-color, var(--color-accent, #7ab8ff)); opacity: 1; }
   40%  { box-shadow: 0 0 0 6px transparent; opacity: 1; }
   100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
 }
@@ -33,4 +33,16 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Product focus convention (mirrors Carrier's --color-focus-ring): one
+   consistent focus-visible ring on every interactive element, drawn in the
+   interactive accent. Inline styles must not set outline:none. */
+button:focus-visible,
+input:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent, #7ab8ff);
+  outline-offset: 2px;
+  border-radius: 4px;
 }

@@ -123,7 +123,7 @@ export function PaidComputeDetail({ onBack }: Props) {
         <div style={{ padding: '10px 14px' }}>
           <div role="alert" style={{
             background: `${theme.danger}1a`, border: `1px solid ${theme.danger}44`,
-            borderRadius: 5, padding: '10px 12px',
+            borderRadius: theme.radiusLg, padding: '10px 12px',
           }}>
             <div style={{
               fontFamily: theme.fontMono, fontSize: theme.sizeLabel, letterSpacing: 1.2,

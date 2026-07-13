@@ -224,7 +224,7 @@ function lineColor(line: string, theme: import('@/theme/tokens').Theme): string 
     return theme.danger
   }
   if (l.includes('warn') || l.includes('warning')) {
-    return '#f0b370'
+    return theme.warn
   }
   return theme.textDim
 }

@@ -185,7 +185,7 @@ function BundleCard({
       margin: '6px 10px',
       background: `linear-gradient(180deg, ${theme.bgSoft} 0%, ${theme.bg} 100%)`,
       border: `1px solid ${theme.border}`,
-      borderRadius: 5,
+      borderRadius: theme.radiusLg,
       overflow: 'hidden',
     }}>
       {/* Bundle header row */}
@@ -541,7 +541,7 @@ export function BundlesDetail({ onBack }: Props) {
               style={{
                 background: `${theme.danger}1a`,
                 border: `1px solid ${theme.danger}44`,
-                borderRadius: 5,
+                borderRadius: theme.radiusLg,
                 padding: '10px 12px',
               }}>
               <div style={{

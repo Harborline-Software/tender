@@ -141,7 +141,6 @@ function CommissionFlow({ entry, state, onPathChange, onCommit, onCancel }: Comm
               fontFamily: mono,
               fontSize: theme.sizeMetric,
               padding: '4px 8px',
-              outline: 'none',
               letterSpacing: 0.3,
             }}
           />

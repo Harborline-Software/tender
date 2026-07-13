@@ -77,7 +77,7 @@ export function FlightDeckDetail({ onBack }: Props) {
             <div style={{
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: 7.5,
-              color: w.temp > 75 ? '#f0b370' : theme.textMuted,
+              color: w.temp > 75 ? theme.warn : theme.textMuted,
               letterSpacing: 0.4,
             }}>{w.temp}&deg;C</div>
           </div>

@@ -81,7 +81,7 @@ function KeyLossWarning() {
       margin: '0 14px 10px',
       background: `${theme.warn}15`,
       border: `1px solid ${theme.warn}44`,
-      borderRadius: 5,
+      borderRadius: theme.radiusLg,
       padding: '8px 10px',
     }}>
       <div style={{
@@ -239,7 +239,7 @@ function RestoreConfirm({
           style={{
             background: isError ? `${theme.danger}1a` : `${theme.healthy}1a`,
             border: `1px solid ${isError ? theme.danger : theme.healthy}44`,
-            borderRadius: 5,
+            borderRadius: theme.radiusLg,
             padding: '10px 12px',
           }}
         >
@@ -292,7 +292,7 @@ function RestoreConfirm({
         style={{
           background: `${theme.danger}1a`,
           border: `1px solid ${theme.danger}44`,
-          borderRadius: 5,
+          borderRadius: theme.radiusLg,
           padding: '10px 12px',
           marginBottom: 12,
         }}
@@ -533,7 +533,7 @@ export function BackupsDetail({ onBack }: Props) {
               style={{
                 background: `${theme.danger}1a`,
                 border: `1px solid ${theme.danger}44`,
-                borderRadius: 5,
+                borderRadius: theme.radiusLg,
                 padding: '10px 12px',
               }}
             >

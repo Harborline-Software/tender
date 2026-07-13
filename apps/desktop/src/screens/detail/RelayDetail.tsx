@@ -103,7 +103,7 @@ function SyncStateRow({ state, theme }: { state: SyncStateValue; theme: ReturnTy
         margin: '10px 14px',
         background: `${color}15`,
         border: `1px solid ${color}44`,
-        borderRadius: 5,
+        borderRadius: theme.radiusLg,
         padding: '10px 12px',
         display: 'flex',
         alignItems: 'center',
@@ -342,7 +342,7 @@ export function RelayDetail({ onBack }: Props) {
               style={{
                 background: `${theme.danger}1a`,
                 border: `1px solid ${theme.danger}44`,
-                borderRadius: 5,
+                borderRadius: theme.radiusLg,
                 padding: '10px 12px',
               }}
             >

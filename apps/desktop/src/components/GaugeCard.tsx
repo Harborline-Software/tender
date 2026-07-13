@@ -32,7 +32,7 @@ export function GaugeCard({ label, value, max, sub, reading, bottom, updateAvail
         alignItems: 'center',
         gap: 6,
         padding: '10px 8px',
-        borderRadius: 6,
+        borderRadius: theme.radiusLg,
         background: hovered ? `${a}10` : 'transparent',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'background 120ms ease',
