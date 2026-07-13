@@ -5,7 +5,7 @@ import { DetailHeader } from '@/components/DetailHeader'
 import { StatusPill } from '@/components/StatusPill'
 import { FiberDivider } from '@/components/FiberDivider'
 import { ActionFooter } from '@/components/ActionFooter'
-import { getServices, emergencyStop, quitApp, type ServiceData } from '@/ipc/tauri'
+import { getServices, stopServices, quitApp, type ServiceData } from '@/ipc/tauri'
 
 interface Props {
   onBack: () => void
@@ -39,17 +39,26 @@ export function DryDockDetail({ onBack }: Props) {
     if (phase === 'stopping') return
     setPhase('stopping')
     setError(null)
-    // Wired services stop via the Flight-Deck admin endpoint; skipped when
-    // nothing is running so an idle node doesn't error on an absent
-    // Flight-Deck. The Toolbox itself exits only after that succeeds — if
-    // services couldn't be stopped, the operator must see it, not lose the
-    // panel mid-failure.
+    // Wired services stop via stop_services (graceful SIGTERM per catalog
+    // process pattern, confirmed exit, never SIGKILL). The Toolbox itself
+    // exits only after every running service is confirmed stopped — if any
+    // survive, the operator must see it, not lose the panel mid-failure.
     if (running && running.length > 0) {
       try {
-        await emergencyStop()
+        const outcomes = await stopServices()
+        const failed = outcomes.filter((o) => !o.stopped)
+        if (failed.length > 0) {
+          setPhase('error')
+          setError(
+            failed
+              .map((o) => `${o.displayName}: ${o.detail ?? 'still running'}`)
+              .join('; '),
+          )
+          return
+        }
       } catch (e) {
         setPhase('error')
-        setError(`wired services were NOT stopped: ${e instanceof Error ? e.message : String(e)}`)
+        setError(`stop command failed: ${e instanceof Error ? e.message : String(e)}`)
         return
       }
     }

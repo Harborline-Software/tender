@@ -123,6 +123,7 @@ pub fn run() {
             commands::open_external,
             commands::quit_app,
             commands::emergency_stop,
+            commands::stop_services,
             commands::restart_signal_bridge,
             commands::collect_diagnostics,
             commands::get_log_tail,

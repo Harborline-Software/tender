@@ -181,6 +181,80 @@ pub async fn emergency_stop() -> Result<String, String> {
     }
 }
 
+/// Outcome of a graceful stop attempt for one catalog service.
+#[derive(serde::Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StopOutcome {
+    pub id: String,
+    pub display_name: String,
+    /// True when the service's process is confirmed gone after SIGTERM.
+    pub stopped: bool,
+    /// Present on failure — an honest reason, never a guess.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+}
+
+/// Gracefully stop every running catalog service on this node (Dry Dock).
+///
+/// For each catalog manifest whose process pattern currently matches, send
+/// SIGTERM via `pkill -f` and poll (up to ~5s) for the process to exit.
+/// Deliberately never SIGKILL: graceful means the service gets to flush its
+/// state; a process that ignores SIGTERM is REPORTED as not stopped rather
+/// than force-killed. Services that aren't running are skipped (not listed).
+#[tauri::command]
+pub async fn stop_services() -> Vec<StopOutcome> {
+    let catalog = crate::catalog::load_catalog();
+    let mut set = tokio::task::JoinSet::new();
+    for manifest in catalog {
+        let id = manifest.id.clone();
+        let name = manifest.display_name.clone();
+        let pattern = manifest.detect.process_pattern.clone();
+        set.spawn(tokio::task::spawn_blocking(move || {
+            stop_by_pattern(&pattern).map(|(stopped, detail)| StopOutcome {
+                id,
+                display_name: name,
+                stopped,
+                detail,
+            })
+        }));
+    }
+
+    let mut outcomes = Vec::new();
+    while let Some(joined) = set.join_next().await {
+        if let Ok(Ok(Some(outcome))) = joined {
+            outcomes.push(outcome);
+        }
+    }
+    outcomes.sort_by(|a, b| a.id.cmp(&b.id));
+    outcomes
+}
+
+/// Graceful-stop worker: SIGTERM the pattern's processes and confirm exit
+/// (10 × 500ms). Returns `None` when nothing matched (service not running),
+/// `Some((stopped, detail))` otherwise. Never SIGKILLs — an unresponsive
+/// process is reported, not force-killed.
+fn stop_by_pattern(pattern: &str) -> Option<(bool, Option<String>)> {
+    if !telemetry::is_running(pattern) {
+        return None;
+    }
+    if let Err(e) = std::process::Command::new("pkill")
+        .args(["-TERM", "-f", pattern])
+        .output()
+    {
+        return Some((false, Some(format!("pkill failed: {e}"))));
+    }
+    for _ in 0..10 {
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        if !telemetry::is_running(pattern) {
+            return Some((true, None));
+        }
+    }
+    Some((
+        false,
+        Some("process ignored SIGTERM (still running after 5s) — not force-killed".to_string()),
+    ))
+}
+
 /// Resolve the start command (program + args) for a Tender-managed service from
 /// its recorded install contract. Retires the former hardcoded dev-path coupling
 /// — Tender starts only what it manages, off the install-config launch contract
@@ -571,6 +645,29 @@ pub async fn get_paid_compute() -> crate::paidcompute::PaidComputeSnapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// stop_by_pattern against a real process: spawn a uniquely-marked sleep,
+    /// confirm the helper SIGTERMs it and reports stopped; a second call
+    /// returns None (nothing left matching).
+    #[test]
+    fn stop_by_pattern_terminates_a_live_process_then_reports_none() {
+        let marker = format!("tender-stoptest-{}", std::process::id());
+        let mut child = std::process::Command::new("bash")
+            .args(["-c", &format!("exec -a {marker} sleep 300")])
+            .spawn()
+            .expect("spawn test sleeper");
+        // Give pgrep a moment to see it.
+        std::thread::sleep(std::time::Duration::from_millis(300));
+
+        let outcome = stop_by_pattern(&marker);
+        let (stopped, detail) = outcome.expect("sleeper should have been detected");
+        assert!(stopped, "sleeper should stop on SIGTERM, got detail {detail:?}");
+
+        // Reap the child so it doesn't linger as a zombie.
+        let _ = child.wait();
+
+        assert!(stop_by_pattern(&marker).is_none(), "nothing should match after stop");
+    }
     use crate::install_config::{InstallConfig, InstalledApp, LaunchContract};
     use crate::profile::CapabilityProfile;
 
