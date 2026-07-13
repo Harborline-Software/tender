@@ -36,7 +36,7 @@ Dual-mode, follows macOS appearance (IPC-driven; `.dark`/`.light` class on docum
 
 ## Iconography & Brand
 
-- Interim sun-over-wave mark (amber sun `#e97c48`, cobalt wave `#06489c`); badge treatment (white wave on cobalt rounded square) for system chrome — source `src-tauri/icons/source/app-icon-badge.svg`
+- Interim sun-over-wave mark from the central `brand` repo (named variants vendored at `src/assets/brand/`; mode-aware in Logomark — on-dark white wave / on-light cobalt); badge treatment (white wave on cobalt rounded square) for system chrome — source `src-tauri/icons/source/app-icon-badge.svg`
 - Identity cobalt `#06489c` is logo/identity only, never interactive
 
 ## Accessibility
