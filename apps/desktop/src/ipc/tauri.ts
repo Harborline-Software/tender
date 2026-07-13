@@ -162,6 +162,19 @@ export async function emergencyStop(): Promise<string> {
   return invoke<string>('emergency_stop')
 }
 
+/** Outcome of a graceful stop attempt for one catalog service (Dry Dock). */
+export interface StopOutcome {
+  id: string
+  displayName: string
+  stopped: boolean
+  detail?: string
+}
+
+/** Gracefully SIGTERM every running catalog service; never force-kills. */
+export async function stopServices(): Promise<StopOutcome[]> {
+  return invoke<StopOutcome[]>('stop_services')
+}
+
 export async function restartSignalBridge(): Promise<string> {
   return invoke<string>('restart_signal_bridge')
 }

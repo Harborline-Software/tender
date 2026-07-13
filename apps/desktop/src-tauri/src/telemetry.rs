@@ -57,7 +57,7 @@ pub struct SystemStats {
 
 // ── Process detection ──────────────────────────────────────────────────────
 
-fn is_running(pattern: &str) -> bool {
+pub(crate) fn is_running(pattern: &str) -> bool {
     std::process::Command::new("pgrep")
         .args(["-f", pattern])
         .output()
