@@ -128,21 +128,19 @@ pub struct InventoryGroup {
 
 // ── Host resolution ──────────────────────────────────────────────────────────
 
-/// The winhub GPU host's Tailscale MagicDNS name for HTTP probes, override-
-/// able via `TENDER_WINHUB_HOST`. Verified live 2026-07-07 —
-/// `desktop-umt08rn.taildefd38.ts.net` resolves over Tailscale; the
-/// `winhub`/`localhost` names documented elsewhere in the fleet are SSH-
-/// config-only aliases and do NOT resolve as HTTP hostnames.
+/// The GPU host's hostname for HTTP probes, configured via `TENDER_WINHUB_HOST`.
+/// Empty by default: a stock build reaches NO remote host until the operator
+/// configures one. An empty value is treated as "not configured" — the probe is
+/// skipped and the group reports `NotConfigured` rather than erroring.
 fn winhub_http_host() -> String {
-    std::env::var("TENDER_WINHUB_HOST")
-        .unwrap_or_else(|_| "desktop-umt08rn.taildefd38.ts.net".to_string())
+    std::env::var("TENDER_WINHUB_HOST").unwrap_or_default()
 }
 
-/// The `ssh` target used for remote directory probes. Defaults to the
-/// fleet's standing `winhub` SSH-config alias (`~/.ssh/config`); override via
-/// `TENDER_WINHUB_SSH_HOST` for an operator box without that alias.
+/// The `ssh` target used for remote directory probes, configured via
+/// `TENDER_WINHUB_SSH_HOST`. Empty by default; when empty the `ssh` probe is
+/// skipped (no host to reach) and the group reports `NotConfigured`.
 fn winhub_ssh_host() -> String {
-    std::env::var("TENDER_WINHUB_SSH_HOST").unwrap_or_else(|_| "winhub".to_string())
+    std::env::var("TENDER_WINHUB_SSH_HOST").unwrap_or_default()
 }
 
 /// Optional Stability Matrix `Data/Models` directory. Unset by default — this
@@ -446,6 +444,29 @@ fn ok_group(target_id: &str, display_name: &str, kind: BackendKind, host: &str, 
     }
 }
 
+/// Build a `NotConfigured` group for a backend whose host env var is unset —
+/// a stock build reaches no remote host, so the probe is skipped honestly
+/// rather than erroring (mirrors the Stability Matrix `NotConfigured` path).
+fn not_configured_group(
+    target_id: &str,
+    display_name: &str,
+    kind: BackendKind,
+    env_var: &str,
+) -> InventoryGroup {
+    InventoryGroup {
+        target_id: target_id.to_string(),
+        display_name: display_name.to_string(),
+        backend_kind: kind,
+        host: String::new(),
+        status: InventoryStatus::NotConfigured,
+        models: Vec::new(),
+        detail: Some(format!(
+            "not configured — set {env_var} to the GPU host to enable this probe"
+        )),
+        probed_at: now_iso(),
+    }
+}
+
 fn failed_group(
     target_id: &str,
     display_name: &str,
@@ -474,6 +495,9 @@ fn failed_group(
 
 async fn probe_ollama() -> InventoryGroup {
     let host = winhub_http_host();
+    if host.is_empty() {
+        return not_configured_group("ollama", "Ollama (LLM)", BackendKind::LlmServing, "TENDER_WINHUB_HOST");
+    }
     match fetch_ollama_tags(&host).await {
         Ok(models) => ok_group("ollama", "Ollama (LLM)", BackendKind::LlmServing, &host, models),
         Err(f) => failed_group("ollama", "Ollama (LLM)", BackendKind::LlmServing, &host, f),
@@ -482,6 +506,9 @@ async fn probe_ollama() -> InventoryGroup {
 
 async fn probe_tts() -> InventoryGroup {
     let host = winhub_http_host();
+    if host.is_empty() {
+        return not_configured_group("tts-proxy", "TTS (voices)", BackendKind::Tts, "TENDER_WINHUB_HOST");
+    }
     match fetch_tts_models(&host).await {
         Ok(models) => ok_group("tts-proxy", "TTS (voices)", BackendKind::Tts, &host, models),
         Err(f) => failed_group("tts-proxy", "TTS (voices)", BackendKind::Tts, &host, f),
@@ -496,6 +523,9 @@ const COMFYUI_CHECKPOINTS_DIR: &str = r"C:\Projects\ComfyUI\models\checkpoints";
 
 async fn probe_comfyui() -> InventoryGroup {
     let ssh_host = winhub_ssh_host();
+    if ssh_host.is_empty() {
+        return not_configured_group("comfyui-checkpoints", "ComfyUI (checkpoints)", BackendKind::ImageWorker, "TENDER_WINHUB_SSH_HOST");
+    }
     match ssh_list_dir(&ssh_host, COMFYUI_CHECKPOINTS_DIR).await {
         Ok(models) => ok_group("comfyui-checkpoints", "ComfyUI (checkpoints)", BackendKind::ImageWorker, &ssh_host, models),
         Err(f) => failed_group("comfyui-checkpoints", "ComfyUI (checkpoints)", BackendKind::ImageWorker, &ssh_host, f),
@@ -504,6 +534,9 @@ async fn probe_comfyui() -> InventoryGroup {
 
 async fn probe_stability_matrix() -> InventoryGroup {
     let ssh_host = winhub_ssh_host();
+    if ssh_host.is_empty() {
+        return not_configured_group("stability-matrix", "Stability Matrix (checkpoints)", BackendKind::ImageWorker, "TENDER_WINHUB_SSH_HOST");
+    }
     match stability_matrix_dir() {
         None => InventoryGroup {
             target_id: "stability-matrix".to_string(),

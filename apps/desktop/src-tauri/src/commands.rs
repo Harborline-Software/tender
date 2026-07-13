@@ -33,7 +33,10 @@ fn log_paths_for_service(service_id: &str) -> Vec<std::path::PathBuf> {
             format!("{}/.agent-revival-daemon-stdout.log", coord).into(),
             format!("{}/.agent-revival-daemon-stderr.log", coord).into(),
         ],
-        // Manually-started services: check ~/.harborline/logs/<id>.log
+        // Manually-started services: check ~/.harborline/logs/<id>.log.
+        // Guard against path traversal — a `service_id` containing a path
+        // separator or `..` could escape the logs dir; reject with no paths.
+        id if id.contains('/') || id.contains('\\') || id.contains("..") => vec![],
         id => vec![
             format!("{}/{}.log", hl_logs, id).into(),
         ],
@@ -136,7 +139,11 @@ pub async fn get_devices() -> Vec<devices::TailscaleDevice> {
 
 #[tauri::command]
 pub fn open_external(url: String) {
-    let _ = std::process::Command::new("open").arg(&url).spawn();
+    // Only open well-formed web/mail URLs — never an arbitrary string or local
+    // path handed to the `open` shell. Reject anything that isn't http(s)/mailto.
+    if url.starts_with("https://") || url.starts_with("http://") || url.starts_with("mailto:") {
+        let _ = std::process::Command::new("open").arg(&url).spawn();
+    }
 }
 
 #[tauri::command]
@@ -156,8 +163,13 @@ pub async fn emergency_stop() -> Result<String, String> {
         .build()
         .map_err(|e| e.to_string())?;
 
+    // Flight-Deck base URL is operator-configurable; default to the local
+    // machine (lower risk — localhost is the operator's own box, not a private
+    // remote). Override via TENDER_FLIGHTDECK_BASE_URL for a non-default host.
+    let base = std::env::var("TENDER_FLIGHTDECK_BASE_URL")
+        .unwrap_or_else(|_| "http://localhost:3080".to_string());
     let resp = client
-        .post("http://localhost:3080/api/admin/emergency-stop")
+        .post(format!("{}/api/admin/emergency-stop", base.trim_end_matches('/')))
         .send()
         .await
         .map_err(|e| format!("Flight-Deck unreachable: {}", e))?;

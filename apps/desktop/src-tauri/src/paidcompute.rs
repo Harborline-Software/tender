@@ -159,22 +159,31 @@ pub struct PaidComputeSnapshot {
 
 // ── Host / slot resolution ───────────────────────────────────────────────────
 
-/// The internal Bifrost gateway's Tailscale bind (`100.99.202.114:8892`,
-/// Tailscale-only per `shipyard/tooling/llm-gateway/README.md`). The gateway
-/// binds specifically to the Tailscale interface IP, so the MagicDNS name isn't
-/// substitutable here — the IP is the address. Override via `TENDER_BIFROST_HOST`
-/// (host or host:port; a bare host gets the default port appended).
+/// The Bifrost gateway base URL, configured via `TENDER_BIFROST_HOST` (host or
+/// host:port; a bare host gets port `8892` appended). A private gateway that
+/// binds only to a Tailscale interface IP is addressed by that IP — no default
+/// is baked in.
+///
+/// Empty by default: a stock build reaches NO gateway host until the operator
+/// sets `TENDER_BIFROST_HOST`. When unset, this returns an empty string and the
+/// ledger read is skipped ([`fetch_gateway_ledger`]) — never a call to a private
+/// fleet IP.
 fn bifrost_base_url() -> String {
-    let host = std::env::var("TENDER_BIFROST_HOST").unwrap_or_else(|_| "100.99.202.114:8892".to_string());
+    let host = std::env::var("TENDER_BIFROST_HOST").unwrap_or_default();
+    if host.is_empty() {
+        return String::new();
+    }
     let host = if host.contains(':') { host } else { format!("{host}:8892") };
     format!("http://{host}")
 }
 
-/// The `ssh` target for remote slot-presence checks + on-winhub balance probes.
-/// Defaults to the fleet's standing `winhub` SSH-config alias (same default G1's
-/// inventory probe uses); override via `TENDER_WINHUB_SSH_HOST`.
+/// The `ssh` target for remote slot-presence checks + on-host balance probes,
+/// configured via `TENDER_WINHUB_SSH_HOST` (same env var G1's inventory probe uses).
+/// Empty by default; when empty the `ssh` slot-presence/balance probes are
+/// skipped and the WRAP-API tiles report `NotConfigured` rather than running
+/// `ssh` against a nonexistent host.
 fn winhub_ssh_host() -> String {
-    std::env::var("TENDER_WINHUB_SSH_HOST").unwrap_or_else(|_| "winhub".to_string())
+    std::env::var("TENDER_WINHUB_SSH_HOST").unwrap_or_default()
 }
 
 // ── Timestamp helper (no chrono dep — mirrors inventory.rs / backup.rs) ───────
@@ -280,8 +289,19 @@ fn parse_governance_vkeys(body: &str) -> Result<Vec<VkeyRow>, String> {
 
 async fn fetch_gateway_ledger() -> GatewayLedger {
     let base = bifrost_base_url();
-    let host = base.trim_start_matches("http://").to_string();
     let label = "Bifrost gateway ledger — authoritative gateway-routed spend".to_string();
+
+    // No gateway host configured (stock build) — skip the read entirely rather
+    // than reaching a private fleet IP. Report an honest not-configured ledger.
+    if base.is_empty() {
+        return unreachable_ledger(
+            label,
+            String::new(),
+            "not configured — set TENDER_BIFROST_HOST to the gateway host:port to show the ledger"
+                .to_string(),
+        );
+    }
+    let host = base.trim_start_matches("http://").to_string();
 
     // `/api/governance/virtual-keys` carries budgets inline (usage vs limit per
     // key). The bare `/health` path is the real health check (`/v1/*` is a SPA
@@ -500,6 +520,16 @@ async fn build_openrouter_tile(ssh_host: &str) -> ProviderTile {
         subscription_url: OPENROUTER_SUBSCRIPTION_URL.to_string(),
     };
 
+    if ssh_host.is_empty() {
+        return ProviderTile {
+            detail: Some(
+                "not configured — set TENDER_WINHUB_SSH_HOST to the key-slot host to show balance"
+                    .to_string(),
+            ),
+            ..base
+        };
+    }
+
     match check_slot(ssh_host, "openrouter-management.key").await {
         SlotState::Empty => ProviderTile {
             detail: Some(
@@ -551,6 +581,16 @@ async fn build_fal_tile(ssh_host: &str) -> ProviderTile {
         detail: None,
         subscription_url: FAL_SUBSCRIPTION_URL.to_string(),
     };
+
+    if ssh_host.is_empty() {
+        return ProviderTile {
+            detail: Some(
+                "not configured — set TENDER_WINHUB_SSH_HOST to the key-slot host to show balance"
+                    .to_string(),
+            ),
+            ..base
+        };
+    }
 
     match check_slot(ssh_host, "fal.key").await {
         SlotState::Empty => ProviderTile {

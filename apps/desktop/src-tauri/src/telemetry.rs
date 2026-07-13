@@ -68,11 +68,13 @@ fn is_running(pattern: &str) -> bool {
 // ── HTTP endpoint polling (Option A — richer metrics) ─────────────────────
 
 async fn poll_json<T: for<'de> Deserialize<'de>>(url: &str, bearer: Option<&str>) -> Option<T> {
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(2))
-        .danger_accept_invalid_certs(true) // Aspire uses self-signed in dev
-        .build()
-        .ok()?;
+    let mut builder = reqwest::Client::builder().timeout(Duration::from_secs(2));
+    // Dev escape hatch ONLY: disable TLS verification when TENDER_INSECURE_TLS is
+    // set (e.g. Aspire's self-signed dev certs). Default = full TLS verification.
+    if std::env::var("TENDER_INSECURE_TLS").is_ok() {
+        builder = builder.danger_accept_invalid_certs(true);
+    }
+    let client = builder.build().ok()?;
 
     let mut req = client.get(url);
     if let Some(token) = bearer {

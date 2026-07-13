@@ -130,7 +130,7 @@ export function Panel({ onNavigate }: Props) {
           color: theme.text,
           flexShrink: 0,
         }}>
-          Tender
+          Harborline Toolbox
         </div>
 
         <div style={{ flex: 1 }} />
