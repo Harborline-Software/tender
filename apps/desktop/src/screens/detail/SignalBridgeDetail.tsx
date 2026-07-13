@@ -58,12 +58,12 @@ export function SignalBridgeDetail({ onBack }: Props) {
       <div style={{ padding: '12px 14px 6px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: theme.fontMono,
             fontSize: 9, letterSpacing: 1.4, textTransform: 'uppercase', color: theme.textMuted,
           }}>
             Throughput · 5 min
           </div>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 16, color: theme.accentBright, textShadow: `0 0 6px ${a}88` }}>
+          <div style={{ fontFamily: theme.fontMono, fontSize: 16, color: theme.accentBright, textShadow: `0 0 6px ${a}88` }}>
             {running ? mbps.toFixed(1) : '—'} <span style={{ fontSize: 9, color: theme.textDim }}>MB/S</span>
           </div>
         </div>
@@ -72,7 +72,7 @@ export function SignalBridgeDetail({ onBack }: Props) {
 
       <FiberDivider dim />
 
-      <div style={{ padding: '10px 14px 4px', fontFamily: "'JetBrains Mono', monospace", fontSize: 9, letterSpacing: 1.4, textTransform: 'uppercase', color: theme.textMuted }}>
+      <div style={{ padding: '10px 14px 4px', fontFamily: theme.fontMono, fontSize: 9, letterSpacing: 1.4, textTransform: 'uppercase', color: theme.textMuted }}>
         ↳ Active fiber links
       </div>
 
@@ -85,7 +85,7 @@ export function SignalBridgeDetail({ onBack }: Props) {
           <ConsoleIndicator kind="port" color={a} active={running} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 11, color: theme.text, letterSpacing: 0.1 }}>{l.name}</div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8.5, color: theme.textMuted, marginTop: 2, letterSpacing: 0.6 }}>
+            <div style={{ fontFamily: theme.fontMono, fontSize: 8.5, color: theme.textMuted, marginTop: 2, letterSpacing: 0.6 }}>
               ↑ {l.up} mb/s   ↓ {l.down} mb/s
             </div>
           </div>

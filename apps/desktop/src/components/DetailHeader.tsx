@@ -43,7 +43,7 @@ export function DetailHeader({ title, sub, onBack, badge }: Props) {
           </div>
           {sub && (
             <div style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: theme.fontMono,
               fontSize: 8.5, letterSpacing: 1.4, color: theme.textMuted,
               marginTop: 4, textTransform: 'uppercase',
             }}>

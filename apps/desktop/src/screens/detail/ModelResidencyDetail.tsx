@@ -134,7 +134,7 @@ export function ModelResidencyDetail({ onBack }: Props) {
             style={{
               background: `${theme.danger}1a`,
               border: `1px solid ${theme.danger}44`,
-              borderRadius: 5,
+              borderRadius: theme.radiusLg,
               padding: '10px 12px',
             }}
           >

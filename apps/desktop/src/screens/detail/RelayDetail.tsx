@@ -103,7 +103,7 @@ function SyncStateRow({ state, theme }: { state: SyncStateValue; theme: ReturnTy
         margin: '10px 14px',
         background: `${color}15`,
         border: `1px solid ${color}44`,
-        borderRadius: 5,
+        borderRadius: theme.radiusLg,
         padding: '10px 12px',
         display: 'flex',
         alignItems: 'center',
@@ -114,7 +114,7 @@ function SyncStateRow({ state, theme }: { state: SyncStateValue; theme: ReturnTy
       <span
         aria-hidden="true"
         style={{
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: theme.fontMono,
           fontSize: 14,
           color,
           lineHeight: 1,
@@ -126,7 +126,7 @@ function SyncStateRow({ state, theme }: { state: SyncStateValue; theme: ReturnTy
 
       <div>
         <div style={{
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: theme.fontMono,
           fontSize: 9,
           letterSpacing: 1.4,
           color,
@@ -177,7 +177,7 @@ function DeviceRow({ device, theme }: { device: DeviceData; theme: ReturnType<ty
           display: 'inline-flex',
           alignItems: 'center',
           gap: 4,
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: theme.fontMono,
           fontSize: 9,
           color: statusColor,
           flexShrink: 0,
@@ -211,7 +211,7 @@ function DeviceRow({ device, theme }: { device: DeviceData; theme: ReturnType<ty
           {device.hostname}
           {device.isCurrentDevice && (
             <span style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: theme.fontMono,
               fontSize: theme.sizeLabel,
               color: a,
               background: `${a}22`,
@@ -228,7 +228,7 @@ function DeviceRow({ device, theme }: { device: DeviceData; theme: ReturnType<ty
         </div>
         {device.tailscaleIPs.length > 0 && (
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: theme.fontMono,
             fontSize: theme.sizeLabel,
             color: theme.textMuted,
             marginTop: 2,
@@ -240,7 +240,7 @@ function DeviceRow({ device, theme }: { device: DeviceData; theme: ReturnType<ty
 
       {/* OS badge */}
       <span style={{
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: theme.fontMono,
         fontSize: theme.sizeLabel,
         color: theme.textMuted,
         background: `${theme.border}88`,
@@ -342,7 +342,7 @@ export function RelayDetail({ onBack }: Props) {
               style={{
                 background: `${theme.danger}1a`,
                 border: `1px solid ${theme.danger}44`,
-                borderRadius: 5,
+                borderRadius: theme.radiusLg,
                 padding: '10px 12px',
               }}
             >

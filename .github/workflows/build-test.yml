@@ -1,0 +1,97 @@
+name: Build & Test
+
+# Closes the "Build & Test" gate advertised in AGENTS.md.
+# Frontend: typecheck + build (+ optional test/lint if scripts exist).
+# Rust/Tauri backend: fmt (advisory) + clippy (advisory) + cargo test (gating).
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend (typecheck + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: |
+          set -e
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            echo "No package-lock.json found; falling back to npm install."
+            npm install
+          fi
+
+      - name: Typecheck (tsc -b)
+        run: npx tsc -b
+
+      - name: Build
+        run: npm run build --if-present
+
+      - name: Lint (if a lint script exists)
+        run: npm run lint --if-present
+
+      - name: Test (if a test script exists)
+        run: npm run test --if-present
+
+  rust:
+    name: Rust / Tauri backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/desktop/src-tauri
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: Format check (advisory)
+        run: cargo fmt --check || echo "::warning::cargo fmt --check reported formatting drift (advisory, non-blocking)."
+
+      - name: Clippy (advisory)
+        # Advisory rather than -D warnings: this repo has not previously run
+        # clippy in CI, so pre-existing lint debt should not hard-block the
+        # first hardening pass. Correctness is gated by cargo test below.
+        # Promote to `-D warnings` once the backlog is cleared.
+        run: cargo clippy --no-deps || echo "::warning::cargo clippy reported findings (advisory, non-blocking)."
+
+      - name: Test
+        run: cargo test

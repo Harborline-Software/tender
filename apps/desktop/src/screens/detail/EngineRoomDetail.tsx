@@ -47,7 +47,7 @@ export function EngineRoomDetail({ onBack }: Props) {
 
       <FiberDivider dim />
 
-      <div style={{ padding: '8px 14px 4px', fontFamily: "'JetBrains Mono', monospace", fontSize: 9, letterSpacing: 1.4, textTransform: 'uppercase', color: theme.textMuted }}>
+      <div style={{ padding: '8px 14px 4px', fontFamily: theme.fontMono, fontSize: 9, letterSpacing: 1.4, textTransform: 'uppercase', color: theme.textMuted }}>
         ↳ Top processes
       </div>
 
@@ -57,18 +57,18 @@ export function EngineRoomDetail({ onBack }: Props) {
           borderBottom: i < procs.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
         }}>
           <span style={{
-            flex: 1, fontFamily: "'JetBrains Mono', monospace", fontSize: 10,
+            flex: 1, fontFamily: theme.fontMono, fontSize: 10,
             color: p.isHarborline ? theme.accentBright : theme.text,
             letterSpacing: 0.2,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>{p.name}</span>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5, color: a, letterSpacing: 0.3, width: 36, textAlign: 'right' }}>{p.cpu.toFixed(1)}%</span>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5, color: theme.textDim, letterSpacing: 0.3, width: 44, textAlign: 'right' }}>{fmtMem(p.memBytes)}</span>
+          <span style={{ fontFamily: theme.fontMono, fontSize: 9.5, color: a, letterSpacing: 0.3, width: 36, textAlign: 'right' }}>{p.cpu.toFixed(1)}%</span>
+          <span style={{ fontFamily: theme.fontMono, fontSize: 9.5, color: theme.textDim, letterSpacing: 0.3, width: 44, textAlign: 'right' }}>{fmtMem(p.memBytes)}</span>
         </div>
       ))}
 
       {procs.length === 0 && (
-        <div style={{ padding: '10px 14px', fontFamily: "'JetBrains Mono', monospace", fontSize: 9.5, color: theme.textMuted, textAlign: 'center' }}>
+        <div style={{ padding: '10px 14px', fontFamily: theme.fontMono, fontSize: 9.5, color: theme.textMuted, textAlign: 'center' }}>
           Polling…
         </div>
       )}

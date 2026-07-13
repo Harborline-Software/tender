@@ -67,17 +67,17 @@ export function FlightDeckDetail({ onBack }: Props) {
             boxShadow: running ? `inset 0 0 8px ${a}10` : 'none',
             opacity: running ? 1 : 0.45,
           }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8, letterSpacing: 0.8, color: theme.textMuted }}>GPU·{w.id}</div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: theme.accentBright, textShadow: running ? `0 0 5px ${a}88` : 'none' }}>
+            <div style={{ fontFamily: theme.fontMono, fontSize: 8, letterSpacing: 0.8, color: theme.textMuted }}>GPU·{w.id}</div>
+            <div style={{ fontFamily: theme.fontMono, fontSize: 13, color: theme.accentBright, textShadow: running ? `0 0 5px ${a}88` : 'none' }}>
               {w.util}<span style={{ fontSize: 8, opacity: 0.7 }}>%</span>
             </div>
             <div style={{ height: 1.5, width: '100%', background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${w.util}%`, background: a, boxShadow: running ? `0 0 3px ${a}` : 'none' }} />
             </div>
             <div style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: theme.fontMono,
               fontSize: 7.5,
-              color: w.temp > 75 ? '#f0b370' : theme.textMuted,
+              color: w.temp > 75 ? theme.warn : theme.textMuted,
               letterSpacing: 0.4,
             }}>{w.temp}&deg;C</div>
           </div>
@@ -90,7 +90,7 @@ export function FlightDeckDetail({ onBack }: Props) {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           minHeight: 60,
         }}>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8, color: theme.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>spare</span>
+          <span style={{ fontFamily: theme.fontMono, fontSize: 8, color: theme.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>spare</span>
         </div>
       </div>
 

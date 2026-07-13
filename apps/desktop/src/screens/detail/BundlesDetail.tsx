@@ -185,7 +185,7 @@ function BundleCard({
       margin: '6px 10px',
       background: `linear-gradient(180deg, ${theme.bgSoft} 0%, ${theme.bg} 100%)`,
       border: `1px solid ${theme.border}`,
-      borderRadius: 5,
+      borderRadius: theme.radiusLg,
       overflow: 'hidden',
     }}>
       {/* Bundle header row */}
@@ -208,7 +208,7 @@ function BundleCard({
       >
         {/* Category icon */}
         <span style={{
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: theme.fontMono,
           fontSize: 13,
           color: a,
           width: 18,
@@ -228,7 +228,7 @@ function BundleCard({
             {manifest.name}
           </div>
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: theme.fontMono,
             fontSize: 8, letterSpacing: 1, color: theme.textMuted,
             marginTop: 2, textTransform: 'uppercase',
           }}>
@@ -267,7 +267,7 @@ function BundleCard({
                 </p>
               )}
               <div style={{
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: theme.fontMono,
                 fontSize: 8, color: theme.textMuted, letterSpacing: 0.8,
               }}>
                 MATURITY: {manifest.maturity}
@@ -281,7 +281,7 @@ function BundleCard({
               <div style={{ height: 1, background: `${theme.border}88` }} />
               <div style={{ padding: '6px 10px 4px' }}>
                 <div style={{
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: theme.fontMono,
                   fontSize: 8, letterSpacing: 1.4, color: theme.textMuted,
                   textTransform: 'uppercase', marginBottom: 5,
                 }}>
@@ -296,7 +296,7 @@ function BundleCard({
                     <tr>
                       <th scope="col" style={{
                         textAlign: 'left',
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: theme.fontMono,
                         fontSize: 7, letterSpacing: 0.8,
                         color: theme.textMuted, fontWeight: 'normal',
                         textTransform: 'uppercase',
@@ -306,7 +306,7 @@ function BundleCard({
                       </th>
                       <th scope="col" style={{
                         textAlign: 'center',
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: theme.fontMono,
                         fontSize: 7, letterSpacing: 0.8,
                         color: theme.textMuted, fontWeight: 'normal',
                         textTransform: 'uppercase',
@@ -317,7 +317,7 @@ function BundleCard({
                       </th>
                       <th scope="col" style={{
                         textAlign: 'right',
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: theme.fontMono,
                         fontSize: 7, letterSpacing: 0.8,
                         color: theme.textMuted, fontWeight: 'normal',
                         textTransform: 'uppercase',
@@ -376,7 +376,7 @@ function BundleCard({
                           }}>
                             {rec.isRequired && (
                               <span style={{
-                                fontFamily: "'JetBrains Mono', monospace",
+                                fontFamily: theme.fontMono,
                                 fontSize: 7, letterSpacing: 0.6,
                                 color: theme.textMuted, background: `${theme.border}88`,
                                 borderRadius: 2, padding: '1px 4px',
@@ -391,7 +391,7 @@ function BundleCard({
                           }}>
                             {liveRec ? (
                               <span style={{
-                                fontFamily: "'JetBrains Mono', monospace",
+                                fontFamily: theme.fontMono,
                                 fontSize: 8,
                                 color: probeStatusColor(liveRec.status, theme),
                                 textTransform: 'uppercase',
@@ -400,7 +400,7 @@ function BundleCard({
                               </span>
                             ) : (
                               <span style={{
-                                fontFamily: "'JetBrains Mono', monospace",
+                                fontFamily: theme.fontMono,
                                 fontSize: 8, color: theme.textMuted,
                                 textTransform: 'uppercase',
                               }}>
@@ -420,7 +420,7 @@ function BundleCard({
           {bundleHealth.length === 0 && (
             <div style={{
               padding: '5px 10px 6px',
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: theme.fontMono,
               fontSize: 8.5, color: theme.textMuted,
             }}>
               No provider requirements declared
@@ -434,7 +434,7 @@ function BundleCard({
               <div style={{
                 padding: '4px 10px 5px',
                 display: 'flex', alignItems: 'center', gap: 6,
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: theme.fontMono,
                 fontSize: 8, color: theme.textMuted, textTransform: 'uppercase',
               }}>
                 <span>Min-spec: {manifest.requirements.policy}</span>
@@ -525,7 +525,7 @@ export function BundlesDetail({ onBack }: Props) {
             style={{
               padding: '24px 14px',
               textAlign: 'center',
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: theme.fontMono,
               fontSize: 9, letterSpacing: 1.2, color: theme.textMuted,
               textTransform: 'uppercase',
             }}>
@@ -541,11 +541,11 @@ export function BundlesDetail({ onBack }: Props) {
               style={{
                 background: `${theme.danger}1a`,
                 border: `1px solid ${theme.danger}44`,
-                borderRadius: 5,
+                borderRadius: theme.radiusLg,
                 padding: '10px 12px',
               }}>
               <div style={{
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: theme.fontMono,
                 fontSize: 9, letterSpacing: 1.2, color: theme.danger,
                 textTransform: 'uppercase', marginBottom: 5,
               }}>
@@ -565,7 +565,7 @@ export function BundlesDetail({ onBack }: Props) {
           <div style={{
             padding: '24px 14px',
             textAlign: 'center',
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: theme.fontMono,
             fontSize: 9, letterSpacing: 1.2, color: theme.textMuted,
             textTransform: 'uppercase',
           }}>
@@ -581,14 +581,14 @@ export function BundlesDetail({ onBack }: Props) {
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
               <span style={{
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: theme.fontMono,
                 fontSize: 9, letterSpacing: 1.4,
                 textTransform: 'uppercase', color: theme.textMuted,
               }}>
                 ↳ {bundleCount} bundles · fleet catalog
               </span>
               <span style={{
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: theme.fontMono,
                 fontSize: 9,
                 color: bridgeDown ? theme.warn : liveErrCount > 0 ? theme.danger : a,
                 letterSpacing: 0.6,
@@ -608,7 +608,7 @@ export function BundlesDetail({ onBack }: Props) {
             {/* R10 footer note */}
             <div style={{ padding: '8px 14px 10px' }}>
               <div style={{
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: theme.fontMono,
                 fontSize: 8, letterSpacing: 0.8, color: theme.textMuted,
                 textTransform: 'uppercase', lineHeight: 1.5,
               }}>

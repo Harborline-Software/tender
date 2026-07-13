@@ -1,55 +1,74 @@
 # Harborline Toolbox
 
-Harborline Toolbox (repo name: `tender`) is the tray-resident toolbox for managing the Harborline fleet from the Mac menu bar. It surfaces service health, Tailscale device status, log viewers, and (from Q6) bundle-manifest inspection.
+Harborline Toolbox (repo name: `tender`) is a **macOS menu-bar tray app** for
+monitoring and managing local Harborline services from a single place. It lives
+in the menu bar and surfaces service health, Tailscale device status, log
+viewers, a Projects tab for your git repositories, and bundle-manifest
+inspection. Optionally, it can also report on remote operator hosts you run
+yourself (model inventory, GPU VRAM residency, paid-compute ledgers) — those
+features are off by default (see [Configuration](#configuration)).
 
-## Standalone install
+**Who it's for:** operators running Harborline services on a Mac who want an
+at-a-glance tray view without keeping a terminal open. It is a standalone `.app`
+— you do **not** need to clone any other Harborline repository to build or run
+it.
 
-Harborline Toolbox ships as a self-contained `.app` — no sibling clone of `shipyard` or any other fleet repo is required on the operator's machine.
+- Repository: <https://github.com/Harborline-Software/tender>
+- License: MIT (see [`LICENSE`](./LICENSE) and
+  [`THIRD-PARTY-LICENSES.md`](./THIRD-PARTY-LICENSES.md))
+
+## Status
+
+Harborline Toolbox is **pre-1.0** and under active development.
+
+- **Builds are currently UNSIGNED.** macOS Gatekeeper will warn on first launch
+  ("cannot verify the developer"). You can allow it via **System Settings →
+  Privacy & Security → Open Anyway**. Code-signing/notarization is not yet in
+  place; no timeline is promised here.
+- **There is no auto-updater yet.** Updating means building or downloading a new
+  version and replacing the app manually.
+
+## Install / build
+
+Harborline Toolbox ships as a self-contained `.app`. No sibling clone of any
+other Harborline repo is required.
 
 ```bash
 git clone https://github.com/Harborline-Software/tender.git
-cd tender/apps/desktop && npm install
-npm run build   # or: cargo tauri build
+cd tender/apps/desktop
+npm install
+npm run tauri build   # produces "Harborline Toolbox.app" in src-tauri/target/
 ```
 
-That's it. The bundle manifest data and all TypeScript type definitions are bundled inside the application at build time.
+The bundle-manifest data and all TypeScript type definitions are bundled inside
+the application at build time. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the
+full toolchain (Node, Rust, Tauri) and dev-mode instructions.
 
-## Bundle manifests — resource bundling
+## Configuration
 
-Bundle manifest JSON files (`*.bundle.json`) are shipped inside the `.app` under `Contents/Resources/resources/bundles/`.
+Most panes work out of the box against services on your local machine. The
+**operator / remote-host features are OFF by default** — model inventory, GPU
+VRAM residency, and paid-compute reporting. They read from hosts you specify via
+`TENDER_*` environment variables. Out of the box the app points at nothing you
+own, so those panes stay empty until you set them to your own hosts:
 
-The `build.rs` build script copies them from the sibling `shipyard/` clone (when present) into `src-tauri/resources/bundles/` at build time. The committed snapshot in `src-tauri/resources/bundles/` is what ships when building without a `shipyard` clone.
+| Env var | Purpose |
+|---|---|
+| `TENDER_WINHUB_HOST` | Hostname of your GPU/inference host (model inventory, VRAM residency) |
+| `TENDER_WINHUB_SSH_HOST` | SSH host for the same machine, if different |
+| `TENDER_BIFROST_HOST` | Host for the paid-compute gateway ledger |
+| `TENDER_BRIDGE_BASE_URL` | Base URL for the Bridge service |
+| `TENDER_FLIGHTDECK_BASE_URL` | Base URL for the Flight-deck service |
+| `TENDER_STABILITY_MATRIX_DIR` | Local path to a Stability Matrix install (read-only) |
+| `TENDER_INSECURE_TLS` | Set to allow self-signed TLS on the above hosts (use with care) |
 
-**Resolution order at runtime:**
-
-1. `<Harborline Toolbox.app>/Contents/Resources/resources/bundles/` — always available in shipped builds and in `cargo tauri dev` after the first build.
-2. `~/Projects/Harborline-Software/shipyard/packages/foundation-catalog/Manifests/Bundles/` — dev fallback for bare `cargo check` without a Tauri context.
-
-**To refresh the bundled snapshot** (fleet developers only):
-
-```bash
-cd apps/desktop/src-tauri
-cargo build   # build.rs copies fresh manifests from shipyard if present
-```
-
-## TypeScript contracts — vendored types
-
-The `@sunfish/contracts` types used by Harborline Toolbox are vendored in
-`apps/desktop/src/vendor/sunfish-contracts/`. Only the bundle manifest subset
-(`BusinessCaseBundleManifest`, `BundleCategory`, `BundleStatus`, `ProviderCategory`,
-etc.) is included — the full ERP/property-management contracts are not needed.
-
-This removes the `file:` dependency on the sibling `shipyard/packages/contracts`
-package, so `npm install` works without cloning `shipyard`.
-
-**Sync discipline:** when the upstream C# canonical record changes (in
-`shipyard/packages/foundation-catalog/Bundles/BusinessCaseBundleManifest.cs`),
-update `src/vendor/sunfish-contracts/bundles.ts` AND the Rust mirror in
-`src-tauri/src/bundles.rs` together.
+If you don't set these, the corresponding panes simply show nothing — the app
+does not require any operator host to run, and never points at a host you don't
+control unless you configure it to.
 
 ## Projects tab
 
-The **Projects** tab shows the operator's git repositories:
+The **Projects** tab shows your git repositories:
 
 1. **Curated list:** `~/Library/Application Support/Tender/projects.json`
    ```json
@@ -59,60 +78,81 @@ The **Projects** tab shows the operator's git repositories:
 
 When neither source is available, the tab shows an empty state.
 
-## Q6 — Bundle manifest viewer (BundlesDetail)
+## Bundle manifests — resource bundling
 
-The **Plugins** entry in the gear menu opens `BundlesDetail`, which reads
-bundle manifests from the bundled resource directory (see above).
+Bundle-manifest JSON files (`*.bundle.json`) are shipped inside the `.app` under
+`Contents/Resources/resources/bundles/`. A committed snapshot in
+`src-tauri/resources/bundles/` is what ships in a normal build, so no external
+data source is needed.
 
-Plugin health probing is not implemented in Q6 v1; all provider slots show
-"unknown" (H4.A ruling). Q6 v2 will add live probing.
+**Resolution order at runtime:**
 
-See ADR 0007 and the Q6 Stage-05 spec in
-`shipyard/icm/05_implementation-plan/q6-tender-deep-integration-stage-05.md`
-for the full design rationale.
+1. `<Harborline Toolbox.app>/Contents/Resources/resources/bundles/` — always
+   available in shipped builds and in `tauri dev` after the first build.
+2. A local fleet-developer path (see below) — dev fallback only.
 
-## Development
+The **Plugins** entry in the gear menu opens the bundle-manifest viewer
+(`BundlesDetail`), which reads manifests from that bundled resource directory.
+Plugin health probing is not yet implemented; provider slots show "unknown"
+until live probing lands in a later version.
 
-```bash
-cd apps/desktop
-npm install          # no sibling repos required
-npm run dev          # Vite + Tauri dev mode (opens tray app)
-npm run build        # production build
-cargo tauri build    # produces "Harborline Toolbox.app" in src-tauri/target/
-```
+## TypeScript contracts — vendored types
 
-Tauri commands are defined in `src-tauri/src/` (Rust). TypeScript IPC wrappers
-live in `src/ipc/tauri.ts`.
+The `@sunfish/contracts` types used by Harborline Toolbox are vendored in
+`apps/desktop/src/vendor/sunfish-contracts/`. Only the bundle-manifest subset
+(`BusinessCaseBundleManifest`, `BundleCategory`, `BundleStatus`,
+`ProviderCategory`, etc.) is included. This removes any `file:` dependency on an
+external contracts package, so `npm install` works with no extra clones.
 
-## Upgrading from a Tender.app install
+## Fleet-developer notes (optional)
 
-`productName`/`mainBinaryName` changed from `Tender` to `Harborline Toolbox`
-(the identifier-layer half of the brand rename; the display-only half shipped
-earlier). A rebuilt app now bundles as `Harborline Toolbox.app` and its process
-shows as **Harborline Toolbox** in Activity Monitor — `Tender.app` does not
-update in place (there is no auto-updater yet, item 22 on the roadmap).
+> These notes apply **only** if you are developing inside the private Harborline
+> fleet checkout. Outside contributors and users can ignore this section — the
+> committed snapshots described above make it unnecessary.
 
-**What migrates automatically:** the per-user auto-start LaunchAgent. Its
-label (`io.harborline.tender`, unchanged — see below) and the
-`~/Library/Application Support/Tender/` config directory (unchanged, same
-reasoning) are intentionally **not** renamed, so no user data moves. On first
-launch, the app checks whether an existing LaunchAgent plist points at the
-old `Tender.app` path and, if so, rewrites it in place to point at the new
-install (`autostart::migrate_program_path`, wired into `lib.rs` setup) — auto-start
-keeps working with no user action.
+- **Bundle-manifest refresh:** `build.rs` copies `*.bundle.json` from a sibling
+  `shipyard/` clone (when present) into `src-tauri/resources/bundles/` at build
+  time; the committed snapshot is used when no `shipyard` clone exists. To
+  refresh the snapshot, run `cargo build` in `apps/desktop/src-tauri` with a
+  `shipyard` clone present.
+- **Dev-only manifest fallback path:**
+  `~/Projects/Harborline-Software/shipyard/packages/foundation-catalog/Manifests/Bundles/`
+  is consulted for bare `cargo check` without a Tauri context. This path is
+  never required for a normal build.
+- **Contract sync discipline:** when the upstream canonical record changes,
+  update `src/vendor/sunfish-contracts/bundles.ts` and the Rust mirror in
+  `src-tauri/src/bundles.rs` together.
 
-**What requires a manual step (honest, not silently automated):** the OLD
-`/Applications/Tender.app` is left in place — this app cannot safely delete a
-sibling `.app` bundle out from under itself, and there's no updater to hand
-that off to. Once `Harborline Toolbox.app` is confirmed running, drag the old
-`Tender.app` to the Trash yourself.
+## Upgrading from a `Tender.app` install
 
-**Why the bundle `identifier` (`io.harborline.tender`) and Application Support
-folder stay as `tender`:** changing the reverse-DNS identifier would reset
-macOS TCC permission grants and change the Tauri webview data directory for
-no functional benefit — Activity Monitor's process name comes from the
-compiled *binary* (`mainBinaryName`), not the identifier. Keeping the
-identifier stable avoids an unforced migration; it mirrors the fleet's
-existing pattern of an internal/engineering name (here: the `tender` repo,
-crate, and identifier) persisting under a renamed shipped product (see the
-Shipyard→Harborline rebrand).
+`productName`/`mainBinaryName` changed from `Tender` to `Harborline Toolbox`. A
+rebuilt app now bundles as `Harborline Toolbox.app` and shows as **Harborline
+Toolbox** in Activity Monitor. `Tender.app` does **not** update in place (there
+is no auto-updater yet).
+
+**What migrates automatically:** the per-user auto-start LaunchAgent. Its label
+(`io.harborline.tender`) and the `~/Library/Application Support/Tender/` config
+directory are intentionally **not** renamed, so no user data moves. On first
+launch the app checks whether an existing LaunchAgent plist points at the old
+`Tender.app` path and, if so, rewrites it in place to point at the new install —
+auto-start keeps working with no user action.
+
+**What requires a manual step:** the old `Tender.app` is left in place — the app
+cannot safely delete a sibling `.app` bundle out from under itself, and there is
+no updater to hand that off to. Once `Harborline Toolbox.app` is confirmed
+running, drag the old `Tender.app` to the Trash yourself.
+
+**Why the bundle identifier (`io.harborline.tender`) and Application Support
+folder stay as `tender`:** changing the reverse-DNS identifier would reset macOS
+TCC permission grants and change the Tauri webview data directory for no
+functional benefit — Activity Monitor's process name comes from the compiled
+*binary* (`mainBinaryName`), not the identifier. Keeping the identifier stable
+avoids an unforced migration.
+
+## Contributing & security
+
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — build, dev, and PR conventions.
+- [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) — community expectations.
+- [`SECURITY.md`](./SECURITY.md) — how to report a vulnerability privately.
+- [`THIRD-PARTY-LICENSES.md`](./THIRD-PARTY-LICENSES.md) — licensing of this
+  project and any optional bundled runtimes.

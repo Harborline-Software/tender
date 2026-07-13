@@ -32,7 +32,7 @@ export function GaugeCard({ label, value, max, sub, reading, bottom, updateAvail
         alignItems: 'center',
         gap: 6,
         padding: '10px 8px',
-        borderRadius: 6,
+        borderRadius: theme.radiusLg,
         background: hovered ? `${a}10` : 'transparent',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'background 120ms ease',
@@ -40,7 +40,7 @@ export function GaugeCard({ label, value, max, sub, reading, bottom, updateAvail
     >
       {/* Gauge label above dial */}
       <div style={{
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: theme.fontMono,
         fontSize: 8.5,
         letterSpacing: 1.4,
         textTransform: 'uppercase',

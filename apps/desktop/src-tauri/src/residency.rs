@@ -131,12 +131,16 @@ pub struct GpuResidencySnapshot {
 
 // ── Host resolution (mirrors inventory.rs) ──────────────────────────────────
 
+// Empty by default: a stock build reaches NO remote GPU host until the operator
+// configures one. An empty ssh host means "not configured" — `ssh` is skipped
+// and the snapshot reports an honest not-configured state (see
+// `get_gpu_residency`), never a fabricated Idle/Loaded guess.
 fn winhub_http_host() -> String {
-    std::env::var("TENDER_WINHUB_HOST").unwrap_or_else(|_| "desktop-umt08rn.taildefd38.ts.net".to_string())
+    std::env::var("TENDER_WINHUB_HOST").unwrap_or_default()
 }
 
 fn winhub_ssh_host() -> String {
-    std::env::var("TENDER_WINHUB_SSH_HOST").unwrap_or_else(|_| "winhub".to_string())
+    std::env::var("TENDER_WINHUB_SSH_HOST").unwrap_or_default()
 }
 
 // ── Timestamp helper (mirrors inventory.rs — no chrono dependency) ─────────
@@ -424,6 +428,36 @@ pub async fn get_gpu_residency() -> GpuResidencySnapshot {
     let ssh_host = winhub_ssh_host();
     let http_host = winhub_http_host();
 
+    // No GPU host configured (stock build) — do not run `ssh`. Report every
+    // row honestly as Unreachable with a "not configured" detail rather than
+    // erroring or fabricating an Idle/Loaded state.
+    if ssh_host.is_empty() {
+        let detail = "not configured — set TENDER_WINHUB_SSH_HOST (and TENDER_WINHUB_HOST) \
+                      to the GPU host to enable residency probing"
+            .to_string();
+        let rows = PATH_MATCH_TARGETS
+            .iter()
+            .map(|t| ResidencyRow {
+                service_id: t.service_id.to_string(),
+                display_name: t.display_name.to_string(),
+                backend_kind: t.backend_kind,
+                status: ResidencyStatus::Unreachable,
+                model_name: None,
+                vram_mb: None,
+                pid: None,
+                since: None,
+                detail: Some(detail.clone()),
+            })
+            .collect();
+        return GpuResidencySnapshot {
+            gpu: GpuHeadline { total_vram_mb: 0, used_vram_mb: 0, free_vram_mb: 0 },
+            per_process_attribution_available: false,
+            unattributed_vram_mb: None,
+            rows,
+            probed_at: now_iso(),
+        };
+    }
+
     let (headline_res, processes_res, ollama_ps_res, tts_reachable) = tokio::join!(
         fetch_gpu_headline(&ssh_host),
         fetch_gpu_processes(&ssh_host),
@@ -607,6 +641,28 @@ pub async fn get_gpu_residency() -> GpuResidencySnapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── De-fleet defaults (public-release hardening) ─────────────────────
+
+    /// A stock build (no `TENDER_*` env vars) must report every row as
+    /// `Unreachable` with a "not configured" detail — and never run `ssh`.
+    #[tokio::test]
+    async fn unset_ssh_host_reports_not_configured_rows() {
+        std::env::remove_var("TENDER_WINHUB_HOST");
+        std::env::remove_var("TENDER_WINHUB_SSH_HOST");
+        let snap = get_gpu_residency().await;
+        assert_eq!(snap.gpu.total_vram_mb, 0);
+        assert!(!snap.per_process_attribution_available);
+        assert!(!snap.rows.is_empty());
+        for r in &snap.rows {
+            assert!(
+                matches!(r.status, ResidencyStatus::Unreachable),
+                "{} should be Unreachable",
+                r.service_id
+            );
+            assert!(r.detail.as_deref().unwrap_or("").contains("not configured"));
+        }
+    }
 
     // ── GPU headline parsing ────────────────────────────────────────────
 

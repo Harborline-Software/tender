@@ -9,13 +9,16 @@ interface Props {
   indicator?: IndicatorKind
   active?: boolean
   danger?: boolean
+  /** De-emphasized row (deprecated / unavailable). Dims via the AA-floored
+      textDim token — never an opacity multiplier, which stacks below AA. */
+  dim?: boolean
   pulsing?: boolean
   badge?: React.ReactNode
   onClick?: () => void
   children?: React.ReactNode
 }
 
-export function ConsoleRow({ name, subLabel, meter, indicator, active = false, danger = false, pulsing = false, badge, onClick, children }: Props) {
+export function ConsoleRow({ name, subLabel, meter, indicator, active = false, danger = false, dim = false, pulsing = false, badge, onClick, children }: Props) {
   const { theme } = useTheme()
   const [hovered, setHovered] = useState(false)
   const a = theme.accent
@@ -69,14 +72,14 @@ export function ConsoleRow({ name, subLabel, meter, indicator, active = false, d
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 12.5, color: danger ? theme.danger : theme.text, letterSpacing: 0.1, lineHeight: 1.2,
+          fontSize: 12.5, color: danger ? theme.danger : dim ? theme.textDim : theme.text, letterSpacing: 0.1, lineHeight: 1.2,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           {name}
         </div>
         {subLabel && (
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: theme.fontMono,
             fontSize: 8.5,
             letterSpacing: 1.2,
             textTransform: 'uppercase',
@@ -93,7 +96,7 @@ export function ConsoleRow({ name, subLabel, meter, indicator, active = false, d
       {/* Meter */}
       {meter && (
         <div style={{
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: theme.fontMono,
           fontSize: 10,
           letterSpacing: 0.4,
           color: active || danger ? dc : theme.textDim,
@@ -109,7 +112,7 @@ export function ConsoleRow({ name, subLabel, meter, indicator, active = false, d
 
       {/* Chevron */}
       {onClick && (
-        <svg width="6" height="10" viewBox="0 0 6 10" fill="none" style={{ flexShrink: 0, opacity: 0.4 }}>
+        <svg width="6" height="10" viewBox="0 0 6 10" fill="none" style={{ flexShrink: 0, opacity: 0.55 }}>
           <path d="M1 1l4 4-4 4" stroke={theme.text} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )}

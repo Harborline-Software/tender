@@ -165,7 +165,7 @@ const MODEL_INVENTORY: InventoryGroup[] = [
     targetId: 'ollama',
     displayName: 'Ollama (LLM)',
     backendKind: 'llm-serving',
-    host: 'desktop-umt08rn.taildefd38.ts.net',
+    host: 'gpu-host.example.ts.net',
     status: 'ok',
     models: [
       { name: 'qwen2.5-coder:14b-instruct-q4_K_M', sizeBytes: 8988124298, lastModifiedAt: '2026-07-03T11:26:29Z' },
@@ -179,10 +179,10 @@ const MODEL_INVENTORY: InventoryGroup[] = [
     targetId: 'tts-proxy',
     displayName: 'TTS (voices)',
     backendKind: 'tts',
-    host: 'desktop-umt08rn.taildefd38.ts.net',
+    host: 'gpu-host.example.ts.net',
     status: 'unreachable',
     models: [],
-    detail: 'cannot reach TTS proxy at http://desktop-umt08rn.taildefd38.ts.net:8881/v1/models',
+    detail: 'cannot reach TTS proxy at http://gpu-host.example.ts.net:8881/v1/models',
     probedAt: '2026-07-07T16:07:33Z',
   },
   {
@@ -266,7 +266,7 @@ const GPU_RESIDENCY: GpuResidencySnapshot = {
 const PAID_COMPUTE: PaidComputeSnapshot = {
   gatewayLedger: {
     label: 'Bifrost gateway ledger — authoritative gateway-routed spend',
-    host: '100.99.202.114:8892',
+    host: '100.64.0.1:8892',
     status: 'ok',
     rows: [
       {

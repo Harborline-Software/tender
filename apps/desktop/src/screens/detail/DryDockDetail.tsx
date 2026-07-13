@@ -43,7 +43,7 @@ export function DryDockDetail({ onBack }: Props) {
 
       <FiberDivider dim />
 
-      <div style={{ padding: '8px 14px 4px', fontFamily: "'JetBrains Mono', monospace", fontSize: 9, letterSpacing: 1.4, textTransform: 'uppercase', color: theme.textMuted }}>
+      <div style={{ padding: '8px 14px 4px', fontFamily: theme.fontMono, fontSize: 9, letterSpacing: 1.4, textTransform: 'uppercase', color: theme.textMuted }}>
         ↳ Will stop
       </div>
 
@@ -53,7 +53,7 @@ export function DryDockDetail({ onBack }: Props) {
           borderBottom: i < WILL_STOP.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
         }}>
           <span style={{ width: 4, height: 4, borderRadius: 99, background: d, boxShadow: `0 0 4px ${d}aa`, flexShrink: 0 }} />
-          <span style={{ flex: 1, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: theme.text, letterSpacing: 0.2 }}>{s}</span>
+          <span style={{ flex: 1, fontFamily: theme.fontMono, fontSize: 10, color: theme.text, letterSpacing: 0.2 }}>{s}</span>
         </div>
       ))}
 

@@ -1,6 +1,16 @@
 # Icon source art — INTERIM MARK (2026-07-07, provisional per CIC)
 
-`app-icon-1024.png` is the source for `tauri icon` (bw03-sun-wave-cut — see
+`app-icon-1024.png` is the source for `tauri icon`, rasterized from
+`app-icon-badge.svg` in this directory (cobalt rounded square + the white-wave
+dark-surface variant of the mark, geometry from the central brand repo's
+`brand/assets/marks/sun-wave/harborline-mark-on-dark.svg` — commit 028a639;
+pin a release tag on the next sync). Regenerate the PNG with:
+
+```
+rsvg-convert -w 1024 -h 1024 app-icon-badge.svg -o app-icon-1024.png
+```
+
+(bw03-sun-wave-cut — see
 `harborline-www/src/assets/logo-mark.svg` in the harborline-www repo for the full
 adoption note and `.wolf/cerebrum.md` decision-log "INTERIM MARK ADOPTED" for the
 verbatim CIC ruling). Cobalt (#06489c) rounded-square badge, orange sun (#e97c48),

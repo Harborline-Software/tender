@@ -141,7 +141,6 @@ function CommissionFlow({ entry, state, onPathChange, onCommit, onCancel }: Comm
               fontFamily: mono,
               fontSize: theme.sizeMetric,
               padding: '4px 8px',
-              outline: 'none',
               letterSpacing: 0.3,
             }}
           />
@@ -508,12 +507,13 @@ export function FleetTab({ onNavigate }: Props) {
           : undefined
 
         return (
-          <div key={manifest.id} style={dim ? { opacity: 0.55 } : undefined}>
+          <div key={manifest.id}>
             {/* Main row */}
             <ConsoleRow
               indicator="port"
               name={manifest.displayName}
               subLabel={subLabel}
+              dim={dim}
               active={isRunning(entry)}
               onClick={handleRowClick}
               badge={
