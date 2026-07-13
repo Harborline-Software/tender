@@ -683,6 +683,29 @@ pub async fn get_paid_compute() -> PaidComputeSnapshot {
 mod tests {
     use super::*;
 
+    // ── De-fleet defaults (public-release hardening) ─────────────────────
+
+    /// A stock build (no `TENDER_*` env vars) must report the gateway ledger
+    /// unreachable/not-configured and the WRAP-API tiles not-configured —
+    /// without reaching any gateway host or running `ssh`.
+    #[tokio::test]
+    async fn unset_hosts_yield_not_configured_snapshot() {
+        std::env::remove_var("TENDER_BIFROST_HOST");
+        std::env::remove_var("TENDER_WINHUB_SSH_HOST");
+        let snap = get_paid_compute().await;
+        assert!(matches!(snap.gateway_ledger.status, LedgerStatus::Unreachable));
+        assert!(snap.gateway_ledger.host.is_empty());
+        assert!(snap.gateway_ledger.detail.as_deref().unwrap_or("").contains("not configured"));
+        for tile in snap.providers.iter().filter(|t| t.kind == ProviderKind::WrapApi) {
+            assert!(
+                tile.detail.as_deref().unwrap_or("").contains("not configured"),
+                "{} tile should be not configured",
+                tile.id
+            );
+            assert!(tile.balance.is_none());
+        }
+    }
+
     // ── Bifrost governance parsing — the SECRET-DROP guarantee ────────────────
 
     /// Shape-matched fixture (winhub internal gateway governance response,

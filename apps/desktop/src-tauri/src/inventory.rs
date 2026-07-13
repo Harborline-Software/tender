@@ -580,6 +580,28 @@ pub async fn get_model_inventory() -> Vec<InventoryGroup> {
 mod tests {
     use super::*;
 
+    // ── De-fleet defaults (public-release hardening) ─────────────────────
+
+    /// A stock build (no `TENDER_*` env vars) must report every group as
+    /// `NotConfigured` with an empty host — and never reach a remote host.
+    #[tokio::test]
+    async fn unset_host_env_yields_not_configured_groups() {
+        std::env::remove_var("TENDER_WINHUB_HOST");
+        std::env::remove_var("TENDER_WINHUB_SSH_HOST");
+        let groups = get_model_inventory().await;
+        assert_eq!(groups.len(), 4);
+        for g in &groups {
+            assert!(
+                matches!(g.status, InventoryStatus::NotConfigured),
+                "{} should be NotConfigured, got {:?}",
+                g.target_id,
+                g.status
+            );
+            assert!(g.host.is_empty(), "{} host should be empty", g.target_id);
+            assert!(g.detail.as_deref().unwrap_or("").contains("not configured"));
+        }
+    }
+
     // ── Ollama parsing ────────────────────────────────────────────────────
 
     #[test]

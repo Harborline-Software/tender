@@ -642,6 +642,28 @@ pub async fn get_gpu_residency() -> GpuResidencySnapshot {
 mod tests {
     use super::*;
 
+    // ── De-fleet defaults (public-release hardening) ─────────────────────
+
+    /// A stock build (no `TENDER_*` env vars) must report every row as
+    /// `Unreachable` with a "not configured" detail — and never run `ssh`.
+    #[tokio::test]
+    async fn unset_ssh_host_reports_not_configured_rows() {
+        std::env::remove_var("TENDER_WINHUB_HOST");
+        std::env::remove_var("TENDER_WINHUB_SSH_HOST");
+        let snap = get_gpu_residency().await;
+        assert_eq!(snap.gpu.total_vram_mb, 0);
+        assert!(!snap.per_process_attribution_available);
+        assert!(!snap.rows.is_empty());
+        for r in &snap.rows {
+            assert!(
+                matches!(r.status, ResidencyStatus::Unreachable),
+                "{} should be Unreachable",
+                r.service_id
+            );
+            assert!(r.detail.as_deref().unwrap_or("").contains("not configured"));
+        }
+    }
+
     // ── GPU headline parsing ────────────────────────────────────────────
 
     #[test]
