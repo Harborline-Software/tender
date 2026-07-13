@@ -1,4 +1,4 @@
-// Theme catalog — Engine Room locked. Single palette, dark + light modes,
+// Theme catalog — Harborline product palette. Single palette, dark + light modes,
 // paired with neutral Windows system chrome (palette-agnostic wallpaper +
 // taskbar) so the menu is the only thing carrying palette colors.
 
@@ -41,36 +41,39 @@ const SYSTEM_CHROME = {
 
 const THEME_PALETTES = [
   {
-    id: 'engine-room',
-    name: 'Engine Room',
-    swatch: ['#15171c', '#5fb8e0', '#7a5a28'],
-    accent: '#5fb8e0',        // canonical brand cyan (used for swatches etc)
-    accentBright: '#a3dcf5',
-    metal: '#7a5a28',
-    metalBright: '#b8893d',
-    danger: '#e87560',
+    id: 'harborline',
+    name: 'Harborline',
+    swatch: ['#15171c', '#0f62fe', '#e97c48'],
+    accent: '#0f62fe',        // product interactive blue (used for swatches etc)
+    accentBright: '#7ab8ff',
+    // Beacon-amber live/signal accent; `metal*` names kept as aliases for
+    // older canvas files.
+    signal: '#e97c48',
+    metal: '#e97c48',
+    metalBright: '#e97c48',
+    danger: '#b42318',
     dark: {
       bg:'#15171c', bgSoft:'#1e2128', surface:'#1a1d22',
       text:'#dde2ea', textDim:'rgba(221,226,234,0.62)', textMuted:'rgba(221,226,234,0.42)',
-      border:'rgba(95,184,224,0.18)',
+      border:'rgba(122,184,255,0.18)',
       shadow:'rgba(0,0,0,0.7)',
-      // Per-mode accents: dark mode uses the bright cyan since it sits on
-      // near-black surfaces.
-      accent:       '#5fb8e0',
-      accentBright: '#a3dcf5',
-      danger:       '#e87560',
+      // Per-mode accents: dark mode uses the product's dark-surface blue.
+      accent:       '#7ab8ff',
+      accentBright: '#a8d0ff',
+      signal:       '#e97c48',
+      danger:       '#ff8a80',
     },
     light: {
       bg:'#dde0e6', bgSoft:'#c8cdd6', surface:'#d2d6df',
       text:'#15171c', textDim:'rgba(21,23,28,0.7)', textMuted:'rgba(21,23,28,0.55)',
       border:'rgba(21,23,28,0.18)',
       shadow:'rgba(21,23,28,0.22)',
-      // Per-mode accents: light mode uses a deeper, more saturated cyan so
-      // it carries enough contrast on cool-gray surfaces. accentBright is
-      // even darker (used for emphasized text), opposite of dark mode.
-      accent:       '#1d6f9a',
-      accentBright: '#0f5277',
-      danger:       '#a13325',
+      // Per-mode accents: light mode uses the product interactive blue;
+      // accentBright is darker (text-grade AA), opposite of dark mode.
+      accent:       '#0f62fe',
+      accentBright: '#0043ce',
+      signal:       '#9a4719',
+      danger:       '#b42318',
     },
   },
 ];
@@ -87,8 +90,9 @@ function getTheme(paletteId, mode) {
     accent:       base.accent       || p.accent,
     accentBright: base.accentBright || p.accentBright,
     danger:       base.danger       || p.danger,
-    metal:        p.metal,
-    metalBright:  p.metalBright,
+    signal:       base.signal       || p.signal,
+    metal:        base.signal       || p.signal,
+    metalBright:  base.signal       || p.signal,
     paletteName: p.name,
     paletteId: p.id,
     mode,
