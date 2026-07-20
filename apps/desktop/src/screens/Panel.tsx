@@ -128,12 +128,18 @@ export function Panel({ onNavigate }: Props) {
           lineHeight: 1,
           letterSpacing: -0.2,
           color: theme.text,
-          flexShrink: 0,
+          // Yield FIRST when the header is tight so the right-side controls
+          // (workspace, expand, gear) are never clipped off the tray edge (#98).
+          flexShrink: 1,
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
         }}>
           Harborline Toolbox
         </div>
 
-        <div style={{ flex: 1 }} />
+        <div style={{ flex: 1, minWidth: 8 }} />
 
         {/* Workspace dropdown */}
         <button
@@ -280,6 +286,7 @@ export function Panel({ onNavigate }: Props) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            flexShrink: 0,
           }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${a}22` }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}

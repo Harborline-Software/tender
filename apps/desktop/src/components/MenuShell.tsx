@@ -72,7 +72,11 @@ export function MenuShell({ children }: Props) {
   return (
     <div
       style={{
-        width: theme.panelWidth,
+        // Fill the actual native window (never a hardcoded width that can exceed
+        // it and clip the header controls off the right edge), capped at the
+        // intended tray width (#98).
+        width: '100vw',
+        maxWidth: theme.panelWidth,
         // F1.2: clamp to viewport minus menubar height; panel hangs below ~24px bar
         maxHeight: 'calc(100vh - 44px)',
         minHeight: 200,
