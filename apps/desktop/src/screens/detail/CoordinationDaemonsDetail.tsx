@@ -8,12 +8,14 @@ import { LogViewerSheet } from '@/components/LogViewerSheet'
 import {
   controlCoordinationDaemon,
   getCoordinationDaemons,
+  getFleetCoordinatorStatus,
   getFleetDashboardLink,
   openCoordinationDaemonLog,
   openFleetDashboard,
   type CoordinationDaemonAction,
   type CoordinationDaemonStatus,
   type FleetDashboardLink,
+  type FleetCoordinatorStatus,
 } from '@/ipc/tauri'
 
 interface Props {
@@ -26,6 +28,14 @@ const STATE_COPY: Record<CoordinationDaemonStatus['state'], { label: string; gly
   loaded: { label: 'Loaded', glyph: '✓' },
   maintenanceHeld: { label: 'Held', glyph: 'Ⅱ' },
   disabled: { label: 'Stopped', glyph: '○' },
+  degraded: { label: 'Attention', glyph: '!' },
+  notConfigured: { label: 'Not configured', glyph: '—' },
+}
+
+const COORDINATOR_STATE_COPY: Record<FleetCoordinatorStatus['state'], { label: string; glyph: string }> = {
+  online: { label: 'Online', glyph: '✓' },
+  unreachable: { label: 'Unreachable', glyph: '!' },
+  authRequired: { label: 'Token required', glyph: '!' },
   degraded: { label: 'Attention', glyph: '!' },
   notConfigured: { label: 'Not configured', glyph: '—' },
 }
@@ -69,6 +79,105 @@ function ActionButton({
     cursor: disabled ? 'not-allowed' : 'pointer',
   }
   return <button type="button" style={style} onClick={onClick} disabled={disabled} title={title}>{label}</button>
+}
+
+function CoordinatorSummary({ status }: { status: FleetCoordinatorStatus }) {
+  const { theme } = useTheme()
+  const descriptor = COORDINATOR_STATE_COPY[status.state]
+  const tone = status.state === 'online' ? theme.healthy
+    : status.state === 'unreachable' ? theme.danger
+      : status.state === 'notConfigured' ? theme.textMuted
+        : theme.warn
+  const authority = status.authorityId && status.epoch != null
+    ? `${status.authorityId} · epoch ${status.epoch}`
+    : 'Single authority'
+
+  return (
+    <section aria-label="Fleet Coordinator" style={{ padding: '10px 14px 11px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+        <span
+          aria-hidden="true"
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: theme.radiusFull,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: `1px solid ${tone}66`,
+            color: tone,
+            fontFamily: theme.fontMono,
+            fontSize: theme.sizeMetric,
+            flexShrink: 0,
+          }}
+        >
+          {descriptor.glyph}
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <strong style={{ fontFamily: theme.fontRow, fontSize: theme.sizeRowTitle, color: theme.text }}>
+              Fleet Coordinator
+            </strong>
+            <span role="status" aria-label={`Status: ${descriptor.label}`}>
+              <StatusPill text={descriptor.label} tone={tone} />
+            </span>
+          </div>
+          <div style={{
+            marginTop: 3,
+            fontFamily: theme.fontMono,
+            fontSize: theme.sizeLabel,
+            color: theme.textMuted,
+            letterSpacing: 0.5,
+          }}>
+            {authority}{status.revision != null ? ` · revision ${status.revision}` : ''}
+          </div>
+        </div>
+      </div>
+
+      <p style={{
+        margin: '8px 0 0',
+        fontFamily: theme.fontRow,
+        fontSize: theme.sizeBody,
+        color: theme.textDim,
+        lineHeight: 1.45,
+      }}>
+        {status.detail}
+      </p>
+
+      {status.state === 'online' && (
+        <div
+          aria-label={`${status.queuedAssignments} queued assignments, ${status.claimedAssignments} claimed assignments, ${status.activeAttempts} active attempts, ${status.reportingNodes} reporting nodes`}
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '4px 10px',
+            marginTop: 7,
+            fontFamily: theme.fontMono,
+            fontSize: theme.sizeLabel,
+            color: theme.textMuted,
+          }}
+        >
+          <span>{status.queuedAssignments} queued</span>
+          <span>{status.claimedAssignments} claimed</span>
+          <span>{status.activeAttempts} active</span>
+          <span>{status.reportingNodes} nodes</span>
+        </div>
+      )}
+
+      {status.url && (
+        <div style={{
+          marginTop: 7,
+          fontFamily: theme.fontMono,
+          fontSize: theme.sizeLabel,
+          color: theme.textMuted,
+          lineHeight: 1.45,
+          overflowWrap: 'anywhere',
+        }}>
+          {status.url}
+        </div>
+      )}
+    </section>
+  )
 }
 
 function DaemonCard({
@@ -231,6 +340,7 @@ export function CoordinationDaemonsDetail({ onBack }: Props) {
   const { theme } = useTheme()
   const [daemons, setDaemons] = useState<CoordinationDaemonStatus[] | null>(null)
   const [dashboard, setDashboard] = useState<FleetDashboardLink | null>(null)
+  const [coordinator, setCoordinator] = useState<FleetCoordinatorStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState<DaemonId | null>(null)
@@ -239,12 +349,14 @@ export function CoordinationDaemonsDetail({ onBack }: Props) {
 
   const load = useCallback(async () => {
     try {
-      const [nextDaemons, nextDashboard] = await Promise.all([
+      const [nextDaemons, nextDashboard, nextCoordinator] = await Promise.all([
         getCoordinationDaemons(),
         getFleetDashboardLink(),
+        getFleetCoordinatorStatus(),
       ])
       setDaemons(nextDaemons)
       setDashboard(nextDashboard)
+      setCoordinator(nextCoordinator)
       setError(null)
     } catch (reason) {
       setError(typeof reason === 'string' ? reason : 'Could not inspect coordination daemons.')
@@ -252,9 +364,19 @@ export function CoordinationDaemonsDetail({ onBack }: Props) {
   }, [])
 
   useEffect(() => {
-    load()
-    const timer = setInterval(load, 5000)
-    return () => clearInterval(timer)
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+
+    const poll = async () => {
+      await load()
+      if (!cancelled) timer = setTimeout(poll, 5000)
+    }
+
+    void poll()
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
   }, [load])
 
   const runAction = async (daemon: CoordinationDaemonStatus, action: CoordinationDaemonAction) => {
@@ -283,17 +405,21 @@ export function CoordinationDaemonsDetail({ onBack }: Props) {
 
   const loadedCount = daemons?.filter(daemon => daemon.state === 'loaded').length ?? 0
   const attentionCount = daemons?.filter(daemon => daemon.state === 'degraded').length ?? 0
+  const coordinatorAttention = coordinator != null && coordinator.state !== 'online'
+  const totalAttention = attentionCount + (coordinatorAttention ? 1 : 0)
 
   return (
     <MenuShell>
       <DetailHeader
         title="Coordination Daemons"
-        sub={daemons ? `${loadedCount} loaded · ${attentionCount} need attention` : 'Inspecting launchd…'}
+        sub={daemons
+          ? `${coordinator?.state === 'online' ? 'Authority online' : 'Authority not ready'} · ${loadedCount} local jobs`
+          : 'Inspecting control plane…'}
         onBack={onBack}
         badge={
-          <span role="status" aria-label={`Coordination status: ${attentionCount > 0 ? 'Attention' : loadedCount > 0 ? 'Ready' : 'Held'}`}>
-            <StatusPill text={attentionCount > 0 ? 'Attention' : loadedCount > 0 ? 'Ready' : 'Held'}
-              tone={attentionCount > 0 ? theme.warn : loadedCount > 0 ? theme.healthy : theme.textMuted} />
+          <span role="status" aria-label={`Coordination status: ${totalAttention > 0 ? 'Attention' : loadedCount > 0 ? 'Ready' : 'Held'}`}>
+            <StatusPill text={totalAttention > 0 ? 'Attention' : loadedCount > 0 ? 'Ready' : 'Held'}
+              tone={totalAttention > 0 ? theme.warn : loadedCount > 0 ? theme.healthy : theme.textMuted} />
           </span>
         }
       />
@@ -317,6 +443,13 @@ export function CoordinationDaemonsDetail({ onBack }: Props) {
           >
             {error ?? notice}
           </div>
+        )}
+
+        {coordinator && (
+          <>
+            <CoordinatorSummary status={coordinator} />
+            <FiberDivider />
+          </>
         )}
 
         {daemons === null ? (

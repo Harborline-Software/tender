@@ -64,6 +64,9 @@ own, so those panes stay empty until you set them to your own hosts:
 | `TENDER_COORDINATION_DIR` | Local coordination checkout used for daemon status and logs |
 | `TENDER_FLEET_DASHBOARD_URL` | Optional Fleet Dashboard URL fallback when Dock Settings has no saved value |
 | `TENDER_ALLOW_COORDINATION_DAEMON_START` | Set to `1` only after the installed daemon safety fix is verified; unlocks Start and Run now |
+| `HARBORLINE_COORDINATOR_CONFIG` | Optional path to the shared Ordinance coordinator config; defaults to `~/.config/harborline/coordinator.json` |
+| `HARBORLINE_COORDINATOR_URL` | Optional session override for the Fleet Coordinator origin |
+| `HARBORLINE_COORDINATOR_TOKEN_FILE` | Optional session override for the local coordinator bearer-token file |
 
 If you don't set these, the corresponding panes simply show nothing — the app
 does not require any operator host to run, and never points at a host you don't
@@ -78,7 +81,10 @@ in the Toolbox process environment; set that only after the coordination daemon
 safety update has been installed and verified. The fleet-dashboard link has no
 committed host default. Configure it in **Dock Settings → Connections**; the
 saved value takes priority over `TENDER_FLEET_DASHBOARD_URL`, which remains
-available as an environment fallback.
+available as an environment fallback. The same settings section edits the Fleet
+Coordinator origin shared with Ordinance clients. Tender reads the local token
+file only in its native process, never sends the token to the webview, and ships
+without a machine- or customer-specific coordinator default.
 
 ## Projects tab
 

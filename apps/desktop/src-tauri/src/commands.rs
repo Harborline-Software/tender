@@ -37,6 +37,26 @@ pub fn open_fleet_dashboard() -> Result<(), String> {
     crate::coordination_daemons::open_dashboard()
 }
 
+/// Return the shared Ordinance coordinator connection without exposing its token.
+#[tauri::command]
+pub fn get_fleet_coordinator_connection() -> crate::fleet_coordinator::FleetCoordinatorConnection {
+    crate::fleet_coordinator::connection()
+}
+
+/// Persist or clear the shared coordinator URL while preserving local secret configuration.
+#[tauri::command]
+pub fn set_fleet_coordinator_url(
+    url: Option<String>,
+) -> Result<crate::fleet_coordinator::FleetCoordinatorConnection, String> {
+    crate::fleet_coordinator::set_url(url)
+}
+
+/// Probe the authenticated single-authority status endpoint. Tender remains read-only.
+#[tauri::command]
+pub async fn get_fleet_coordinator_status() -> crate::fleet_coordinator::FleetCoordinatorStatus {
+    crate::fleet_coordinator::status().await
+}
+
 // ── Log file path resolution ───────────────────────────────────────────────
 
 /// Canonical log file paths for each service identifier.

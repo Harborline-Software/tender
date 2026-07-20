@@ -8,6 +8,7 @@ pub mod autostart;
 pub mod bundles;
 pub mod catalog;
 pub mod coordination_daemons;
+pub mod fleet_coordinator;
 mod commands;
 mod devices;
 pub mod install;
@@ -150,6 +151,9 @@ pub fn run() {
             commands::open_coordination_daemon_log,
             commands::get_fleet_dashboard_link,
             commands::open_fleet_dashboard,
+            commands::get_fleet_coordinator_connection,
+            commands::set_fleet_coordinator_url,
+            commands::get_fleet_coordinator_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Harborline Toolbox");

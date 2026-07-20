@@ -16,11 +16,13 @@ import { DataLine } from '@/components/DataLine'
 import { ToggleSwitch } from '@/components/ToggleSwitch'
 import {
   getFleetDashboardLink,
+  getFleetCoordinatorConnection,
   getSettings,
   setFleetDashboardUrl,
+  setFleetCoordinatorUrl,
   setMode,
 } from '@/ipc/tauri'
-import type { FleetDashboardLink, Mode } from '@/ipc/tauri'
+import type { FleetCoordinatorConnection, FleetDashboardLink, Mode } from '@/ipc/tauri'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -87,16 +89,26 @@ export function DockSettingsDetail({ onBack }: Props) {
   const [dashboardFocused, setDashboardFocused] = useState(false)
   const [dashboardNotice, setDashboardNotice] = useState<string | null>(null)
   const [dashboardError, setDashboardError] = useState<string | null>(null)
+  const [coordinatorUrl, setCoordinatorUrl] = useState('')
+  const [savedCoordinatorUrl, setSavedCoordinatorUrl] = useState<string | null>(null)
+  const [coordinatorConnection, setCoordinatorConnection] = useState<FleetCoordinatorConnection | null>(null)
+  const [coordinatorSaving, setCoordinatorSaving] = useState(false)
+  const [coordinatorFocused, setCoordinatorFocused] = useState(false)
+  const [coordinatorNotice, setCoordinatorNotice] = useState<string | null>(null)
+  const [coordinatorError, setCoordinatorError] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([getSettings(), getFleetDashboardLink()])
-      .then(([settings, link]) => {
+    Promise.all([getSettings(), getFleetDashboardLink(), getFleetCoordinatorConnection()])
+      .then(([settings, link, coordinator]) => {
         setModeState(settings.mode)
         setDashboardUrl(settings.fleetDashboardUrl ?? '')
         setSavedDashboardUrl(settings.fleetDashboardUrl)
         setDashboardLink(link)
+        setCoordinatorUrl(coordinator.savedUrl ?? '')
+        setSavedCoordinatorUrl(coordinator.savedUrl)
+        setCoordinatorConnection(coordinator)
       })
-      .catch(() => setDashboardError('Could not read Tender settings.'))
+      .catch(() => setDashboardError('Could not read Tender connection settings.'))
   }, [])
 
   const handleModeToggle = async (newMode: Mode) => {
@@ -127,6 +139,7 @@ export function DockSettingsDetail({ onBack }: Props) {
   }
 
   const dashboardDirty = dashboardUrl.trim() !== (savedDashboardUrl ?? '')
+  const coordinatorDirty = coordinatorUrl.trim() !== (savedCoordinatorUrl ?? '')
 
   const handleDashboardSave = async () => {
     if (dashboardSaving || !dashboardDirty) return
@@ -147,6 +160,29 @@ export function DockSettingsDetail({ onBack }: Props) {
     }
   }
 
+  const handleCoordinatorSave = async () => {
+    if (coordinatorSaving || !coordinatorDirty) return
+    setCoordinatorSaving(true)
+    setCoordinatorNotice(null)
+    setCoordinatorError(null)
+    try {
+      const updated = await setFleetCoordinatorUrl(coordinatorUrl.trim() || null)
+      setCoordinatorUrl(updated.savedUrl ?? '')
+      setSavedCoordinatorUrl(updated.savedUrl)
+      setCoordinatorConnection(updated)
+      setCoordinatorNotice(updated.savedUrl
+        ? 'Fleet Coordinator URL saved for Tender and Ordinance.'
+        : 'Saved coordinator URL cleared.')
+    } catch (reason) {
+      setCoordinatorError(typeof reason === 'string' ? reason : 'Could not save Fleet Coordinator URL.')
+    } finally {
+      setCoordinatorSaving(false)
+    }
+  }
+
+  const connectionDirty = dashboardDirty || coordinatorDirty
+  const connectionSaving = dashboardSaving || coordinatorSaving
+
   return (
     <MenuShell>
       <DetailHeader
@@ -155,8 +191,8 @@ export function DockSettingsDetail({ onBack }: Props) {
         onBack={onBack}
         badge={
           <StatusPill
-            text={dashboardSaving ? 'Saving' : dashboardDirty ? 'Unsaved' : 'Saved'}
-            tone={dashboardDirty ? theme.warn : undefined}
+            text={connectionSaving ? 'Saving' : connectionDirty ? 'Unsaved' : 'Saved'}
+            tone={connectionDirty ? theme.warn : undefined}
           />
         }
       />
@@ -233,6 +269,107 @@ export function DockSettingsDetail({ onBack }: Props) {
       }}>
         ↳ Connections
       </div>
+
+      <div style={{ padding: '7px 14px 11px' }}>
+        <label
+          htmlFor="fleet-coordinator-url"
+          style={{ display: 'block', fontSize: 11.5, color: theme.text }}
+        >
+          Fleet Coordinator URL
+        </label>
+        <div id="fleet-coordinator-help" style={{
+          marginTop: 3,
+          fontFamily: theme.fontRow,
+          fontSize: theme.sizeBody,
+          color: theme.textDim,
+          lineHeight: 1.4,
+        }}>
+          Shared with lane supervisors and dispatch. The bearer token stays in its local file.
+        </div>
+        <input
+          id="fleet-coordinator-url"
+          type="url"
+          inputMode="url"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={coordinatorUrl}
+          placeholder="http://coordinator-host:7788"
+          aria-describedby="fleet-coordinator-help fleet-coordinator-effective"
+          onChange={(event) => {
+            setCoordinatorUrl(event.target.value)
+            setCoordinatorNotice(null)
+            setCoordinatorError(null)
+          }}
+          onFocus={() => setCoordinatorFocused(true)}
+          onBlur={() => setCoordinatorFocused(false)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') handleCoordinatorSave()
+          }}
+          style={{
+            boxSizing: 'border-box',
+            width: '100%',
+            minHeight: 32,
+            marginTop: 8,
+            padding: '6px 8px',
+            borderRadius: 4,
+            border: `1px solid ${coordinatorFocused ? theme.accentBright : theme.border}`,
+            outline: coordinatorFocused ? `2px solid ${theme.accent}33` : 'none',
+            outlineOffset: 1,
+            background: theme.bgSoft,
+            color: theme.text,
+            fontFamily: theme.fontMono,
+            fontSize: theme.sizeBody,
+          }}
+        />
+        <div id="fleet-coordinator-effective" style={{
+          marginTop: 6,
+          fontFamily: theme.fontMono,
+          fontSize: theme.sizeLabel,
+          color: theme.textMuted,
+          lineHeight: 1.45,
+          overflowWrap: 'anywhere',
+        }}>
+          {coordinatorConnection?.effectiveUrl
+            ? `Effective: ${coordinatorConnection.effectiveUrl} · token ${coordinatorConnection.tokenConfigured ? 'configured' : 'missing'}`
+            : coordinatorConnection?.detail ?? 'Reading current connection…'}
+        </div>
+        {(coordinatorNotice || coordinatorError) && (
+          <div
+            role={coordinatorError ? 'alert' : 'status'}
+            aria-live="polite"
+            style={{
+              marginTop: 6,
+              color: coordinatorError ? theme.danger : theme.healthy,
+              fontFamily: theme.fontRow,
+              fontSize: theme.sizeBody,
+            }}
+          >
+            {coordinatorError ?? coordinatorNotice}
+          </div>
+        )}
+        <button
+          type="button"
+          disabled={coordinatorSaving || !coordinatorDirty}
+          onClick={handleCoordinatorSave}
+          style={{
+            minHeight: 30,
+            marginTop: 8,
+            padding: '5px 10px',
+            borderRadius: 4,
+            border: `1px solid ${coordinatorSaving || !coordinatorDirty ? theme.border : `${theme.accentBright}66`}`,
+            background: coordinatorSaving || !coordinatorDirty ? theme.bgSoft : `${theme.accentBright}14`,
+            color: coordinatorSaving || !coordinatorDirty ? theme.textMuted : theme.accentBright,
+            fontFamily: theme.fontRow,
+            fontSize: theme.sizeBody,
+            cursor: coordinatorSaving || !coordinatorDirty ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {coordinatorSaving ? 'Saving…' : 'Save URL'}
+        </button>
+      </div>
+
+      <FiberDivider dim />
 
       <div style={{ padding: '7px 14px 11px' }}>
         <label

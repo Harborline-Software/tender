@@ -153,12 +153,16 @@ import type {
   CoordinationDaemonStatus,
   DaemonActionResult,
   FleetDashboardLink,
+  FleetCoordinatorConnection,
+  FleetCoordinatorStatus,
 } from '@/state/types'
 export type {
   CoordinationDaemonAction,
   CoordinationDaemonStatus,
   DaemonActionResult,
   FleetDashboardLink,
+  FleetCoordinatorConnection,
+  FleetCoordinatorStatus,
 }
 
 export async function getCoordinationDaemons(): Promise<CoordinationDaemonStatus[]> {
@@ -184,6 +188,20 @@ export async function getFleetDashboardLink(): Promise<FleetDashboardLink> {
 
 export async function openFleetDashboard(): Promise<void> {
   return invoke('open_fleet_dashboard')
+}
+
+export async function getFleetCoordinatorConnection(): Promise<FleetCoordinatorConnection> {
+  return invoke<FleetCoordinatorConnection>('get_fleet_coordinator_connection')
+}
+
+export async function setFleetCoordinatorUrl(
+  url: string | null,
+): Promise<FleetCoordinatorConnection> {
+  return invoke<FleetCoordinatorConnection>('set_fleet_coordinator_url', { url })
+}
+
+export async function getFleetCoordinatorStatus(): Promise<FleetCoordinatorStatus> {
+  return invoke<FleetCoordinatorStatus>('get_fleet_coordinator_status')
 }
 
 export async function getDevices(): Promise<DeviceData[]> {

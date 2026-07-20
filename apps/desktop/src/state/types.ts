@@ -174,6 +174,34 @@ export interface FleetDashboardLink {
   detail: string
 }
 
+export type FleetCoordinatorState =
+  | 'online'
+  | 'unreachable'
+  | 'authRequired'
+  | 'degraded'
+  | 'notConfigured'
+
+export interface FleetCoordinatorConnection {
+  savedUrl: string | null
+  effectiveUrl: string | null
+  source: 'environment' | 'sharedSettings' | 'notConfigured' | 'invalid'
+  tokenConfigured: boolean
+  detail: string
+}
+
+export interface FleetCoordinatorStatus {
+  state: FleetCoordinatorState
+  url: string | null
+  detail: string
+  authorityId: string | null
+  epoch: number | null
+  revision: number | null
+  queuedAssignments: number
+  claimedAssignments: number
+  activeAttempts: number
+  reportingNodes: number
+}
+
 // ── Hardware probe (ADR 0116 D1) ─────────────────────────────────────────────
 // Mirror of the Rust `probe::*` IPC contract. Returned by the `probe_hardware`
 // Tauri command. The named-profile mapping that consumes this is C1.
