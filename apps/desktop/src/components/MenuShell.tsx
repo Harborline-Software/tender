@@ -36,7 +36,11 @@ export function MenuShell({ children }: Props) {
     return (
       <div
         style={{
-          width: '100%',
+          // Fixed to the viewport so the full window fills regardless of the
+          // body's tray-centering layout (which sizes to the 384px panel).
+          position: 'fixed',
+          inset: 0,
+          width: '100vw',
           height: '100vh',
           background: theme.bg,
           color: theme.text,
