@@ -151,6 +151,10 @@ export function Panel({ onNavigate }: Props) {
             letterSpacing: 0.6,
             cursor: 'pointer',
             boxShadow: `0 0 6px ${a}22, inset 0 0 4px ${a}1a`,
+            // Header budget is tight at 384px; the hostname truncates rather than
+            // wrapping the whole header to multiple lines (2026-07 refresh #98).
+            minWidth: 0,
+            maxWidth: 116,
           }}
         >
           <span style={{
@@ -158,8 +162,9 @@ export function Panel({ onNavigate }: Props) {
             background: a,
             boxShadow: `0 0 4px ${a}, 0 0 8px ${a}88`,
             animation: 'dotPulse 3s ease-in-out infinite',
+            flexShrink: 0,
           }} />
-          {workspace}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{workspace}</span>
           <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
             <path d="M2 3L4 5L6 3" stroke={theme.text} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

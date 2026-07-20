@@ -52,7 +52,7 @@ export interface Theme {
   sizeMetric: number    // 11   — monospace numbers / metrics (was 10)
   sizeBody: number      // 12.5 — descriptions / helper text (was 11)
   sizeRowTitle: number  // 14   — entity names in rows (was 12.5)
-  sizeDisplay: number   // 17   — wordmark only (was 16)
+  sizeDisplay: number   // 16   — wordmark only (unchanged; header budget is tight)
   // Spacing scale — index 1..7 = 4/6/8/12/16/20/24 (2026-07 density pass).
   // Replaces per-file hardcoded px so density is tunable in one place.
   // Usage: theme.space[4] = 12. Index 0 is 0.
@@ -73,7 +73,7 @@ const shared = {
   sizeMetric: 11,
   sizeRowTitle: 14,
   sizeBody: 12.5,
-  sizeDisplay: 17,
+  sizeDisplay: 16,
   space: [0, 4, 6, 8, 12, 16, 20, 24] as const,
   panelWidth: 384,
   radiusLg: 8,
