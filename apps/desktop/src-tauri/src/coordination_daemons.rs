@@ -5,7 +5,7 @@
 //! daemon. Mutating actions are opt-in through
 //! `TENDER_ALLOW_COORDINATION_DAEMON_START=1`; read-only status always works.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -27,7 +27,7 @@ struct DaemonSpec {
     stale_after: Duration,
 }
 
-const DAEMONS: [DaemonSpec; 2] = [
+const DAEMONS: [DaemonSpec; 3] = [
     DaemonSpec {
         id: "coordination-sync",
         display_name: "Coordination Sync",
@@ -58,6 +58,21 @@ const DAEMONS: [DaemonSpec; 2] = [
         ],
         stale_after: Duration::from_secs(90 * 60),
     },
+    DaemonSpec {
+        id: "lane-supervisor",
+        display_name: "Lane Supervisor",
+        cadence: "Every 5 minutes · one start per tick",
+        label: "com.harborline.lane-supervisor",
+        flag: ".lane-supervisor-active",
+        script: "../ordinance/bin/lane-supervisor.mjs",
+        plist: "com.harborline.lane-supervisor.plist",
+        logs: &[
+            ".lane-supervisor.log",
+            ".lane-supervisor-stdout.log",
+            ".lane-supervisor-stderr.log",
+        ],
+        stale_after: Duration::from_secs(15 * 60),
+    },
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -87,6 +102,32 @@ pub struct CoordinationDaemonStatus {
     pub logs_available: bool,
     pub last_run_at: Option<u64>,
     pub last_log_line: Option<String>,
+    pub capacity_active: Option<u64>,
+    pub capacity_maximum: Option<u64>,
+    pub conn_provider: Option<String>,
+    pub next_candidate: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LaneSupervisorSnapshot {
+    detail: String,
+    conn_provider: Option<String>,
+    capacity: Option<LaneCapacitySnapshot>,
+    next_candidate: Option<LaneCandidateSnapshot>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LaneCapacitySnapshot {
+    active: u64,
+    maximum: u64,
+}
+
+#[derive(Debug, Deserialize)]
+struct LaneCandidateSnapshot {
+    provider: String,
+    role: String,
+    id: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -144,6 +185,12 @@ fn launch_agents_dir() -> Option<PathBuf> {
         .ok()
         .map(PathBuf::from)
         .map(|home| home.join("Library/LaunchAgents"))
+}
+
+fn lane_supervisor_snapshot() -> Option<LaneSupervisorSnapshot> {
+    let home = std::env::var("HOME").ok()?;
+    let path = PathBuf::from(home).join(".local/state/harborline/lane-supervisor-status.json");
+    serde_json::from_slice(&std::fs::read(path).ok()?).ok()
 }
 
 fn uid() -> Result<String, String> {
@@ -307,6 +354,10 @@ fn status_for(spec: DaemonSpec, coordination: Option<&Path>) -> CoordinationDaem
             logs_available: false,
             last_run_at: None,
             last_log_line: None,
+            capacity_active: None,
+            capacity_maximum: None,
+            conn_provider: None,
+            next_candidate: None,
         };
     };
 
@@ -321,7 +372,15 @@ fn status_for(spec: DaemonSpec, coordination: Option<&Path>) -> CoordinationDaem
         .and_then(|modified| SystemTime::now().duration_since(modified).ok())
         .map(|age| age > spec.stale_after)
         .unwrap_or(loaded);
-    let (state, detail) = classify(configured, loaded, active_flag, stale, logs.newest_is_error);
+    let (state, classified_detail) =
+        classify(configured, loaded, active_flag, stale, logs.newest_is_error);
+    let supervisor = (configured && spec.id == "lane-supervisor")
+        .then(lane_supervisor_snapshot)
+        .flatten();
+    let detail = supervisor
+        .as_ref()
+        .map(|snapshot| snapshot.detail.as_str())
+        .unwrap_or(classified_detail);
 
     CoordinationDaemonStatus {
         id: spec.id.into(),
@@ -341,6 +400,20 @@ fn status_for(spec: DaemonSpec, coordination: Option<&Path>) -> CoordinationDaem
             .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
             .map(|duration| duration.as_secs()),
         last_log_line: logs.line,
+        capacity_active: supervisor
+            .as_ref()
+            .and_then(|snapshot| snapshot.capacity.as_ref().map(|capacity| capacity.active)),
+        capacity_maximum: supervisor
+            .as_ref()
+            .and_then(|snapshot| snapshot.capacity.as_ref().map(|capacity| capacity.maximum)),
+        conn_provider: supervisor
+            .as_ref()
+            .and_then(|snapshot| snapshot.conn_provider.clone()),
+        next_candidate: supervisor.as_ref().and_then(|snapshot| {
+            snapshot.next_candidate.as_ref().map(|candidate| {
+                format!("{}:{}-{}", candidate.provider, candidate.role, candidate.id)
+            })
+        }),
     }
 }
 
@@ -626,11 +699,12 @@ mod tests {
 
     #[test]
     fn dashboard_environment_remains_a_fallback() {
-        let link = resolve_dashboard_link(
-            None,
-            Some("http://environment.example/fleet/".to_string()),
+        let link =
+            resolve_dashboard_link(None, Some("http://environment.example/fleet/".to_string()));
+        assert_eq!(
+            link.url.as_deref(),
+            Some("http://environment.example/fleet/")
         );
-        assert_eq!(link.url.as_deref(), Some("http://environment.example/fleet/"));
         assert!(link.detail.contains("session environment"));
     }
 
@@ -644,6 +718,23 @@ mod tests {
             serde_json::to_string(&DaemonState::NotConfigured).unwrap(),
             "\"notConfigured\""
         );
+    }
+
+    #[test]
+    fn lane_supervisor_snapshot_deserializes_capacity_contract() {
+        let snapshot: LaneSupervisorSnapshot = serde_json::from_str(
+            r#"{
+                "detail":"Capacity available.",
+                "connProvider":"codex",
+                "capacity":{"active":1,"maximum":3},
+                "nextCandidate":{"provider":"claude","role":"bosun","id":"claude-w1"}
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(snapshot.capacity.unwrap().maximum, 3);
+        assert_eq!(snapshot.conn_provider.as_deref(), Some("codex"));
+        assert_eq!(snapshot.next_candidate.unwrap().provider, "claude");
     }
 
     #[test]

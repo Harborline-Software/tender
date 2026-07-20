@@ -140,7 +140,7 @@ export type CoordinationDaemonState =
   | 'notConfigured'
 
 export interface CoordinationDaemonStatus {
-  id: 'coordination-sync' | 'qm-daemon'
+  id: 'coordination-sync' | 'qm-daemon' | 'lane-supervisor'
   displayName: string
   cadence: string
   state: CoordinationDaemonState
@@ -154,6 +154,10 @@ export interface CoordinationDaemonStatus {
   logsAvailable: boolean
   lastRunAt: number | null
   lastLogLine: string | null
+  capacityActive: number | null
+  capacityMaximum: number | null
+  connProvider: string | null
+  nextCandidate: string | null
 }
 
 export type CoordinationDaemonAction = 'start' | 'stop' | 'runNow'

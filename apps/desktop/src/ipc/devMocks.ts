@@ -336,6 +336,7 @@ export const DEV_MOCKS: Record<string, unknown> = {
       loaded: true, activeFlagPresent: false, controlsEnabled: false,
       canStart: false, canStop: true, canRunNow: false, logsAvailable: true,
       lastRunAt: Math.floor(Date.now() / 1000) - 180, lastLogLine: 'Maintenance hold remains in force.',
+      capacityActive: null, capacityMaximum: null, connProvider: null, nextCandidate: null,
     },
     {
       id: 'qm-daemon', displayName: 'QM Daemon', cadence: 'Every hour',
@@ -343,6 +344,16 @@ export const DEV_MOCKS: Record<string, unknown> = {
       loaded: true, activeFlagPresent: true, controlsEnabled: false,
       canStart: false, canStop: true, canRunNow: false, logsAvailable: true,
       lastRunAt: Math.floor(Date.now() / 1000) - 900, lastLogLine: 'Scan complete: 0 finding(s)',
+      capacityActive: null, capacityMaximum: null, connProvider: null, nextCandidate: null,
+    },
+    {
+      id: 'lane-supervisor', displayName: 'Lane Supervisor', cadence: 'Every 5 minutes · one start per tick',
+      state: 'loaded', detail: 'Capacity available; Claude is favored before its Monday reset.',
+      loaded: true, activeFlagPresent: true, controlsEnabled: false,
+      canStart: false, canStop: true, canRunNow: false, logsAvailable: true,
+      lastRunAt: Math.floor(Date.now() / 1000) - 75, lastLogLine: 'Admitted claude:deckhand-claude-a.',
+      capacityActive: 1, capacityMaximum: 3, connProvider: 'codex',
+      nextCandidate: 'claude:bosun-claude-w1',
     },
   ],
   get_fleet_dashboard_link: {

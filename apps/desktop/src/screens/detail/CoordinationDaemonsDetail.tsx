@@ -96,6 +96,7 @@ function DaemonCard({
           : theme.textMuted
   const state = STATE_COPY[daemon.state]
   const controlsLocked = !daemon.controlsEnabled
+  const showStart = !daemon.activeFlagPresent && daemon.state !== 'notConfigured'
 
   return (
     <section aria-label={`${daemon.displayName} daemon`} style={{ padding: '10px 14px 11px' }}>
@@ -149,6 +150,25 @@ function DaemonCard({
         {daemon.detail}
       </p>
 
+      {daemon.id === 'lane-supervisor' && daemon.capacityMaximum != null && (
+        <div
+          aria-label={`Lane capacity ${daemon.capacityActive ?? 0} of ${daemon.capacityMaximum}; conn provider ${daemon.connProvider ?? 'unknown'}`}
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '4px 10px',
+            marginTop: 7,
+            fontFamily: theme.fontMono,
+            fontSize: theme.sizeLabel,
+            color: theme.textMuted,
+          }}
+        >
+          <span>{daemon.capacityActive ?? 0} / {daemon.capacityMaximum} lanes active</span>
+          <span>conn {daemon.connProvider ?? 'unknown'}</span>
+          {daemon.nextCandidate && <span>next {daemon.nextCandidate}</span>}
+        </div>
+      )}
+
       {daemon.lastLogLine && (
         <div style={{
           marginTop: 7,
@@ -167,15 +187,7 @@ function DaemonCard({
       )}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 9 }}>
-        {daemon.canStop ? (
-          <ActionButton
-            label={busy ? 'Working…' : daemon.loaded ? 'Stop' : 'Hold'}
-            danger
-            disabled={busy}
-            onClick={() => onAction('stop')}
-            title="Remove the active marker and unload the LaunchAgent"
-          />
-        ) : (
+        {showStart && (
           <ActionButton
             label={confirming ? 'Confirm start' : 'Start'}
             disabled={busy || !daemon.canStart}
@@ -183,6 +195,23 @@ function DaemonCard({
             title={controlsLocked
               ? 'Locked until TENDER_ALLOW_COORDINATION_DAEMON_START=1 is set after the safety fix lands'
               : 'Create the active marker and load the existing LaunchAgent'}
+          />
+        )}
+        {daemon.canStop && (
+          <ActionButton
+            label={busy ? 'Working…' : daemon.loaded ? 'Stop' : 'Hold'}
+            danger
+            disabled={busy}
+            onClick={() => onAction('stop')}
+            title="Remove the active marker and unload the LaunchAgent"
+          />
+        )}
+        {!showStart && !daemon.canStop && (
+          <ActionButton
+            label="Start"
+            disabled
+            onClick={onConfirmStart}
+            title="This daemon is not configured on this device"
           />
         )}
         <ActionButton
