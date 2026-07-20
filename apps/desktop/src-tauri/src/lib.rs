@@ -127,7 +127,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_appearance,
             commands::open_full_window,
-            commands::report_geom,
             commands::get_services,
             commands::get_fleet,
             commands::get_system_stats,
