@@ -88,8 +88,8 @@ fn save_to(settings: &TenderSettings, path: &std::path::Path) -> Result<(), Stri
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("create config dir {}: {e}", parent.display()))?;
     }
-    let json = serde_json::to_string_pretty(settings)
-        .map_err(|e| format!("serialise settings: {e}"))?;
+    let json =
+        serde_json::to_string_pretty(settings).map_err(|e| format!("serialise settings: {e}"))?;
     std::fs::write(path, json).map_err(|e| format!("write {}: {e}", path.display()))
 }
 
@@ -141,19 +141,25 @@ mod tests {
     #[test]
     fn mode_serialises_to_design_tokens() {
         assert_eq!(serde_json::to_string(&Mode::Dev).unwrap(), "\"dev\"");
-        assert_eq!(serde_json::to_string(&Mode::EndUser).unwrap(), "\"end-user\"");
+        assert_eq!(
+            serde_json::to_string(&Mode::EndUser).unwrap(),
+            "\"end-user\""
+        );
     }
 
     #[test]
     fn missing_file_loads_default() {
-        let s = load_from(Some(std::path::Path::new("/nonexistent/tender-settings.json")));
+        let s = load_from(Some(std::path::Path::new(
+            "/nonexistent/tender-settings.json",
+        )));
         assert_eq!(s.mode, Mode::Dev);
         assert_eq!(s.schema_version, SETTINGS_SCHEMA_VERSION);
     }
 
     #[test]
     fn corrupt_file_fails_soft_to_default() {
-        let dir = std::env::temp_dir().join(format!("tender-settings-corrupt-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("tender-settings-corrupt-{}", std::process::id()));
         let path = dir.join("tender-settings.json");
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(&path, "{ not json").unwrap();
@@ -193,9 +199,8 @@ mod tests {
 
     #[test]
     fn legacy_settings_without_dashboard_url_still_load() {
-        let settings: TenderSettings =
-            serde_json::from_str(r#"{"schemaVersion":1,"mode":"dev"}"#)
-                .expect("legacy settings parse");
+        let settings: TenderSettings = serde_json::from_str(r#"{"schemaVersion":1,"mode":"dev"}"#)
+            .expect("legacy settings parse");
         assert_eq!(settings.fleet_dashboard_url, None);
     }
 }

@@ -7,19 +7,20 @@ use tauri_plugin_positioner::{Position, WindowExt};
 pub mod autostart;
 pub mod bundles;
 pub mod catalog;
-pub mod coordination_daemons;
-pub mod fleet_coordinator;
 mod commands;
+pub mod coordination_daemons;
 mod devices;
+pub mod fleet_coordinator;
 pub mod install;
 pub mod install_config;
 pub mod inventory;
-pub mod paidcompute;
 mod notifications;
+pub mod paidcompute;
+mod platform;
 pub mod probe;
 pub mod profile;
-pub mod provider_health;
 mod projects;
+pub mod provider_health;
 pub mod residency;
 pub mod settings;
 mod telemetry;
@@ -29,6 +30,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_positioner::init())
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .app_name("Harborline Toolbox")
+                .build(),
+        )
         .manage(notifications::NotificationState::new())
         .setup(|app| {
             // Menu-bar accessory mode: no Dock icon, app never becomes the
@@ -75,6 +81,10 @@ pub fn run() {
                         if window.is_visible().unwrap_or(false) {
                             let _ = window.hide();
                         } else {
+                            // Positioner supports both macOS menu-bar and
+                            // Windows notification-area geometry. If a shell
+                            // does not report tray coordinates, showing the
+                            // window is still preferable to losing the click.
                             let _ = window.move_window(Position::TrayCenter);
                             let _ = window.show();
                             let _ = window.set_focus();

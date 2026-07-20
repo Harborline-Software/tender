@@ -144,7 +144,7 @@ function CoordinatorSummary({ status }: { status: FleetCoordinatorStatus }) {
         {status.detail}
       </p>
 
-      {status.state === 'online' && (
+      {status.state === 'online' && status.detailsAvailable && (
         <div
           aria-label={`${status.queuedAssignments} queued assignments, ${status.claimedAssignments} claimed assignments, ${status.activeAttempts} active attempts, ${status.reportingNodes} reporting nodes`}
           style={{
@@ -407,6 +407,7 @@ export function CoordinationDaemonsDetail({ onBack }: Props) {
   const attentionCount = daemons?.filter(daemon => daemon.state === 'degraded').length ?? 0
   const coordinatorAttention = coordinator != null && coordinator.state !== 'online'
   const totalAttention = attentionCount + (coordinatorAttention ? 1 : 0)
+  const coordinationReady = coordinator?.state === 'online' && totalAttention === 0
 
   return (
     <MenuShell>
@@ -417,9 +418,9 @@ export function CoordinationDaemonsDetail({ onBack }: Props) {
           : 'Inspecting control plane…'}
         onBack={onBack}
         badge={
-          <span role="status" aria-label={`Coordination status: ${totalAttention > 0 ? 'Attention' : loadedCount > 0 ? 'Ready' : 'Held'}`}>
-            <StatusPill text={totalAttention > 0 ? 'Attention' : loadedCount > 0 ? 'Ready' : 'Held'}
-              tone={totalAttention > 0 ? theme.warn : loadedCount > 0 ? theme.healthy : theme.textMuted} />
+          <span role="status" aria-label={`Coordination status: ${totalAttention > 0 ? 'Attention' : coordinationReady ? 'Online' : loadedCount > 0 ? 'Ready' : 'Held'}`}>
+            <StatusPill text={totalAttention > 0 ? 'Attention' : coordinationReady ? 'Online' : loadedCount > 0 ? 'Ready' : 'Held'}
+              tone={totalAttention > 0 ? theme.warn : coordinationReady || loadedCount > 0 ? theme.healthy : theme.textMuted} />
           </span>
         }
       />
@@ -454,7 +455,7 @@ export function CoordinationDaemonsDetail({ onBack }: Props) {
 
         {daemons === null ? (
           <div role="status" style={{ padding: '24px 14px', color: theme.textMuted, fontFamily: theme.fontMono, fontSize: theme.sizeLabel }}>
-            Inspecting LaunchAgents…
+            Inspecting local coordination jobs…
           </div>
         ) : daemons.map((daemon, index) => (
           <div key={daemon.id}>

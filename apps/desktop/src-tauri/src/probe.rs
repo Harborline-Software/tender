@@ -283,6 +283,9 @@ mod tests {
             serde_json::to_string(&Architecture::Arm64).unwrap(),
             "\"arm64\""
         );
-        assert_eq!(serde_json::to_string(&Architecture::X64).unwrap(), "\"x64\"");
+        assert_eq!(
+            serde_json::to_string(&Architecture::X64).unwrap(),
+            "\"x64\""
+        );
     }
 }

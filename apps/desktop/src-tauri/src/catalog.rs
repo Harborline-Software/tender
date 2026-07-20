@@ -277,7 +277,10 @@ fn read_manifests_from(dir: Option<&std::path::Path>) -> BTreeMap<String, AppMan
                 }
             },
             Err(e) => {
-                eprintln!("[catalog] skipping unreadable manifest {}: {e}", path.display());
+                eprintln!(
+                    "[catalog] skipping unreadable manifest {}: {e}",
+                    path.display()
+                );
             }
         }
     }
@@ -289,7 +292,10 @@ fn read_manifests_from(dir: Option<&std::path::Path>) -> BTreeMap<String, AppMan
 /// manifest is skipped, never an error. Returns manifests sorted by `id` (the
 /// `BTreeMap` ordering) for stable UI rendering.
 pub fn load_catalog() -> Vec<AppManifest> {
-    load_catalog_from(bundled_catalog_dir().as_deref(), user_catalog_dir().as_deref())
+    load_catalog_from(
+        bundled_catalog_dir().as_deref(),
+        user_catalog_dir().as_deref(),
+    )
 }
 
 /// Loader seam over explicit dirs (testable). Bundled first, then user
@@ -428,25 +434,46 @@ mod tests {
         let user = tmp.join("user");
 
         // Bundled: sunfish=packaged + flight-deck=packaged.
-        write_manifest(&bundled, "sunfish", &sample_manifest_json("sunfish", "Sunfish", "packaged"));
+        write_manifest(
+            &bundled,
+            "sunfish",
+            &sample_manifest_json("sunfish", "Sunfish", "packaged"),
+        );
         write_manifest(
             &bundled,
             "flight-deck",
             &sample_manifest_json("flight-deck", "Flight-Deck", "packaged"),
         );
         // User override: sunfish bumped to released (must win); a new app added.
-        write_manifest(&user, "sunfish", &sample_manifest_json("sunfish", "Sunfish (override)", "released"));
-        write_manifest(&user, "extra-app", &sample_manifest_json("extra-app", "Extra", "planned"));
+        write_manifest(
+            &user,
+            "sunfish",
+            &sample_manifest_json("sunfish", "Sunfish (override)", "released"),
+        );
+        write_manifest(
+            &user,
+            "extra-app",
+            &sample_manifest_json("extra-app", "Extra", "planned"),
+        );
 
         let catalog = load_catalog_from(Some(&bundled), Some(&user));
         assert_eq!(catalog.len(), 3, "two bundled + one new override app");
 
         let sunfish = catalog.iter().find(|m| m.id == "sunfish").unwrap();
-        assert_eq!(sunfish.display_name, "Sunfish (override)", "override wins by id");
+        assert_eq!(
+            sunfish.display_name, "Sunfish (override)",
+            "override wins by id"
+        );
         assert_eq!(sunfish.availability, Availability::Released);
 
-        assert!(catalog.iter().any(|m| m.id == "extra-app"), "user-only app present");
-        assert!(catalog.iter().any(|m| m.id == "flight-deck"), "non-overridden bundled app present");
+        assert!(
+            catalog.iter().any(|m| m.id == "extra-app"),
+            "user-only app present"
+        );
+        assert!(
+            catalog.iter().any(|m| m.id == "flight-deck"),
+            "non-overridden bundled app present"
+        );
 
         let _ = std::fs::remove_dir_all(&tmp);
     }
@@ -457,13 +484,21 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp);
         let bundled = tmp.join("bundled");
 
-        write_manifest(&bundled, "good", &sample_manifest_json("good", "Good", "packaged"));
+        write_manifest(
+            &bundled,
+            "good",
+            &sample_manifest_json("good", "Good", "packaged"),
+        );
         write_manifest(&bundled, "bad", "{ this is not valid json ");
         // A non-manifest file in the dir must be ignored entirely.
         std::fs::write(bundled.join("README.md"), "not a manifest").unwrap();
 
         let catalog = load_catalog_from(Some(&bundled), None);
-        assert_eq!(catalog.len(), 1, "the bad manifest is skipped, the good one survives");
+        assert_eq!(
+            catalog.len(),
+            1,
+            "the bad manifest is skipped, the good one survives"
+        );
         assert_eq!(catalog[0].id, "good");
 
         let _ = std::fs::remove_dir_all(&tmp);
@@ -507,7 +542,7 @@ mod tests {
 
         let mut running = BTreeMap::new();
         running.insert("flight-deck".to_string(), true); // unmanaged, running
-        // signal-bridge: neither managed nor running
+                                                         // signal-bridge: neither managed nor running
 
         let entries = resolve_fleet_entries(&catalog, &config, &running);
         let by_id = |id: &str| entries.iter().find(|e| e.manifest.id == id).unwrap();
@@ -552,15 +587,27 @@ mod tests {
             .join("catalog");
         let catalog = load_catalog_from(Some(&dir), None);
         let ids: Vec<&str> = catalog.iter().map(|m| m.id.as_str()).collect();
-        assert!(ids.contains(&"sunfish"), "sunfish manifest loaded: got {ids:?}");
-        assert!(ids.contains(&"flight-deck"), "flight-deck manifest loaded: got {ids:?}");
-        assert!(ids.contains(&"signal-bridge"), "signal-bridge manifest loaded: got {ids:?}");
+        assert!(
+            ids.contains(&"sunfish"),
+            "sunfish manifest loaded: got {ids:?}"
+        );
+        assert!(
+            ids.contains(&"flight-deck"),
+            "flight-deck manifest loaded: got {ids:?}"
+        );
+        assert!(
+            ids.contains(&"signal-bridge"),
+            "signal-bridge manifest loaded: got {ids:?}"
+        );
 
         let sunfish = catalog.iter().find(|m| m.id == "sunfish").unwrap();
         assert_eq!(sunfish.availability, Availability::Packaged);
         assert_eq!(sunfish.detect.process_pattern, "Sunfish.Anchor");
         assert!(
-            sunfish.caveats.iter().any(|c| c.id == "unsigned-keychain-boot"),
+            sunfish
+                .caveats
+                .iter()
+                .any(|c| c.id == "unsigned-keychain-boot"),
             "sunfish carries the unsigned-keychain-boot caveat"
         );
 

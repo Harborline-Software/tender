@@ -331,7 +331,7 @@ export function DockSettingsDetail({ onBack }: Props) {
           overflowWrap: 'anywhere',
         }}>
           {coordinatorConnection?.effectiveUrl
-            ? `Effective: ${coordinatorConnection.effectiveUrl} · token ${coordinatorConnection.tokenConfigured ? 'configured' : 'missing'}`
+            ? `Effective: ${coordinatorConnection.effectiveUrl} · ${coordinatorConnection.tokenConfigured ? 'queue details enabled' : 'health only'}`
             : coordinatorConnection?.detail ?? 'Reading current connection…'}
         </div>
         {(coordinatorNotice || coordinatorError) && (

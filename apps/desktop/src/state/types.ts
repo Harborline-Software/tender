@@ -184,7 +184,7 @@ export type FleetCoordinatorState =
 export interface FleetCoordinatorConnection {
   savedUrl: string | null
   effectiveUrl: string | null
-  source: 'environment' | 'sharedSettings' | 'notConfigured' | 'invalid'
+  source: 'environment' | 'sharedSettings' | 'localService' | 'notConfigured' | 'invalid'
   tokenConfigured: boolean
   detail: string
 }
@@ -200,6 +200,7 @@ export interface FleetCoordinatorStatus {
   claimedAssignments: number
   activeAttempts: number
   reportingNodes: number
+  detailsAvailable: boolean
 }
 
 // ── Hardware probe (ADR 0116 D1) ─────────────────────────────────────────────

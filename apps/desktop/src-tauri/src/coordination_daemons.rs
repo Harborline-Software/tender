@@ -173,18 +173,13 @@ fn coordination_dir() -> Option<PathBuf> {
 
     // Fleet-developer fallback only. Shipped Tender remains standalone and
     // reports `notConfigured` when no sibling checkout exists.
-    std::env::var("HOME")
-        .ok()
-        .map(PathBuf::from)
+    crate::platform::home_dir()
         .map(|home| home.join("Projects/Harborline-Software/coordination"))
         .filter(|path| path.is_dir())
 }
 
 fn launch_agents_dir() -> Option<PathBuf> {
-    std::env::var("HOME")
-        .ok()
-        .map(PathBuf::from)
-        .map(|home| home.join("Library/LaunchAgents"))
+    crate::platform::home_dir().map(|home| home.join("Library/LaunchAgents"))
 }
 
 fn lane_supervisor_snapshot() -> Option<LaneSupervisorSnapshot> {
@@ -418,7 +413,36 @@ fn status_for(spec: DaemonSpec, coordination: Option<&Path>) -> CoordinationDaem
 }
 
 pub fn statuses() -> Vec<CoordinationDaemonStatus> {
+    #[cfg(not(target_os = "macos"))]
+    {
+        return DAEMONS
+            .iter()
+            .map(|spec| CoordinationDaemonStatus {
+                id: spec.id.into(),
+                display_name: spec.display_name.into(),
+                cadence: "Managed on macOS fleet nodes".into(),
+                state: DaemonState::NotConfigured,
+                detail: "This legacy LaunchAgent is not a Windows service. WinHub uses the Fleet Coordinator shown above.".into(),
+                loaded: false,
+                active_flag_present: false,
+                controls_enabled: false,
+                can_start: false,
+                can_stop: false,
+                can_run_now: false,
+                logs_available: false,
+                last_run_at: None,
+                last_log_line: None,
+                capacity_active: None,
+                capacity_maximum: None,
+                conn_provider: None,
+                next_candidate: None,
+            })
+            .collect();
+    }
+
+    #[cfg(target_os = "macos")]
     let coordination = coordination_dir();
+    #[cfg(target_os = "macos")]
     DAEMONS
         .iter()
         .map(|spec| status_for(*spec, coordination.as_deref()))
@@ -476,98 +500,111 @@ fn hold_active_marker(path: &Path) -> Result<bool, String> {
 }
 
 pub fn control(id: &str, action: DaemonAction) -> Result<DaemonActionResult, String> {
-    let spec = spec_for(id)?;
-    let coordination = coordination_dir()
-        .ok_or_else(|| format!("Set {COORDINATION_DIR_ENV} to the coordination checkout."))?;
-    let plist = launch_agents_dir()
-        .map(|dir| dir.join(spec.plist))
-        .filter(|path| path.is_file())
-        .ok_or_else(|| format!("LaunchAgent plist is missing for {}.", spec.display_name))?;
-    if !coordination.join(spec.script).is_file() {
-        return Err(format!(
-            "{} is missing from the coordination checkout.",
-            spec.script
-        ));
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (id, action);
+        return Err(
+            "Legacy coordination LaunchAgent controls are available only on macOS fleet nodes."
+                .into(),
+        );
     }
 
-    let target = launchd_target(spec.label)?;
-    let loaded = launchd_loaded(spec.label);
-    let detail = match action {
-        DaemonAction::Stop => {
-            let flag = coordination.join(spec.flag);
-            hold_active_marker(&flag).map_err(|error| {
-                format!("Could not establish the persistent maintenance hold: {error}")
-            })?;
-            if loaded {
-                run_launchctl(&["bootout", &target]).map_err(|error| {
+    #[cfg(target_os = "macos")]
+    {
+        let spec = spec_for(id)?;
+        let coordination = coordination_dir()
+            .ok_or_else(|| format!("Set {COORDINATION_DIR_ENV} to the coordination checkout."))?;
+        let plist = launch_agents_dir()
+            .map(|dir| dir.join(spec.plist))
+            .filter(|path| path.is_file())
+            .ok_or_else(|| format!("LaunchAgent plist is missing for {}.", spec.display_name))?;
+        if !coordination.join(spec.script).is_file() {
+            return Err(format!(
+                "{} is missing from the coordination checkout.",
+                spec.script
+            ));
+        }
+
+        let target = launchd_target(spec.label)?;
+        let loaded = launchd_loaded(spec.label);
+        let detail = match action {
+            DaemonAction::Stop => {
+                let flag = coordination.join(spec.flag);
+                hold_active_marker(&flag).map_err(|error| {
+                    format!("Could not establish the persistent maintenance hold: {error}")
+                })?;
+                if loaded {
+                    run_launchctl(&["bootout", &target]).map_err(|error| {
                     format!(
                         "The active marker was removed, but launchctl could not unload the job: {error}"
                     )
                 })?;
-                "Persistent maintenance hold set and LaunchAgent unloaded.".to_string()
-            } else {
-                "Persistent maintenance hold set; LaunchAgent was already unloaded.".to_string()
+                    "Persistent maintenance hold set and LaunchAgent unloaded.".to_string()
+                } else {
+                    "Persistent maintenance hold set; LaunchAgent was already unloaded.".to_string()
+                }
             }
-        }
-        DaemonAction::Start => {
-            if !env_enabled(CONTROL_ENV) {
-                return Err(format!(
+            DaemonAction::Start => {
+                if !env_enabled(CONTROL_ENV) {
+                    return Err(format!(
                     "Start controls are locked. Set {CONTROL_ENV}=1 only after the daemon safety fix is installed."
                 ));
-            }
-            let flag = coordination.join(spec.flag);
-            arm_active_marker(&flag)
-                .map_err(|error| format!("Could not arm {}: {error}", spec.display_name))?;
-            let rollback_flag = || {
-                // A failed start must always return to a reboot-safe hold,
-                // including recovery from a pre-existing armed/unloaded state.
-                let _ = hold_active_marker(&flag);
-            };
-            if !loaded {
-                let domain = target
-                    .rsplit_once('/')
-                    .map(|(domain, _)| domain)
-                    .ok_or_else(|| "Invalid launchd target.".to_string())?;
-                if let Err(error) = run_launchctl(&["enable", &target]) {
+                }
+                let flag = coordination.join(spec.flag);
+                arm_active_marker(&flag)
+                    .map_err(|error| format!("Could not arm {}: {error}", spec.display_name))?;
+                let rollback_flag = || {
+                    // A failed start must always return to a reboot-safe hold,
+                    // including recovery from a pre-existing armed/unloaded state.
+                    let _ = hold_active_marker(&flag);
+                };
+                if !loaded {
+                    let domain = target
+                        .rsplit_once('/')
+                        .map(|(domain, _)| domain)
+                        .ok_or_else(|| "Invalid launchd target.".to_string())?;
+                    if let Err(error) = run_launchctl(&["enable", &target]) {
+                        rollback_flag();
+                        return Err(error);
+                    }
+                    if let Err(error) =
+                        run_launchctl(&["bootstrap", &domain, &plist.to_string_lossy()])
+                    {
+                        rollback_flag();
+                        return Err(error);
+                    }
+                }
+                if let Err(error) = run_launchctl(&["kickstart", "-k", &target]) {
                     rollback_flag();
                     return Err(error);
                 }
-                if let Err(error) = run_launchctl(&["bootstrap", &domain, &plist.to_string_lossy()])
-                {
-                    rollback_flag();
-                    return Err(error);
-                }
+                "Active marker created; LaunchAgent loaded and kicked once.".to_string()
             }
-            if let Err(error) = run_launchctl(&["kickstart", "-k", &target]) {
-                rollback_flag();
-                return Err(error);
-            }
-            "Active marker created; LaunchAgent loaded and kicked once.".to_string()
-        }
-        DaemonAction::RunNow => {
-            if !env_enabled(CONTROL_ENV) {
-                return Err(format!(
+            DaemonAction::RunNow => {
+                if !env_enabled(CONTROL_ENV) {
+                    return Err(format!(
                     "Run-now controls are locked. Set {CONTROL_ENV}=1 only after the daemon safety fix is installed."
                 ));
+                }
+                if !loaded || !coordination.join(spec.flag).is_file() {
+                    return Err("Run now requires a loaded, armed LaunchAgent.".into());
+                }
+                run_launchctl(&["kickstart", "-k", &target])?;
+                "LaunchAgent kicked for an immediate run.".to_string()
             }
-            if !loaded || !coordination.join(spec.flag).is_file() {
-                return Err("Run now requires a loaded, armed LaunchAgent.".into());
-            }
-            run_launchctl(&["kickstart", "-k", &target])?;
-            "LaunchAgent kicked for an immediate run.".to_string()
-        }
-    };
+        };
 
-    Ok(DaemonActionResult {
-        id: spec.id.into(),
-        action: match action {
-            DaemonAction::Start => "start",
-            DaemonAction::Stop => "stop",
-            DaemonAction::RunNow => "runNow",
-        }
-        .into(),
-        detail,
-    })
+        Ok(DaemonActionResult {
+            id: spec.id.into(),
+            action: match action {
+                DaemonAction::Start => "start",
+                DaemonAction::Stop => "stop",
+                DaemonAction::RunNow => "runNow",
+            }
+            .into(),
+            detail,
+        })
+    }
 }
 
 pub fn open_log(id: &str) -> Result<(), String> {
@@ -581,11 +618,7 @@ pub fn open_log(id: &str) -> Result<(), String> {
                 .ok()
         })
         .ok_or_else(|| format!("No log file exists yet for {}.", spec.display_name))?;
-    Command::new("open")
-        .arg(&path)
-        .spawn()
-        .map_err(|error| format!("Could not open {}: {error}", path.display()))?;
-    Ok(())
+    crate::platform::open_path(&path)
 }
 
 pub fn dashboard_link() -> FleetDashboardLink {
@@ -643,11 +676,8 @@ fn valid_web_url(value: &str) -> bool {
 pub fn open_dashboard() -> Result<(), String> {
     let link = dashboard_link();
     let url = link.url.ok_or(link.detail)?;
-    Command::new("open")
-        .arg(&url)
-        .spawn()
-        .map_err(|error| format!("Could not open fleet dashboard: {error}"))?;
-    Ok(())
+    crate::platform::open_url(&url)
+        .map_err(|error| format!("Could not open fleet dashboard: {error}"))
 }
 
 #[cfg(test)]

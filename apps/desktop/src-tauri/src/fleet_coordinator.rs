@@ -48,6 +48,7 @@ pub struct FleetCoordinatorStatus {
     pub claimed_assignments: u64,
     pub active_attempts: u64,
     pub reporting_nodes: u64,
+    pub details_available: bool,
 }
 
 #[derive(Default, Deserialize)]
@@ -59,10 +60,27 @@ struct FileConfig {
     timeout_ms: Option<u64>,
 }
 
+#[derive(Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LocalRuntimeConfig {
+    host: Option<String>,
+    port: Option<u16>,
+    token_file: Option<String>,
+}
+
 struct EffectiveConfig {
     url: String,
     token: Option<String>,
     timeout_ms: u64,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CoordinatorHealthPayload {
+    status: String,
+    authority_id: String,
+    epoch: u64,
+    revision: u64,
 }
 
 #[derive(Deserialize)]
@@ -90,7 +108,7 @@ struct AttemptPayload {
 }
 
 fn home_dir() -> Option<PathBuf> {
-    std::env::var("HOME").ok().map(PathBuf::from)
+    crate::platform::home_dir()
 }
 
 fn config_path() -> Option<PathBuf> {
@@ -122,6 +140,66 @@ fn read_file_config() -> Result<FileConfig, String> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(FileConfig::default()),
         Err(error) => Err(format!("Could not read coordinator settings: {error}")),
     }
+}
+
+fn local_runtime_path() -> Option<PathBuf> {
+    #[cfg(target_os = "windows")]
+    {
+        return std::env::var_os("PROGRAMDATA")
+            .filter(|value| !value.is_empty())
+            .map(PathBuf::from)
+            .map(|root| {
+                root.join("Harborline")
+                    .join("FleetCoordinator")
+                    .join("runtime.json")
+            });
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    None
+}
+
+fn runtime_file_config(runtime: LocalRuntimeConfig) -> Result<Option<FileConfig>, String> {
+    let Some(host) = runtime.host.map(|value| value.trim().to_string()) else {
+        return Ok(None);
+    };
+    if host.is_empty() {
+        return Ok(None);
+    }
+    let Some(port) = runtime.port else {
+        return Ok(None);
+    };
+    let host = if host.contains(':') && !host.starts_with('[') {
+        format!("[{host}]")
+    } else {
+        host
+    };
+    let url = normalize_base_url(Some(&format!("http://{host}:{port}")))?;
+    Ok(url.map(|url| FileConfig {
+        url: Some(url),
+        token_file: runtime.token_file,
+        token: None,
+        timeout_ms: None,
+    }))
+}
+
+fn read_local_runtime_config() -> Result<Option<FileConfig>, String> {
+    let Some(path) = local_runtime_path() else {
+        return Ok(None);
+    };
+    let text = match std::fs::read_to_string(&path) {
+        Ok(text) => text,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(format!(
+                "Could not read local Fleet Coordinator runtime settings: {error}"
+            ))
+        }
+    };
+    let runtime: LocalRuntimeConfig = serde_json::from_str(&text).map_err(|error| {
+        format!("Local Fleet Coordinator runtime settings are invalid: {error}")
+    })?;
+    runtime_file_config(runtime)
 }
 
 fn normalize_base_url(value: Option<&str>) -> Result<Option<String>, String> {
@@ -169,16 +247,28 @@ fn token_from(config: &FileConfig) -> Option<String> {
 
 fn effective_config() -> Result<Option<EffectiveConfig>, String> {
     let config = read_file_config()?;
-    let url = std::env::var(URL_ENV)
+    let environment_url = std::env::var(URL_ENV)
         .ok()
-        .filter(|value| !value.trim().is_empty())
-        .or_else(|| config.url.clone());
+        .filter(|value| !value.trim().is_empty());
+    let local = if environment_url.is_none() && config.url.is_none() {
+        read_local_runtime_config()?
+    } else {
+        None
+    };
+    let url = environment_url
+        .or_else(|| config.url.clone())
+        .or_else(|| local.as_ref().and_then(|runtime| runtime.url.clone()));
     let Some(url) = normalize_base_url(url.as_deref())? else {
         return Ok(None);
     };
+    let token = if let Some(runtime) = local.as_ref() {
+        token_from(runtime)
+    } else {
+        token_from(&config)
+    };
     Ok(Some(EffectiveConfig {
         url,
-        token: token_from(&config),
+        token,
         timeout_ms: config
             .timeout_ms
             .unwrap_or(DEFAULT_TIMEOUT_MS)
@@ -199,7 +289,6 @@ pub fn connection() -> FleetCoordinatorConnection {
             };
         }
     };
-    let token_configured = token_from(&config).is_some();
     let saved_url = match normalize_base_url(config.url.as_deref()) {
         Ok(url) => url,
         Err(detail) => {
@@ -207,7 +296,7 @@ pub fn connection() -> FleetCoordinatorConnection {
                 saved_url: config.url,
                 effective_url: None,
                 source: "invalid".into(),
-                token_configured,
+                token_configured: token_from(&config).is_some(),
                 detail,
             };
         }
@@ -222,25 +311,55 @@ pub fn connection() -> FleetCoordinatorConnection {
                 saved_url,
                 effective_url: None,
                 source: "invalid".into(),
-                token_configured,
+                token_configured: token_from(&config).is_some(),
                 detail: format!("Session Fleet Coordinator URL is invalid: {detail}"),
             };
         }
     };
-    let (effective_url, source) = if let Some(url) = environment_url {
-        (Some(url), "environment")
-    } else if let Some(url) = saved_url.clone() {
-        (Some(url), "sharedSettings")
+    let local = if environment_url.is_none() && saved_url.is_none() {
+        match read_local_runtime_config() {
+            Ok(local) => local,
+            Err(detail) => {
+                return FleetCoordinatorConnection {
+                    saved_url,
+                    effective_url: None,
+                    source: "invalid".into(),
+                    token_configured: false,
+                    detail,
+                }
+            }
+        }
     } else {
-        (None, "notConfigured")
+        None
+    };
+    let (effective_url, source, token_configured) = if let Some(url) = environment_url {
+        (Some(url), "environment", token_from(&config).is_some())
+    } else if let Some(url) = saved_url.clone() {
+        (Some(url), "sharedSettings", token_from(&config).is_some())
+    } else if let Some(runtime) = local.as_ref() {
+        (
+            runtime.url.clone(),
+            "localService",
+            token_from(runtime).is_some(),
+        )
+    } else {
+        (None, "notConfigured", false)
     };
     let detail = match (&effective_url, token_configured, source) {
         (None, _, _) => {
             "Set the Fleet Coordinator URL; no device-specific default is assumed.".into()
         }
-        (Some(_), false, _) => "URL is configured, but the local bearer token is missing.".into(),
+        (Some(_), false, "localService") => {
+            "Local Fleet Coordinator discovered; health is visible without exposing its privileged token.".into()
+        }
+        (Some(_), false, _) => {
+            "Health visibility is available; assignment details require a local token reference.".into()
+        }
         (Some(_), true, "environment") => {
             "Effective URL is supplied by the session environment.".into()
+        }
+        (Some(_), true, "localService") => {
+            "Local Fleet Coordinator and readable credential discovered.".into()
         }
         (Some(_), true, _) => "Effective URL is shared with Ordinance coordinator clients.".into(),
     };
@@ -324,6 +443,63 @@ fn empty_status(
         claimed_assignments: 0,
         active_attempts: 0,
         reporting_nodes: 0,
+        details_available: false,
+    }
+}
+
+async fn health_only_status(
+    client: &reqwest::Client,
+    config: &EffectiveConfig,
+) -> FleetCoordinatorStatus {
+    let response = match client.get(format!("{}/health", config.url)).send().await {
+        Ok(response) => response,
+        Err(error) => {
+            return empty_status(
+                FleetCoordinatorState::Unreachable,
+                Some(config.url.clone()),
+                format!("Coordinator is unreachable: {error}"),
+            )
+        }
+    };
+    if !response.status().is_success() {
+        return empty_status(
+            FleetCoordinatorState::Degraded,
+            Some(config.url.clone()),
+            format!(
+                "Coordinator health returned HTTP {}.",
+                response.status().as_u16()
+            ),
+        );
+    }
+    let payload = match response.json::<CoordinatorHealthPayload>().await {
+        Ok(payload) => payload,
+        Err(error) => {
+            return empty_status(
+                FleetCoordinatorState::Degraded,
+                Some(config.url.clone()),
+                format!("Coordinator returned an invalid health document: {error}"),
+            )
+        }
+    };
+    if payload.status != "ok" {
+        return empty_status(
+            FleetCoordinatorState::Degraded,
+            Some(config.url.clone()),
+            format!("Coordinator reported health state {}.", payload.status),
+        );
+    }
+    FleetCoordinatorStatus {
+        state: FleetCoordinatorState::Online,
+        url: Some(config.url.clone()),
+        detail: "Single authority is reachable. Queue details remain protected by the local credential boundary.".into(),
+        authority_id: Some(payload.authority_id),
+        epoch: Some(payload.epoch),
+        revision: Some(payload.revision),
+        queued_assignments: 0,
+        claimed_assignments: 0,
+        active_attempts: 0,
+        reporting_nodes: 0,
+        details_available: false,
     }
 }
 
@@ -339,13 +515,6 @@ pub async fn status() -> FleetCoordinatorStatus {
         }
         Err(detail) => return empty_status(FleetCoordinatorState::Degraded, None, detail),
     };
-    let Some(token) = config.token else {
-        return empty_status(
-            FleetCoordinatorState::AuthRequired,
-            Some(config.url),
-            "Coordinator URL is configured, but its local bearer token is missing.".into(),
-        );
-    };
     let client = match reqwest::Client::builder()
         .timeout(Duration::from_millis(config.timeout_ms))
         .build()
@@ -358,6 +527,9 @@ pub async fn status() -> FleetCoordinatorStatus {
                 format!("Could not prepare coordinator probe: {error}"),
             );
         }
+    };
+    let Some(token) = config.token.as_deref() else {
+        return health_only_status(&client, &config).await;
     };
     let response = match client
         .get(format!("{}/v1/status", config.url))
@@ -424,6 +596,7 @@ pub async fn status() -> FleetCoordinatorStatus {
         claimed_assignments: claimed,
         active_attempts: active,
         reporting_nodes: payload.nodes.len() as u64,
+        details_available: true,
     }
 }
 
@@ -460,5 +633,35 @@ mod tests {
         let value: Value = serde_json::from_str(&updated).unwrap();
         assert!(value.get("url").is_none());
         assert_eq!(value["tokenFile"], "~/token");
+    }
+
+    #[test]
+    fn local_runtime_derives_an_origin_without_hardcoding_a_machine() {
+        let config = runtime_file_config(LocalRuntimeConfig {
+            host: Some("coordinator.internal".into()),
+            port: Some(7788),
+            token_file: Some("C:\\ProgramData\\Harborline\\token".into()),
+        })
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            config.url.as_deref(),
+            Some("http://coordinator.internal:7788")
+        );
+        assert_eq!(
+            config.token_file.as_deref(),
+            Some("C:\\ProgramData\\Harborline\\token")
+        );
+    }
+
+    #[test]
+    fn local_runtime_requires_both_host_and_port() {
+        let config = runtime_file_config(LocalRuntimeConfig {
+            host: Some("coordinator.internal".into()),
+            port: None,
+            token_file: None,
+        })
+        .unwrap();
+        assert!(config.is_none());
     }
 }

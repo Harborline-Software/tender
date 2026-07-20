@@ -17,11 +17,16 @@ fn main() {
     //   cd apps/desktop/src-tauri && touch resources/bundles/.refresh && cargo build
 
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-    let resource_dest = std::path::PathBuf::from(&manifest_dir).join("resources").join("bundles");
+    let resource_dest = std::path::PathBuf::from(&manifest_dir)
+        .join("resources")
+        .join("bundles");
 
     // Locate shipyard relative to `tender/apps/desktop/src-tauri/` (4 ups = fleet root)
     let fleet_root = std::path::PathBuf::from(&manifest_dir)
-        .join("..").join("..").join("..").join("..");
+        .join("..")
+        .join("..")
+        .join("..")
+        .join("..");
     let shipyard_bundles = fleet_root
         .join("shipyard")
         .join("packages")
@@ -30,8 +35,7 @@ fn main() {
         .join("Bundles");
 
     if shipyard_bundles.exists() {
-        std::fs::create_dir_all(&resource_dest)
-            .expect("failed to create resources/bundles/");
+        std::fs::create_dir_all(&resource_dest).expect("failed to create resources/bundles/");
 
         if let Ok(entries) = std::fs::read_dir(&shipyard_bundles) {
             for entry in entries.flatten() {
@@ -47,14 +51,17 @@ fn main() {
                 }
                 let dst = resource_dest.join(name);
                 // Only copy when source is newer (best-effort; copy if metadata unavailable)
-                let should_copy = dst.exists().then(|| {
-                    let src_mtime = src.metadata().and_then(|m| m.modified()).ok();
-                    let dst_mtime = dst.metadata().and_then(|m| m.modified()).ok();
-                    match (src_mtime, dst_mtime) {
-                        (Some(s), Some(d)) => s > d,
-                        _ => true,
-                    }
-                }).unwrap_or(true);
+                let should_copy = dst
+                    .exists()
+                    .then(|| {
+                        let src_mtime = src.metadata().and_then(|m| m.modified()).ok();
+                        let dst_mtime = dst.metadata().and_then(|m| m.modified()).ok();
+                        match (src_mtime, dst_mtime) {
+                            (Some(s), Some(d)) => s > d,
+                            _ => true,
+                        }
+                    })
+                    .unwrap_or(true);
 
                 if should_copy {
                     let _ = std::fs::copy(&src, &dst);

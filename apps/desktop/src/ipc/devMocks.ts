@@ -375,6 +375,7 @@ export const DEV_MOCKS: Record<string, unknown> = {
     detail: 'Single authority is reachable and authenticated.',
     authorityId: 'winhub', epoch: 1, revision: 2,
     queuedAssignments: 0, claimedAssignments: 1, activeAttempts: 1, reportingNodes: 1,
+    detailsAvailable: true,
   },
   get_fleet_dashboard_link: {
     configured: false, url: null,

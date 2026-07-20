@@ -89,17 +89,15 @@ fn log_paths_for_service(service_id: &str) -> Vec<std::path::PathBuf> {
         // Guard against path traversal — a `service_id` containing a path
         // separator or `..` could escape the logs dir; reject with no paths.
         id if id.contains('/') || id.contains('\\') || id.contains("..") => vec![],
-        id => vec![
-            format!("{}/{}.log", hl_logs, id).into(),
-        ],
+        id => vec![format!("{}/{}.log", hl_logs, id).into()],
     }
 }
 
 /// Read the tail of a log file — returns the last `lines` lines as a Vec.
 /// Returns an empty Vec if the file does not exist yet.
 fn tail_file(path: &std::path::Path, lines: usize) -> std::io::Result<Vec<String>> {
-    use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
     use std::fs::File;
+    use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 
     let mut f = match File::open(path) {
         Ok(f) => f,
@@ -190,12 +188,13 @@ pub async fn get_devices() -> Vec<devices::TailscaleDevice> {
 }
 
 #[tauri::command]
-pub fn open_external(url: String) {
+pub fn open_external(url: String) -> Result<(), String> {
     // Only open well-formed web/mail URLs — never an arbitrary string or local
     // path handed to the `open` shell. Reject anything that isn't http(s)/mailto.
     if url.starts_with("https://") || url.starts_with("http://") || url.starts_with("mailto:") {
-        let _ = std::process::Command::new("open").arg(&url).spawn();
+        return crate::platform::open_url(&url);
     }
+    Err("Only http, https, and mailto links can be opened.".into())
 }
 
 #[tauri::command]
@@ -221,7 +220,10 @@ pub async fn emergency_stop() -> Result<String, String> {
     let base = std::env::var("TENDER_FLIGHTDECK_BASE_URL")
         .unwrap_or_else(|_| "http://localhost:3080".to_string());
     let resp = client
-        .post(format!("{}/api/admin/emergency-stop", base.trim_end_matches('/')))
+        .post(format!(
+            "{}/api/admin/emergency-stop",
+            base.trim_end_matches('/')
+        ))
         .send()
         .await
         .map_err(|e| format!("Flight-Deck unreachable: {}", e))?;
@@ -442,7 +444,9 @@ pub async fn get_log_tail(service_id: String, lines: Option<u32>) -> Result<Vec<
     });
 
     if paths.is_empty() {
-        return Ok(vec!["[no log paths configured for this service]".to_string()]);
+        return Ok(vec![
+            "[no log paths configured for this service]".to_string()
+        ]);
     }
 
     let mut result: Vec<String> = Vec::new();
@@ -628,25 +632,51 @@ pub fn get_projects() -> Vec<projects::ProjectEntry> {
 
 // ── Login-item (auto-start at login) ─────────────────────────────────────────
 
-/// Enable or disable Tender auto-starting at login (a per-user LaunchAgent).
-/// When enabling, the LaunchAgent points at the currently-running Tender binary
-/// (`current_exe`), so it works wherever Tender is installed. Returns the
-/// resulting enabled state.
+/// Enable or disable Toolbox auto-starting in the current user's desktop
+/// session. macOS retains the stable LaunchAgent identity used by existing
+/// installs; Windows/Linux use Tauri's platform autostart manager.
 #[tauri::command]
-pub fn set_autostart(enabled: bool) -> Result<bool, String> {
-    if enabled {
-        let exe = std::env::current_exe().map_err(|e| format!("resolve current exe: {e}"))?;
-        crate::autostart::enable(&exe.to_string_lossy())?;
-    } else {
-        crate::autostart::disable()?;
+pub fn set_autostart(app: tauri::AppHandle, enabled: bool) -> Result<bool, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app;
+        if enabled {
+            let exe = std::env::current_exe().map_err(|e| format!("resolve current exe: {e}"))?;
+            crate::autostart::enable(&exe.to_string_lossy())?;
+        } else {
+            crate::autostart::disable()?;
+        }
+        return Ok(crate::autostart::is_enabled());
     }
-    Ok(crate::autostart::is_enabled())
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        use tauri_plugin_autostart::ManagerExt;
+
+        let manager = app.autolaunch();
+        if enabled {
+            manager.enable().map_err(|error| error.to_string())?;
+        } else {
+            manager.disable().map_err(|error| error.to_string())?;
+        }
+        manager.is_enabled().map_err(|error| error.to_string())
+    }
 }
 
 /// Whether Tender is currently set to auto-start at login.
 #[tauri::command]
-pub fn get_autostart() -> bool {
-    crate::autostart::is_enabled()
+pub fn get_autostart(app: tauri::AppHandle) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app;
+        crate::autostart::is_enabled()
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        use tauri_plugin_autostart::ManagerExt;
+        app.autolaunch().is_enabled().unwrap_or(false)
+    }
 }
 
 // ── Settings + dev/end-user mode (CFG-2) ──────────────────────────────────────
@@ -729,12 +759,18 @@ mod tests {
 
         let outcome = stop_by_pattern(&marker);
         let (stopped, detail) = outcome.expect("sleeper should have been detected");
-        assert!(stopped, "sleeper should stop on SIGTERM, got detail {detail:?}");
+        assert!(
+            stopped,
+            "sleeper should stop on SIGTERM, got detail {detail:?}"
+        );
 
         // Reap the child so it doesn't linger as a zombie.
         let _ = child.wait();
 
-        assert!(stop_by_pattern(&marker).is_none(), "nothing should match after stop");
+        assert!(
+            stop_by_pattern(&marker).is_none(),
+            "nothing should match after stop"
+        );
     }
     use crate::install_config::{InstallConfig, InstalledApp, LaunchContract};
     use crate::profile::CapabilityProfile;
@@ -764,6 +800,9 @@ mod tests {
         let config = InstallConfig::default();
         let err = resolve_start_command(&config, "signal-bridge").unwrap_err();
         assert!(err.contains("not Tender-managed"));
-        assert!(!err.contains("Projects"), "must not reference a dev-layout path");
+        assert!(
+            !err.contains("Projects"),
+            "must not reference a dev-layout path"
+        );
     }
 }
