@@ -16,6 +16,7 @@ import { RelayDetail } from '@/screens/detail/RelayDetail'
 import { ModelInventoryDetail } from '@/screens/detail/ModelInventoryDetail'
 import { ModelResidencyDetail } from '@/screens/detail/ModelResidencyDetail'
 import { PaidComputeDetail } from '@/screens/detail/PaidComputeDetail'
+import { CoordinationDaemonsDetail } from '@/screens/detail/CoordinationDaemonsDetail'
 import { getInstallConfig } from '@/ipc/tauri'
 import type { CapabilityProfile } from '@/state/types'
 import '@/animations.css'
@@ -38,6 +39,7 @@ function DetailScreen({ id, onBack }: { id: DetailId; onBack: () => void }) {
     case 'model-inventory': return <ModelInventoryDetail onBack={onBack} />
     case 'model-residency': return <ModelResidencyDetail onBack={onBack} />
     case 'paid-compute':    return <PaidComputeDetail    onBack={onBack} />
+    case 'coordination-daemons': return <CoordinationDaemonsDetail onBack={onBack} />
     default:               return null
   }
 }

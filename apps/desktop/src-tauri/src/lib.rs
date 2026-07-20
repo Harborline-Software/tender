@@ -7,6 +7,7 @@ use tauri_plugin_positioner::{Position, WindowExt};
 pub mod autostart;
 pub mod bundles;
 pub mod catalog;
+pub mod coordination_daemons;
 mod commands;
 mod devices;
 pub mod install;
@@ -140,9 +141,15 @@ pub fn run() {
             commands::get_autostart,
             commands::get_settings,
             commands::set_mode,
+            commands::set_fleet_dashboard_url,
             commands::get_model_inventory,
             commands::get_gpu_residency,
             commands::get_paid_compute,
+            commands::get_coordination_daemons,
+            commands::control_coordination_daemon,
+            commands::open_coordination_daemon_log,
+            commands::get_fleet_dashboard_link,
+            commands::open_fleet_dashboard,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Harborline Toolbox");

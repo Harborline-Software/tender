@@ -1,1 +1,1 @@
-{}
+{"main-window-events":{"identifier":"main-window-events","description":"Allow the Harborline Toolbox panel to receive native status events.","local":true,"windows":["main"],"permissions":["core:event:default"]}}
