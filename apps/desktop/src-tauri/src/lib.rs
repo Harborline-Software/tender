@@ -25,6 +25,17 @@ mod telemetry;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Single-instance guard MUST be registered first: a second launch (e.g. a
+        // stray relaunch loop) surfaces the existing tray window and exits instead
+        // of opening a duplicate tray icon. Keyed on identifier io.harborline.tender.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            use tauri::Manager;
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.unminimize();
+                let _ = w.show();
+                let _ = w.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_positioner::init())
         .manage(notifications::NotificationState::new())
@@ -116,6 +127,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_appearance,
             commands::open_full_window,
+            commands::report_geom,
             commands::get_services,
             commands::get_fleet,
             commands::get_system_stats,

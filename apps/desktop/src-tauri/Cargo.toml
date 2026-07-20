@@ -14,6 +14,9 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
 tauri-plugin-positioner = { version = "2", features = ["tray-icon"] }
 tauri-plugin-notification = "2"
+# Single-instance guard: a second launch focuses the running tray instead of
+# opening a duplicate (keyed on the shared identifier io.harborline.tender). #98.
+tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
