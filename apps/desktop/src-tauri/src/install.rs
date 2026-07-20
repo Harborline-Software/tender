@@ -101,23 +101,36 @@ fn place_app_bundle(src: &Path, dest: &Path) -> Result<(), String> {
     if !src.exists() {
         return Err(format!("source bundle not found: {}", src.display()));
     }
-    if dest.exists() {
-        std::fs::remove_dir_all(dest)
-            .map_err(|e| format!("could not remove prior install {}: {e}", dest.display()))?;
+
+    // `.app` placement is a macOS-only contract. Fail before removing an
+    // existing destination on other platforms instead of attempting to spawn
+    // `/usr/bin/ditto` and returning an opaque ENOENT after mutation.
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = dest;
+        return Err("macOS .app bundle placement is unavailable on this platform".to_string());
     }
-    if let Some(parent) = dest.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("could not create install dir {}: {e}", parent.display()))?;
+
+    #[cfg(target_os = "macos")]
+    {
+        if dest.exists() {
+            std::fs::remove_dir_all(dest)
+                .map_err(|e| format!("could not remove prior install {}: {e}", dest.display()))?;
+        }
+        if let Some(parent) = dest.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("could not create install dir {}: {e}", parent.display()))?;
+        }
+        let status = std::process::Command::new("/usr/bin/ditto")
+            .arg(src)
+            .arg(dest)
+            .status()
+            .map_err(|e| format!("ditto spawn failed: {e}"))?;
+        if !status.success() {
+            return Err(format!("ditto exited {status} copying {}", src.display()));
+        }
+        Ok(())
     }
-    let status = std::process::Command::new("/usr/bin/ditto")
-        .arg(src)
-        .arg(dest)
-        .status()
-        .map_err(|e| format!("ditto spawn failed: {e}"))?;
-    if !status.success() {
-        return Err(format!("ditto exited {status} copying {}", src.display()));
-    }
-    Ok(())
 }
 
 /// Build the launch contract for a placed macOS `.app`: Tender launches it with
@@ -245,6 +258,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "macos")]
     fn place_app_bundle_copies_tree_and_replaces_prior() {
         let tmp = std::env::temp_dir().join(format!("tender-install-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&tmp);
@@ -257,6 +271,29 @@ mod tests {
         // Idempotent replace: placing again over an existing dest succeeds.
         place_app_bundle(&src, &dest).expect("replace place");
         assert!(dest.join("Contents/Info.plist").exists());
+
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    #[test]
+    #[cfg(not(target_os = "macos"))]
+    fn place_app_bundle_rejects_unsupported_platform_without_mutating_dest() {
+        let tmp = std::env::temp_dir().join(format!(
+            "tender-install-platform-test-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&tmp);
+        let src = make_fake_bundle(&tmp.join("src"));
+        let dest = make_fake_bundle(&tmp.join("dest"));
+        let existing = dest.join("Contents/Info.plist");
+
+        let err = place_app_bundle(&src, &dest).expect_err("non-macOS placement must fail");
+
+        assert!(err.contains("unavailable on this platform"));
+        assert!(
+            existing.exists(),
+            "the existing destination must be preserved"
+        );
 
         let _ = std::fs::remove_dir_all(&tmp);
     }
