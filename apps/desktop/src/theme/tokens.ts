@@ -75,7 +75,7 @@ const shared = {
   sizeBody: 12.5,
   sizeDisplay: 16,
   space: [0, 4, 6, 8, 12, 16, 20, 24] as const,
-  panelWidth: 400,
+  panelWidth: 384,
   radiusLg: 8,
   radiusFull: 999,
 }
