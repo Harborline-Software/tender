@@ -15,8 +15,9 @@
  */
 import { useState, useEffect } from 'react'
 import { useTheme } from '@/theme/ThemeProvider'
-import { getDevices, getSettings, type DeviceData, type Mode } from '@/ipc/tauri'
-import { MenuShell } from '@/components/MenuShell'
+import { getDevices, getSettings, openFullWindow, type DeviceData, type Mode } from '@/ipc/tauri'
+import { Maximize2 } from 'lucide-react'
+import { MenuShell, isFullWindow } from '@/components/MenuShell'
 import { FiberDivider } from '@/components/FiberDivider'
 import { Logomark } from '@/components/Logomark'
 import { TabStrip, type TabId } from '@/components/TabStrip'
@@ -234,6 +235,34 @@ export function Panel({ onNavigate }: Props) {
               boxShadow: `0 0 4px ${m}, 0 0 8px ${m}aa`,
               border: `1px solid ${theme.bg}`,
             }} />
+          </button>
+        )}
+
+        {/* Expand to full window — hidden when already in the full view.
+            The tray dropdown is width-clipped for dense views; this opens the
+            same app in a resizable window (refresh #98). */}
+        {!isFullWindow() && (
+          <button
+            onClick={() => { closePopovers(); void openFullWindow() }}
+            title="Open in full window"
+            aria-label="Open in full window"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              width: 26,
+              height: 26,
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: theme.textDim,
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${a}22` }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+          >
+            <Maximize2 size={14} strokeWidth={1.75} aria-hidden="true" />
           </button>
         )}
 

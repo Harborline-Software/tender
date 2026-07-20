@@ -124,6 +124,17 @@ export async function getAppearance(): Promise<'dark' | 'light'> {
   return result === 'light' ? 'light' : 'dark'
 }
 
+/** Open (or focus) the full-size, resizable window (index.html#full). No-op in
+ *  browser dev where there is no native window to create. */
+export async function openFullWindow(): Promise<void> {
+  if (!IN_TAURI) return
+  try {
+    await invoke<void>('open_full_window')
+  } catch {
+    /* fail-soft: never crash the tray on a window-open failure */
+  }
+}
+
 export async function getServices(): Promise<ServiceData[]> {
   return invoke<ServiceData[]>('get_services')
 }

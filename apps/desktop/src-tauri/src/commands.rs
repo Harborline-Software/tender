@@ -106,6 +106,35 @@ pub fn get_appearance(window: tauri::WebviewWindow) -> String {
     }
 }
 
+/// Open (or focus) the full-window view — a resizable, decorated window that
+/// renders the same app at `index.html#full`. The tray dropdown is inherently
+/// width-bound and macOS clips it near the screen edge; this gives the operator
+/// a full-size, resizable surface for dense views (logs, inventories, ledgers).
+/// UI refresh #98 follow-up.
+#[tauri::command]
+pub fn open_full_window(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    if let Some(existing) = app.get_webview_window("full") {
+        let _ = existing.unminimize();
+        let _ = existing.show();
+        let _ = existing.set_focus();
+        return Ok(());
+    }
+    tauri::WebviewWindowBuilder::new(
+        &app,
+        "full",
+        tauri::WebviewUrl::App("index.html#full".into()),
+    )
+    .title("Harborline Toolbox")
+    .inner_size(900.0, 720.0)
+    .min_inner_size(560.0, 480.0)
+    .resizable(true)
+    .decorations(true)
+    .build()
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn get_services() -> Vec<telemetry::HarborlineService> {
     telemetry::get_services().await
