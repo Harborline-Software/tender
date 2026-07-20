@@ -46,3 +46,13 @@ a:focus-visible,
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* Density pass (2026-07): tabular figures everywhere. Live-polled metrics
+   (CPU %, VRAM, counts, spend) change value every 3-5s; with proportional
+   figures each change alters text width and reflows the row — the root cause
+   of the Fleet-tab "jolt" while idling. Inter and the SF-Mono stack both ship
+   tabular figures, so this is free and kills the horizontal jitter. */
+:root {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}

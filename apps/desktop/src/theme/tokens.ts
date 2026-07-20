@@ -45,12 +45,20 @@ export interface Theme {
   fontDisplay: string   // wordmark only
   fontRow: string       // entity names, body text
   fontMono: string      // labels, metrics, data
-  // Type sizes — 8.5px floor for any informational label (F3.2)
-  sizeLabel: number     // 8.5 — minimum informational mono label
-  sizeMetric: number    // 10  — monospace numbers / metrics
-  sizeRowTitle: number  // 12.5 — entity names in rows
-  sizeBody: number      // 11  — descriptions / helper text
-  sizeDisplay: number   // 16  — wordmark only
+  // Type sizes — refreshed one step up for readability (2026-07 density pass).
+  // The 8.5px floor was legitimately too tight; 10.5 is the new informational
+  // floor. Larger sizes only ease the WCAG margins annotated on the colors below.
+  sizeLabel: number     // 10.5 — informational mono label (was 8.5)
+  sizeMetric: number    // 11   — monospace numbers / metrics (was 10)
+  sizeBody: number      // 12.5 — descriptions / helper text (was 11)
+  sizeRowTitle: number  // 14   — entity names in rows (was 12.5)
+  sizeDisplay: number   // 17   — wordmark only (was 16)
+  // Spacing scale — index 1..7 = 4/6/8/12/16/20/24 (2026-07 density pass).
+  // Replaces per-file hardcoded px so density is tunable in one place.
+  // Usage: theme.space[4] = 12. Index 0 is 0.
+  space: readonly number[]
+  // Tray panel width — widened 360 -> 384 for breathing room (still tray-native).
+  panelWidth: number
   // Radius — reconciled to the product scale (--sf-radius-lg / --sf-radius-full)
   radiusLg: number      // 8 — cards / container surfaces
   radiusFull: number    // 999 — pills
@@ -61,11 +69,13 @@ const shared = {
   fontDisplay: "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif",
   fontRow: "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif",
   fontMono: "ui-monospace, 'SF Mono', 'Menlo', 'Cascadia Mono', monospace",
-  sizeLabel: 8.5,
-  sizeMetric: 10,
-  sizeRowTitle: 12.5,
-  sizeBody: 11,
-  sizeDisplay: 16,
+  sizeLabel: 10.5,
+  sizeMetric: 11,
+  sizeRowTitle: 14,
+  sizeBody: 12.5,
+  sizeDisplay: 17,
+  space: [0, 4, 6, 8, 12, 16, 20, 24] as const,
+  panelWidth: 384,
   radiusLg: 8,
   radiusFull: 999,
 }
