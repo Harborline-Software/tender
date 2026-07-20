@@ -113,10 +113,10 @@ export function Panel({ onNavigate }: Props) {
     <MenuShell>
       {/* Header */}
       <div style={{
-        padding: '11px 10px 11px 12px',
+        padding: '11px 14px 11px 12px',
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
+        gap: 6,
         background: `linear-gradient(180deg, ${theme.bgSoft} 0%, ${theme.bg} 100%)`,
         flexShrink: 0,
       }}>
@@ -140,7 +140,7 @@ export function Panel({ onNavigate }: Props) {
           Harborline Toolbox
         </div>
 
-        <div style={{ flex: 1, minWidth: 8 }} />
+        <div style={{ flex: 1, minWidth: 4 }} />
 
         {/* Workspace dropdown */}
         <button
@@ -162,7 +162,7 @@ export function Panel({ onNavigate }: Props) {
             // Header budget is tight at 384px; the hostname truncates rather than
             // wrapping the whole header to multiple lines (2026-07 refresh #98).
             minWidth: 0,
-            maxWidth: 116,
+            maxWidth: 92,
           }}
         >
           <span style={{

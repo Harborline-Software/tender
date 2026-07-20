@@ -70,7 +70,9 @@ export function MenuShell({ children }: Props) {
       style={{
         // Fill the actual native window (never a hardcoded width that can exceed
         // it and clip the header controls off the right edge), capped at the
-        // intended tray width (#98).
+        // intended tray width (#98). border-box so the 1px border is included in
+        // the 384 rather than overflowing the window by 2px.
+        boxSizing: 'border-box',
         width: '100vw',
         maxWidth: theme.panelWidth,
         // F1.2: clamp to viewport minus menubar height; panel hangs below ~24px bar
