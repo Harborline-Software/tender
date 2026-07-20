@@ -33,7 +33,7 @@ const GEAR_ITEMS = [
   { id: 'about',      label: 'About Harborline Toolbox' },
   { id: 'faq',        label: 'FAQ' },
   { id: 'proxy',      label: 'Proxy settings' },
-  { id: 'appearance', label: 'Appearance & behavior' },
+  { id: 'appearance', label: 'Dock Settings' },
   { id: 'account',    label: 'Account · Log out', muted: true },
   { id: 'dry-dock',   label: 'Dry Dock (shutdown)', danger: true },
 ] as const
