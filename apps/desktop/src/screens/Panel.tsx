@@ -53,9 +53,18 @@ export function Panel({ onNavigate }: Props) {
   const [mode, setMode] = useState<Mode>('dev')
 
   useEffect(() => {
-    getDevices().then((ds) => {
-      setDevices(ds)
-    }).catch(() => {})
+    let alive = true
+    const pollDevices = () => {
+      getDevices()
+        .then((nextDevices) => { if (alive) setDevices(nextDevices) })
+        .catch(() => {})
+    }
+    pollDevices()
+    const id = setInterval(pollDevices, 30_000)
+    return () => {
+      alive = false
+      clearInterval(id)
+    }
   }, [])
 
   // Read mode on mount; re-read when navigating back from dock-settings.
@@ -135,7 +144,12 @@ export function Panel({ onNavigate }: Props) {
         {/* Connected-devices popover. Telemetry remains scoped to this Mac;
             remote-node inspection is surfaced honestly in Sync & Relay. */}
         <button
-          onClick={() => { setWsOpen((o) => !o); setGearOpen(false) }}
+          onClick={() => {
+            const opening = !wsOpen
+            setWsOpen(opening)
+            setGearOpen(false)
+            if (opening) getDevices().then(setDevices).catch(() => {})
+          }}
           aria-label="Connected devices"
           aria-expanded={wsOpen}
           title={`${currentDevice?.hostname ?? 'Local'} · Connected devices`}
