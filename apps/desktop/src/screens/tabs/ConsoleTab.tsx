@@ -73,6 +73,12 @@ const CONSOLE_ENTRIES: MenuEntry[] = [
     icon: '↔',
   },
   {
+    id: 'coordination-daemons',
+    label: 'Coordination Daemons',
+    sub: 'Sync · quartermaster · logs · fleet dashboard',
+    icon: '⌁',
+  },
+  {
     id: 'engine-room',
     label: 'Diagnostics',
     sub: 'System metrics · logs · collect diagnostics',

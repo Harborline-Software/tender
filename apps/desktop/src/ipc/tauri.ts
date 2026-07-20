@@ -146,6 +146,46 @@ export async function getLocalServices(): Promise<ProcessData[]> {
   return invoke<ProcessData[]>('get_local_services')
 }
 
+// ── Coordination daemon operations ─────────────────────────────────────────
+
+import type {
+  CoordinationDaemonAction,
+  CoordinationDaemonStatus,
+  DaemonActionResult,
+  FleetDashboardLink,
+} from '@/state/types'
+export type {
+  CoordinationDaemonAction,
+  CoordinationDaemonStatus,
+  DaemonActionResult,
+  FleetDashboardLink,
+}
+
+export async function getCoordinationDaemons(): Promise<CoordinationDaemonStatus[]> {
+  return invoke<CoordinationDaemonStatus[]>('get_coordination_daemons')
+}
+
+export async function controlCoordinationDaemon(
+  daemonId: CoordinationDaemonStatus['id'],
+  action: CoordinationDaemonAction,
+): Promise<DaemonActionResult> {
+  return invoke<DaemonActionResult>('control_coordination_daemon', { daemonId, action })
+}
+
+export async function openCoordinationDaemonLog(
+  daemonId: CoordinationDaemonStatus['id'],
+): Promise<void> {
+  return invoke('open_coordination_daemon_log', { daemonId })
+}
+
+export async function getFleetDashboardLink(): Promise<FleetDashboardLink> {
+  return invoke<FleetDashboardLink>('get_fleet_dashboard_link')
+}
+
+export async function openFleetDashboard(): Promise<void> {
+  return invoke('open_fleet_dashboard')
+}
+
 export async function getDevices(): Promise<DeviceData[]> {
   return invoke<DeviceData[]>('get_devices')
 }

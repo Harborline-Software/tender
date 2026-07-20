@@ -1,5 +1,42 @@
 use crate::{bundles, devices, projects, telemetry};
 
+// ── Coordination daemon operations ────────────────────────────────────────
+
+/// Read-only status for the existing coordination LaunchAgents. Tender does
+/// not run another sync loop; it reports what launchd and the daemon logs say.
+#[tauri::command]
+pub fn get_coordination_daemons() -> Vec<crate::coordination_daemons::CoordinationDaemonStatus> {
+    crate::coordination_daemons::statuses()
+}
+
+/// Ask launchd to start, stop, or kick an existing coordination daemon.
+/// Start/run-now remain opt-in gated in the native layer.
+#[tauri::command]
+pub fn control_coordination_daemon(
+    daemon_id: String,
+    action: crate::coordination_daemons::DaemonAction,
+) -> Result<crate::coordination_daemons::DaemonActionResult, String> {
+    crate::coordination_daemons::control(&daemon_id, action)
+}
+
+/// Open the newest allowlisted log for a known coordination daemon.
+#[tauri::command]
+pub fn open_coordination_daemon_log(daemon_id: String) -> Result<(), String> {
+    crate::coordination_daemons::open_log(&daemon_id)
+}
+
+/// Return the optional operator-configured fleet dashboard target.
+#[tauri::command]
+pub fn get_fleet_dashboard_link() -> crate::coordination_daemons::FleetDashboardLink {
+    crate::coordination_daemons::dashboard_link()
+}
+
+/// Open the configured dashboard after native URL validation.
+#[tauri::command]
+pub fn open_fleet_dashboard() -> Result<(), String> {
+    crate::coordination_daemons::open_dashboard()
+}
+
 // ── Log file path resolution ───────────────────────────────────────────────
 
 /// Canonical log file paths for each service identifier.
@@ -8,6 +45,10 @@ use crate::{bundles, devices, projects, telemetry};
 /// Services launched manually write to `~/.harborline/logs/<id>.log`
 /// when that convention is honoured; we fall back gracefully if absent.
 fn log_paths_for_service(service_id: &str) -> Vec<std::path::PathBuf> {
+    if matches!(service_id, "coordination-sync" | "qm-daemon") {
+        return crate::coordination_daemons::log_paths(service_id).unwrap_or_default();
+    }
+
     let home = match std::env::var("HOME") {
         Ok(h) => h,
         Err(_) => return vec![],
@@ -16,18 +57,9 @@ fn log_paths_for_service(service_id: &str) -> Vec<std::path::PathBuf> {
     let hl_logs = format!("{}/.harborline/logs", home);
 
     match service_id {
-        "coordination-sync" => vec![
-            format!("{}/.sync-stdout.log", coord).into(),
-            format!("{}/.sync-stderr.log", coord).into(),
-        ],
         "archive-rollup" => vec![
             format!("{}/.archive-rollup-stdout.log", coord).into(),
             format!("{}/.archive-rollup-stderr.log", coord).into(),
-        ],
-        "qm-daemon" => vec![
-            format!("{}/.qm-daemon-stdout.log", coord).into(),
-            format!("{}/.qm-daemon-stderr.log", coord).into(),
-            format!("{}/.qm-daemon.log", coord).into(),
         ],
         "agent-revival-daemon" => vec![
             format!("{}/.agent-revival-daemon-stdout.log", coord).into(),
@@ -377,9 +409,17 @@ pub async fn collect_diagnostics() -> Result<String, String> {
 pub async fn get_log_tail(service_id: String, lines: Option<u32>) -> Result<Vec<String>, String> {
     let n = lines.unwrap_or(200) as usize;
 
-    let paths = tokio::task::spawn_blocking(move || log_paths_for_service(&service_id))
+    let mut paths = tokio::task::spawn_blocking(move || log_paths_for_service(&service_id))
         .await
         .map_err(|e| format!("Task join error: {}", e))?;
+
+    // Read oldest-to-newest so the final merged tail and status/open-log views
+    // agree on which source is current. Missing files sort first.
+    paths.sort_by_key(|path| {
+        std::fs::metadata(path)
+            .and_then(|meta| meta.modified())
+            .ok()
+    });
 
     if paths.is_empty() {
         return Ok(vec!["[no log paths configured for this service]".to_string()]);

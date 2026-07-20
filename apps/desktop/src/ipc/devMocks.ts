@@ -328,4 +328,24 @@ export const DEV_MOCKS: Record<string, unknown> = {
   get_model_inventory: MODEL_INVENTORY,
   get_gpu_residency: GPU_RESIDENCY,
   get_paid_compute: PAID_COMPUTE,
+  get_coordination_daemons: [
+    {
+      id: 'coordination-sync', displayName: 'Coordination Sync', cadence: 'Every 60 seconds',
+      state: 'maintenanceHeld', detail: 'LaunchAgent is loaded, but its active marker is absent; the job is safely gated.',
+      loaded: true, activeFlagPresent: false, controlsEnabled: false,
+      canStart: false, canStop: true, canRunNow: false, logsAvailable: true,
+      lastRunAt: Math.floor(Date.now() / 1000) - 180, lastLogLine: 'Maintenance hold remains in force.',
+    },
+    {
+      id: 'qm-daemon', displayName: 'QM Daemon', cadence: 'Every hour',
+      state: 'loaded', detail: 'LaunchAgent is loaded and its activity is current.',
+      loaded: true, activeFlagPresent: true, controlsEnabled: false,
+      canStart: false, canStop: true, canRunNow: false, logsAvailable: true,
+      lastRunAt: Math.floor(Date.now() / 1000) - 900, lastLogLine: 'Scan complete: 0 finding(s)',
+    },
+  ],
+  get_fleet_dashboard_link: {
+    configured: false, url: null,
+    detail: 'Set TENDER_FLEET_DASHBOARD_URL to your tailnet dashboard URL.',
+  },
 }

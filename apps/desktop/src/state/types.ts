@@ -92,6 +92,7 @@ export type DetailId =
   | 'model-inventory'
   | 'model-residency'
   | 'paid-compute'
+  | 'coordination-daemons'
 
 export type Screen = { kind: 'main' } | { kind: 'detail'; id: DetailId } | { kind: 'outfitting' }
 
@@ -127,6 +128,46 @@ export interface SyncStatus {
   /** Unix epoch seconds of the last coordination-sync log mtime, or null. */
   lastCoordSyncAt: number | null
   state: SyncStateValue
+}
+
+// ── Coordination daemon operations ─────────────────────────────────────────
+
+export type CoordinationDaemonState =
+  | 'loaded'
+  | 'maintenanceHeld'
+  | 'disabled'
+  | 'degraded'
+  | 'notConfigured'
+
+export interface CoordinationDaemonStatus {
+  id: 'coordination-sync' | 'qm-daemon'
+  displayName: string
+  cadence: string
+  state: CoordinationDaemonState
+  detail: string
+  loaded: boolean
+  activeFlagPresent: boolean
+  controlsEnabled: boolean
+  canStart: boolean
+  canStop: boolean
+  canRunNow: boolean
+  logsAvailable: boolean
+  lastRunAt: number | null
+  lastLogLine: string | null
+}
+
+export type CoordinationDaemonAction = 'start' | 'stop' | 'runNow'
+
+export interface DaemonActionResult {
+  id: CoordinationDaemonStatus['id']
+  action: CoordinationDaemonAction
+  detail: string
+}
+
+export interface FleetDashboardLink {
+  configured: boolean
+  url: string | null
+  detail: string
 }
 
 // ── Hardware probe (ADR 0116 D1) ─────────────────────────────────────────────
