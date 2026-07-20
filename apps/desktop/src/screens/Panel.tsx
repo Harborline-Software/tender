@@ -49,15 +49,12 @@ export function Panel({ onNavigate }: Props) {
   const [tab, setTab] = useState<TabId>('fleet')
   const [wsOpen, setWsOpen] = useState(false)
   const [gearOpen, setGearOpen] = useState(false)
-  const [workspace, setWorkspace] = useState('Local')
   const [devices, setDevices] = useState<DeviceData[]>([])
   const [mode, setMode] = useState<Mode>('dev')
 
   useEffect(() => {
     getDevices().then((ds) => {
       setDevices(ds)
-      const current = ds.find(d => d.isCurrentDevice)
-      if (current) setWorkspace(current.hostname)
     }).catch(() => {})
   }, [])
 
@@ -72,6 +69,7 @@ export function Panel({ onNavigate }: Props) {
 
   const a = theme.accent
   const m = theme.signal
+  const currentDevice = devices.find(device => device.isCurrentDevice)
 
   // F8.2: update badge is hidden until real update data is wired (M3).
   // Never show "3 updates" that is a hardcoded stub — that misleads operators.
@@ -134,9 +132,13 @@ export function Panel({ onNavigate }: Props) {
 
         <div style={{ flex: 1 }} />
 
-        {/* Workspace dropdown */}
+        {/* Connected-devices popover. Telemetry remains scoped to this Mac;
+            remote-node inspection is surfaced honestly in Sync & Relay. */}
         <button
           onClick={() => { setWsOpen((o) => !o); setGearOpen(false) }}
+          aria-label="Connected devices"
+          aria-expanded={wsOpen}
+          title={`${currentDevice?.hostname ?? 'Local'} · Connected devices`}
           style={{
             background: `${a}1a`,
             border: `1px solid ${a}55`,
@@ -159,7 +161,14 @@ export function Panel({ onNavigate }: Props) {
             boxShadow: `0 0 4px ${a}, 0 0 8px ${a}88`,
             animation: 'dotPulse 3s ease-in-out infinite',
           }} />
-          {workspace}
+          <span style={{
+            maxWidth: 72,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {currentDevice?.hostname ?? 'Local'}
+          </span>
           <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
             <path d="M2 3L4 5L6 3" stroke={theme.text} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -326,14 +335,17 @@ export function Panel({ onNavigate }: Props) {
             </div>
           )}
           {devices.map((d) => (
-            <button key={d.hostname} onClick={() => { setWorkspace(d.hostname); setWsOpen(false) }}
+            <div
+              key={d.hostname}
+              aria-current={d.isCurrentDevice ? 'true' : undefined}
               style={{
                 display: 'flex', alignItems: 'center', gap: 9,
                 width: '100%', textAlign: 'left',
+                boxSizing: 'border-box',
                 padding: '8px 12px',
-                background: d.hostname === workspace ? `${a}1a` : 'transparent',
-                border: 'none', borderTop: `1px solid ${theme.border}`,
-                color: theme.text, fontSize: theme.sizeBody, cursor: 'pointer',
+                background: d.isCurrentDevice ? `${a}1a` : 'transparent',
+                borderTop: `1px solid ${theme.border}`,
+                color: theme.text, fontSize: theme.sizeBody,
                 opacity: d.online ? 1 : 0.45,
               }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: d.online ? a : theme.textMuted, boxShadow: d.online ? `0 0 4px ${a}, 0 0 8px ${a}88` : 'none', flexShrink: 0 }} />
@@ -346,10 +358,20 @@ export function Panel({ onNavigate }: Props) {
                 </div>
                 <div style={{ fontFamily: theme.fontMono, fontSize: theme.sizeLabel, color: theme.textMuted, marginTop: 2 }}>{d.os.toUpperCase()}</div>
               </div>
-            </button>
+            </div>
           ))}
-          <button onClick={() => setWsOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '8px 12px', background: 'transparent', border: 'none', borderTop: `1px solid ${theme.border}`, color: theme.textDim, fontSize: theme.sizeBody, cursor: 'pointer' }}>
-            <span style={{ flex: 1 }}>Manage devices…</span>
+          <div style={{
+            padding: '7px 12px 4px',
+            borderTop: `1px solid ${theme.border}`,
+            color: theme.textMuted,
+            fontFamily: theme.fontRow,
+            fontSize: theme.sizeLabel,
+            lineHeight: 1.4,
+          }}>
+            Fleet, projects, services, and controls describe this Mac.
+          </div>
+          <button onClick={() => handleNavigate('relay')} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '7px 12px 8px', background: 'transparent', border: 'none', color: theme.textDim, fontSize: theme.sizeBody, cursor: 'pointer' }}>
+            <span style={{ flex: 1 }}>View Sync &amp; Relay</span>
             <span style={{ color: theme.textMuted, fontSize: theme.sizeMetric }}>↗</span>
           </button>
         </div>

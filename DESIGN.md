@@ -28,6 +28,9 @@ Dual-mode, follows macOS appearance (IPC-driven; `.dark`/`.light` class on docum
 - ConsoleIndicator — lucide-react icons at 11px (radio, layout-grid, waves, cpu, settings, power, container, message-square)
 - MenuShell + TabStrip (Fleet / Projects / Services / Console) — 360px tray panel
 - Honest-state rows: "not configured" / "unreachable" render as designed guidance states, not errors
+- Connected Devices: a read-only tailnet status popover. The current-node label scopes local
+  telemetry honestly; peer selection is not offered until remote telemetry exists, and detailed
+  node state lives in Sync & Relay.
 - Coordination Daemons: compact launchd-backed rows in Console with visible state glyph + label,
   cadence, last-log summary, and local controls. Maintenance-held, armed-but-unloaded, disabled,
   stale/error, and not-configured are first-class states; the UI never equates an active marker with
