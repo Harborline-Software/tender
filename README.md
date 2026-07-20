@@ -62,7 +62,7 @@ own, so those panes stay empty until you set them to your own hosts:
 | `TENDER_STABILITY_MATRIX_DIR` | Local path to a Stability Matrix install (read-only) |
 | `TENDER_INSECURE_TLS` | Set to allow self-signed TLS on the above hosts (use with care) |
 | `TENDER_COORDINATION_DIR` | Local coordination checkout used for daemon status and logs |
-| `TENDER_FLEET_DASHBOARD_URL` | Operator's tailnet fleet-dashboard URL (http/https only) |
+| `TENDER_FLEET_DASHBOARD_URL` | Optional Fleet Dashboard URL fallback when Dock Settings has no saved value |
 | `TENDER_ALLOW_COORDINATION_DAEMON_START` | Set to `1` only after the installed daemon safety fix is verified; unlocks Start and Run now |
 
 If you don't set these, the corresponding panes simply show nothing — the app
@@ -76,8 +76,9 @@ maintenance hold by removing its active marker before unloading it. Start and
 Run now stay locked unless `TENDER_ALLOW_COORDINATION_DAEMON_START=1` is present
 in the Toolbox process environment; set that only after the coordination daemon
 safety update has been installed and verified. The fleet-dashboard link has no
-committed host default: configure your tailnet URL with
-`TENDER_FLEET_DASHBOARD_URL`.
+committed host default. Configure it in **Dock Settings → Connections**; the
+saved value takes priority over `TENDER_FLEET_DASHBOARD_URL`, which remains
+available as an environment fallback.
 
 ## Projects tab
 

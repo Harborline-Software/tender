@@ -280,6 +280,7 @@ export type Mode = 'dev' | 'end-user'
 export interface TenderSettings {
   schemaVersion: number
   mode: Mode
+  fleetDashboardUrl: string | null
 }
 
 // ── Local install engine (C3) ────────────────────────────────────────────────

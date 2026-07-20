@@ -141,6 +141,7 @@ pub fn run() {
             commands::get_autostart,
             commands::get_settings,
             commands::set_mode,
+            commands::set_fleet_dashboard_url,
             commands::get_model_inventory,
             commands::get_gpu_residency,
             commands::get_paid_compute,

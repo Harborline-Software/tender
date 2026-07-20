@@ -368,6 +368,11 @@ export async function setMode(mode: Mode): Promise<TenderSettings> {
   return invoke<TenderSettings>('set_mode', { mode })
 }
 
+/** Persist or clear the operator-managed Fleet Dashboard URL. */
+export async function setFleetDashboardUrl(url: string | null): Promise<TenderSettings> {
+  return invoke<TenderSettings>('set_fleet_dashboard_url', { url })
+}
+
 // ── CFG-3b install config read ────────────────────────────────────────────────
 
 import type { InstallConfig } from '@/state/types'

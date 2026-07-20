@@ -8,12 +8,10 @@
 //! `<config>/Tender/tender-settings.json`. **Fail-soft**: a missing or unreadable
 //! file yields the default (`dev`).
 //!
-//! Deliberately minimal — only `mode` is consumed today (it gates the fleet via
-//! `telemetry::get_fleet` + backs the header DEV pill). Extend with telemetry
-//! posture / enabled-app allowlist / monitor intervals when those are actually
-//! wired, not speculatively. Autostart is NOT mirrored here — it stays
-//! single-sourced in its LaunchAgent (`autostart.rs`); the UI reads it via
-//! `get_autostart`.
+//! The fleet-dashboard URL also lives here so operators can correct connection
+//! targets without rebuilding or editing launch environments. Autostart is NOT
+//! mirrored here — it stays single-sourced in its LaunchAgent (`autostart.rs`);
+//! the UI reads it via `get_autostart`.
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -42,6 +40,8 @@ pub enum Mode {
 pub struct TenderSettings {
     pub schema_version: u32,
     pub mode: Mode,
+    #[serde(default)]
+    pub fleet_dashboard_url: Option<String>,
 }
 
 impl Default for TenderSettings {
@@ -49,6 +49,7 @@ impl Default for TenderSettings {
         Self {
             schema_version: SETTINGS_SCHEMA_VERSION,
             mode: Mode::Dev,
+            fleet_dashboard_url: None,
         }
     }
 }
@@ -100,6 +101,33 @@ pub fn set_mode(mode: Mode) -> Result<TenderSettings, String> {
     Ok(settings)
 }
 
+/// Validate, normalize, and persist the optional fleet-dashboard URL.
+/// An empty string clears the saved value. Only HTTP(S) URLs with a host are
+/// accepted; credentials are rejected because this value is stored as plain
+/// operator configuration.
+pub fn set_fleet_dashboard_url(value: Option<String>) -> Result<TenderSettings, String> {
+    let normalized = normalize_web_url(value.as_deref())?;
+    let mut settings = load();
+    settings.fleet_dashboard_url = normalized;
+    save(&settings)?;
+    Ok(settings)
+}
+
+pub fn normalize_web_url(value: Option<&str>) -> Result<Option<String>, String> {
+    let Some(value) = value.map(str::trim).filter(|value| !value.is_empty()) else {
+        return Ok(None);
+    };
+    let parsed = url::Url::parse(value)
+        .map_err(|_| "Fleet Dashboard must be a valid http or https URL.".to_string())?;
+    if !matches!(parsed.scheme(), "http" | "https") || parsed.host_str().is_none() {
+        return Err("Fleet Dashboard must be a valid http or https URL.".to_string());
+    }
+    if !parsed.username().is_empty() || parsed.password().is_some() {
+        return Err("Fleet Dashboard URL must not contain credentials.".to_string());
+    }
+    Ok(Some(parsed.to_string()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,6 +135,7 @@ mod tests {
     #[test]
     fn default_mode_is_dev() {
         assert_eq!(TenderSettings::default().mode, Mode::Dev);
+        assert_eq!(TenderSettings::default().fleet_dashboard_url, None);
     }
 
     #[test]
@@ -138,11 +167,35 @@ mod tests {
         let path = dir.join("tender-settings.json");
         let _ = std::fs::remove_dir_all(&dir);
 
-        let s = TenderSettings { schema_version: SETTINGS_SCHEMA_VERSION, mode: Mode::EndUser };
+        let s = TenderSettings {
+            schema_version: SETTINGS_SCHEMA_VERSION,
+            mode: Mode::EndUser,
+            fleet_dashboard_url: Some("http://dashboard.example:8880/fleet/".to_string()),
+        };
         save_to(&s, &path).expect("save");
         let back = load_from(Some(&path));
         assert_eq!(back.mode, Mode::EndUser);
+        assert_eq!(back.fleet_dashboard_url, s.fleet_dashboard_url);
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn dashboard_url_normalizes_and_rejects_unsafe_values() {
+        assert_eq!(normalize_web_url(Some("  ")).unwrap(), None);
+        assert_eq!(
+            normalize_web_url(Some("http://dashboard.example:8880/fleet")).unwrap(),
+            Some("http://dashboard.example:8880/fleet".to_string())
+        );
+        assert!(normalize_web_url(Some("file:///tmp/dashboard")).is_err());
+        assert!(normalize_web_url(Some("http://user:secret@dashboard.example/")).is_err());
+    }
+
+    #[test]
+    fn legacy_settings_without_dashboard_url_still_load() {
+        let settings: TenderSettings =
+            serde_json::from_str(r#"{"schemaVersion":1,"mode":"dev"}"#)
+                .expect("legacy settings parse");
+        assert_eq!(settings.fleet_dashboard_url, None);
     }
 }

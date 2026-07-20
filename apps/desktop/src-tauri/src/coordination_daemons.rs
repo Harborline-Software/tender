@@ -516,29 +516,55 @@ pub fn open_log(id: &str) -> Result<(), String> {
 }
 
 pub fn dashboard_link() -> FleetDashboardLink {
-    match std::env::var(DASHBOARD_URL_ENV) {
-        Ok(value) if valid_web_url(&value) => FleetDashboardLink {
+    resolve_dashboard_link(
+        crate::settings::load().fleet_dashboard_url,
+        std::env::var(DASHBOARD_URL_ENV).ok(),
+    )
+}
+
+fn resolve_dashboard_link(
+    saved: Option<String>,
+    environment: Option<String>,
+) -> FleetDashboardLink {
+    if let Some(value) = saved {
+        return match crate::settings::normalize_web_url(Some(&value)) {
+            Ok(Some(value)) => FleetDashboardLink {
+                configured: true,
+                url: Some(value),
+                detail: "Fleet Dashboard URL saved in Dock Settings.".into(),
+            },
+            _ => FleetDashboardLink {
+                configured: false,
+                url: None,
+                detail: "The Fleet Dashboard URL saved in Dock Settings is invalid.".into(),
+            },
+        };
+    }
+
+    match environment {
+        Some(value) if valid_web_url(&value) => FleetDashboardLink {
             configured: true,
             url: Some(value),
-            detail: "Tailnet fleet dashboard configured for this Toolbox session.".into(),
+            detail: "Fleet Dashboard URL supplied by the session environment.".into(),
         },
-        Ok(_) => FleetDashboardLink {
+        Some(_) => FleetDashboardLink {
             configured: false,
             url: None,
             detail: format!("{DASHBOARD_URL_ENV} must be an http or https URL."),
         },
-        Err(_) => FleetDashboardLink {
+        None => FleetDashboardLink {
             configured: false,
             url: None,
-            detail: format!("Set {DASHBOARD_URL_ENV} to your tailnet dashboard URL."),
+            detail: "Set Fleet Dashboard URL in Dock Settings.".into(),
         },
     }
 }
 
 fn valid_web_url(value: &str) -> bool {
-    url::Url::parse(value)
-        .map(|url| matches!(url.scheme(), "http" | "https") && url.host_str().is_some())
-        .unwrap_or(false)
+    crate::settings::normalize_web_url(Some(value))
+        .ok()
+        .flatten()
+        .is_some()
 }
 
 pub fn open_dashboard() -> Result<(), String> {
@@ -586,6 +612,26 @@ mod tests {
         assert!(!valid_web_url("file:///tmp/fleet.html"));
         assert!(!valid_web_url("javascript:alert(1)"));
         assert!(!valid_web_url("not a url"));
+    }
+
+    #[test]
+    fn saved_dashboard_url_takes_priority_over_environment() {
+        let link = resolve_dashboard_link(
+            Some("http://saved.example/fleet/".to_string()),
+            Some("http://environment.example/fleet/".to_string()),
+        );
+        assert_eq!(link.url.as_deref(), Some("http://saved.example/fleet/"));
+        assert!(link.detail.contains("Dock Settings"));
+    }
+
+    #[test]
+    fn dashboard_environment_remains_a_fallback() {
+        let link = resolve_dashboard_link(
+            None,
+            Some("http://environment.example/fleet/".to_string()),
+        );
+        assert_eq!(link.url.as_deref(), Some("http://environment.example/fleet/"));
+        assert!(link.detail.contains("session environment"));
     }
 
     #[test]

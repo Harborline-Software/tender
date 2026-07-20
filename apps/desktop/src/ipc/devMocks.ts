@@ -91,7 +91,7 @@ const FLEET: FleetEntry[] = [
   },
 ]
 
-const SETTINGS: TenderSettings = { schemaVersion: 1, mode: 'dev' }
+const SETTINGS: TenderSettings = { schemaVersion: 1, mode: 'dev', fleetDashboardUrl: null }
 
 const RECOMMENDATION = {
   probe: {
@@ -318,6 +318,7 @@ export const DEV_MOCKS: Record<string, unknown> = {
   get_appearance: 'dark',
   get_fleet: FLEET,
   get_settings: SETTINGS,
+  set_fleet_dashboard_url: SETTINGS,
   get_install_config: INSTALL_CONFIG,
   recommend_profile: RECOMMENDATION,
   get_services: [],
@@ -346,6 +347,6 @@ export const DEV_MOCKS: Record<string, unknown> = {
   ],
   get_fleet_dashboard_link: {
     configured: false, url: null,
-    detail: 'Set TENDER_FLEET_DASHBOARD_URL to your tailnet dashboard URL.',
+    detail: 'Set Fleet Dashboard URL in Dock Settings.',
   },
 }

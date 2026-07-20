@@ -14,8 +14,13 @@ import { FiberDivider } from '@/components/FiberDivider'
 import { ActionFooter } from '@/components/ActionFooter'
 import { DataLine } from '@/components/DataLine'
 import { ToggleSwitch } from '@/components/ToggleSwitch'
-import { getSettings, setMode } from '@/ipc/tauri'
-import type { Mode } from '@/ipc/tauri'
+import {
+  getFleetDashboardLink,
+  getSettings,
+  setFleetDashboardUrl,
+  setMode,
+} from '@/ipc/tauri'
+import type { FleetDashboardLink, Mode } from '@/ipc/tauri'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -75,9 +80,23 @@ export function DockSettingsDetail({ onBack }: Props) {
   const [toggles, setToggles] = useState(loadToggles)
   const [mode, setModeState] = useState<Mode>('dev')
   const [modeChanging, setModeChanging] = useState(false)
+  const [dashboardUrl, setDashboardUrl] = useState('')
+  const [savedDashboardUrl, setSavedDashboardUrl] = useState<string | null>(null)
+  const [dashboardLink, setDashboardLink] = useState<FleetDashboardLink | null>(null)
+  const [dashboardSaving, setDashboardSaving] = useState(false)
+  const [dashboardFocused, setDashboardFocused] = useState(false)
+  const [dashboardNotice, setDashboardNotice] = useState<string | null>(null)
+  const [dashboardError, setDashboardError] = useState<string | null>(null)
 
   useEffect(() => {
-    getSettings().then(s => setModeState(s.mode)).catch(() => {})
+    Promise.all([getSettings(), getFleetDashboardLink()])
+      .then(([settings, link]) => {
+        setModeState(settings.mode)
+        setDashboardUrl(settings.fleetDashboardUrl ?? '')
+        setSavedDashboardUrl(settings.fleetDashboardUrl)
+        setDashboardLink(link)
+      })
+      .catch(() => setDashboardError('Could not read Tender settings.'))
   }, [])
 
   const handleModeToggle = async (newMode: Mode) => {
@@ -107,13 +126,39 @@ export function DockSettingsDetail({ onBack }: Props) {
     setToggles(defaults)
   }
 
+  const dashboardDirty = dashboardUrl.trim() !== (savedDashboardUrl ?? '')
+
+  const handleDashboardSave = async () => {
+    if (dashboardSaving || !dashboardDirty) return
+    setDashboardSaving(true)
+    setDashboardNotice(null)
+    setDashboardError(null)
+    try {
+      const updated = await setFleetDashboardUrl(dashboardUrl.trim() || null)
+      const saved = updated.fleetDashboardUrl
+      setDashboardUrl(saved ?? '')
+      setSavedDashboardUrl(saved)
+      setDashboardLink(await getFleetDashboardLink())
+      setDashboardNotice(saved ? 'Fleet Dashboard URL saved.' : 'Saved dashboard URL cleared.')
+    } catch (reason) {
+      setDashboardError(typeof reason === 'string' ? reason : 'Could not save Fleet Dashboard URL.')
+    } finally {
+      setDashboardSaving(false)
+    }
+  }
+
   return (
     <MenuShell>
       <DetailHeader
         title="Dock Settings"
-        sub="6 routes wired · MK VII"
+        sub="Appearance · behavior · connections"
         onBack={onBack}
-        badge={<StatusPill text="Saved" />}
+        badge={
+          <StatusPill
+            text={dashboardSaving ? 'Saving' : dashboardDirty ? 'Unsaved' : 'Saved'}
+            tone={dashboardDirty ? theme.warn : undefined}
+          />
+        }
       />
 
       {/* ↳ MODE — dev / end-user toggle */}
@@ -176,6 +221,116 @@ export function DockSettingsDetail({ onBack }: Props) {
             )
           })}
         </div>
+      </div>
+
+      <FiberDivider dim />
+
+      <div style={{
+        padding: '8px 14px 4px',
+        fontFamily: theme.fontMono,
+        fontSize: 9, letterSpacing: 1.4, textTransform: 'uppercase',
+        color: theme.textMuted,
+      }}>
+        ↳ Connections
+      </div>
+
+      <div style={{ padding: '7px 14px 11px' }}>
+        <label
+          htmlFor="fleet-dashboard-url"
+          style={{ display: 'block', fontSize: 11.5, color: theme.text }}
+        >
+          Fleet Dashboard URL
+        </label>
+        <div id="fleet-dashboard-help" style={{
+          marginTop: 3,
+          fontFamily: theme.fontRow,
+          fontSize: theme.sizeBody,
+          color: theme.textDim,
+          lineHeight: 1.4,
+        }}>
+          Saved settings take priority over the session environment.
+        </div>
+        <input
+          id="fleet-dashboard-url"
+          type="url"
+          inputMode="url"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={dashboardUrl}
+          placeholder="http://dashboard-host:8880/fleet/"
+          aria-describedby="fleet-dashboard-help fleet-dashboard-effective"
+          onChange={(event) => {
+            setDashboardUrl(event.target.value)
+            setDashboardNotice(null)
+            setDashboardError(null)
+          }}
+          onFocus={() => setDashboardFocused(true)}
+          onBlur={() => setDashboardFocused(false)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') handleDashboardSave()
+          }}
+          style={{
+            boxSizing: 'border-box',
+            width: '100%',
+            minHeight: 32,
+            marginTop: 8,
+            padding: '6px 8px',
+            borderRadius: 4,
+            border: `1px solid ${dashboardFocused ? theme.accentBright : theme.border}`,
+            outline: dashboardFocused ? `2px solid ${theme.accent}33` : 'none',
+            outlineOffset: 1,
+            background: theme.bgSoft,
+            color: theme.text,
+            fontFamily: theme.fontMono,
+            fontSize: theme.sizeBody,
+          }}
+        />
+        <div id="fleet-dashboard-effective" style={{
+          marginTop: 6,
+          fontFamily: theme.fontMono,
+          fontSize: theme.sizeLabel,
+          color: theme.textMuted,
+          lineHeight: 1.45,
+          overflowWrap: 'anywhere',
+        }}>
+          {dashboardLink?.configured
+            ? `Effective: ${dashboardLink.url}`
+            : dashboardLink?.detail ?? 'Reading current connection…'}
+        </div>
+        {(dashboardNotice || dashboardError) && (
+          <div
+            role={dashboardError ? 'alert' : 'status'}
+            aria-live="polite"
+            style={{
+              marginTop: 6,
+              color: dashboardError ? theme.danger : theme.healthy,
+              fontFamily: theme.fontRow,
+              fontSize: theme.sizeBody,
+            }}
+          >
+            {dashboardError ?? dashboardNotice}
+          </div>
+        )}
+        <button
+          type="button"
+          disabled={dashboardSaving || !dashboardDirty}
+          onClick={handleDashboardSave}
+          style={{
+            minHeight: 30,
+            marginTop: 8,
+            padding: '5px 10px',
+            borderRadius: 4,
+            border: `1px solid ${dashboardSaving || !dashboardDirty ? theme.border : `${theme.accentBright}66`}`,
+            background: dashboardSaving || !dashboardDirty ? theme.bgSoft : `${theme.accentBright}14`,
+            color: dashboardSaving || !dashboardDirty ? theme.textMuted : theme.accentBright,
+            fontFamily: theme.fontRow,
+            fontSize: theme.sizeBody,
+            cursor: dashboardSaving || !dashboardDirty ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {dashboardSaving ? 'Saving…' : 'Save URL'}
+        </button>
       </div>
 
       <div style={{

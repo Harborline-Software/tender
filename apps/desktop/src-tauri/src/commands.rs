@@ -645,6 +645,14 @@ pub fn set_mode(mode: crate::settings::Mode) -> Result<crate::settings::TenderSe
     crate::settings::set_mode(mode)
 }
 
+/// Persist or clear the operator's Fleet Dashboard URL.
+#[tauri::command]
+pub fn set_fleet_dashboard_url(
+    url: Option<String>,
+) -> Result<crate::settings::TenderSettings, String> {
+    crate::settings::set_fleet_dashboard_url(url)
+}
+
 // ── Cross-zoo model inventory (Toolbox #137, ONR survey slice G1) ────────────
 
 /// Probe every configured AI backend (Ollama, TTS, ComfyUI, Stability Matrix)

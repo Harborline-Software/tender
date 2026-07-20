@@ -32,8 +32,9 @@ Dual-mode, follows macOS appearance (IPC-driven; `.dark`/`.light` class on docum
   cadence, last-log summary, and local controls. Maintenance-held, armed-but-unloaded, disabled,
   stale/error, and not-configured are first-class states; the UI never equates an active marker with
   a running job. Stop establishes a persistent hold. Start is confirmation-based and native-gated.
-- Fleet Dashboard: an optional action in Coordination Daemons, configured by the operator; no
-  fleet-private hostname is embedded in the app and the absent configuration has explicit guidance.
+- Fleet Dashboard: an optional action in Coordination Daemons, persisted through Dock Settings;
+  a session environment value is the fallback. No fleet-private hostname is embedded in the app,
+  and the absent configuration has explicit guidance.
 
 ## Layout
 
