@@ -2,18 +2,21 @@
 
 ## What Tender is
 
-Tender is a **macOS menu-bar application** that gives developers a single
-control surface for the Harborline service mesh on their local machine
-and the devices on their tailnet. It lives as a status item in the menu
-bar (no Dock icon), opens as a panel that hangs *down* from the menu-bar
-icon, and surfaces:
+Tender is a **tray control app for the Harborline service mesh**, shipping as
+a **macOS menu-bar application** and a **Windows notification-area (system
+tray) application** from one shared codebase. It surfaces a single control
+surface for the Harborline service mesh on the local machine and the devices
+on the tailnet. On macOS it lives as a status item in the menu bar (no Dock
+icon) and opens as a panel that hangs *down* from the menu-bar icon; on
+Windows it lives as a notification-area icon and opens as a panel near the
+tray. Either way it surfaces:
 
 - **Fleet** — the three installed Harborline tools (Signal-Bridge, Sunfish,
   Flight-Deck) with live telemetry and per-service detail views
 - **Projects** — the user's checked-out projects, surfaced for quick
   switching
 - **Services** — the local OS-level services running on the host (so the
-  user has visibility without leaving the menu bar)
+  user has visibility without leaving the tray)
 - **Connected Devices** — Tailscale-style device picker showing every node
   on the tailnet, with status and connection info
 - **Updates** — a brass update icon that appears when releases are pending
@@ -23,7 +26,7 @@ icon, and surfaces:
 
 ## Who it's for
 
-A developer running **multiple Harborline services** on a macOS
+A developer running **multiple Harborline services** on a macOS or Windows
 workstation, who needs to:
 
 - See at a glance whether their services are healthy
@@ -38,7 +41,7 @@ workstation, who needs to:
 
 | Feature | Notes |
 |---|---|
-| Menu-bar status item (the waterline+beacon logomark) | Always present; left-click toggles the panel |
+| Tray status item (the waterline+beacon logomark) | Always present; left-click toggles the panel; menu-bar item on macOS, notification-area icon on Windows |
 | Panel header | Logomark, "Tender" wordmark, workspace dropdown, update icon, gear icon |
 | Workspace dropdown (Connected Devices) | Tailnet device list, status dots, OS pills, "Manage devices…" footer |
 | Update icon (conditional) | Only shows when updates pending; click → Release Notes screen |
@@ -46,10 +49,11 @@ workstation, who needs to:
 | Tabs | Fleet · Projects · Services |
 | Fleet tab | 3 dial gauges + installed tool rows with version + update pip |
 | Projects tab | List of user projects with status |
-| Services tab | List of local services (launchd jobs + relevant daemons) with cpu/mem |
+| Services tab | List of local services (launchd jobs on macOS / relevant daemons on Windows) with cpu/mem |
 | Detail screens | Per-service (Signal-Bridge, Sunfish, Flight-Deck), Release Notes, Engine Room diagnostics, Dock Settings, Dry Dock confirmation |
-| Dark / Light modes | Engine Room palette, follows the system `NSApp.effectiveAppearance` |
+| Dark / Light modes | Engine Room palette, follows the host OS appearance (macOS `NSApp.effectiveAppearance`; Windows theme setting) |
 | Graceful shutdown | Dry Dock confirmation screen, preserves logs/state |
+| Start at login | Per-user, no elevation; macOS LaunchAgent, Windows via `tauri-plugin-autostart`; Dock Settings reports live state on both |
 
 ### v1.x (deferred but specced)
 
@@ -62,17 +66,20 @@ workstation, who needs to:
 
 ### Out of scope
 
-- **Windows and Linux** — macOS-first for v1. The component layer is
-  portable enough to support both later, but the menu-bar integration is
-  macOS-specific.
+- **Linux** — not targeted for v1. The component layer is portable enough to
+  support it later (macOS and Windows already share one Rust core and React
+  UI, with platform differences isolated behind a small `platform.rs` seam),
+  but Linux tray-host integration is not yet built or verified.
 - Cloud sync of preferences
 - Actual Harborline service implementations — Tender is the *control
   surface*; the services themselves are separate products
+- Windows code-signing / notarization-equivalent (both platforms currently
+  ship unsigned; see the root `README.md` Status section)
 
 ## User stories
 
-> **As a developer**, when I sit down at my Mac, I want to open the
-> Tender menu-bar item and see at a glance whether Signal-Bridge,
+> **As a developer**, when I sit down at my machine, I want to open the
+> Tender tray item and see at a glance whether Signal-Bridge,
 > Sunfish, and Flight-Deck are healthy — without launching three apps.
 > *— Fleet tab, dial gauges, live meters.*
 
@@ -89,24 +96,37 @@ workstation, who needs to:
 
 > **As a developer**, when something goes wrong with my local node, I
 > want CPU/memory/disk telemetry and a top-process list without opening
-> Activity Monitor.
+> Activity Monitor or Task Manager.
 > *— Engine Room detail screen, reachable from the Services tab.*
 
 > **As a developer ending a session**, I want a single graceful shutdown
 > that stops everything and preserves my logs.
 > *— Gear menu → Dry Dock → confirmation screen → shutdown.*
 
+> **As a Windows operator on a fleet GPU host**, I want the same tray control
+> surface as macOS operators get, including a real notification-area icon and
+> working start-at-login, instead of Task Scheduler and log files.
+> *— Windows tray parity: notification-area icon, `tauri-plugin-autostart`,
+> Dock Settings reporting real state.*
+
 ## Success criteria for v1
 
-- Panel open-to-first-paint: ≤ 150 ms on Apple Silicon, ≤ 250 ms on Intel
+- Panel open-to-first-paint: ≤ 150 ms on Apple Silicon, ≤ 250 ms on Intel or
+  a typical Windows desktop GPU host
 - Panel is keyboard-navigable (arrow keys, Enter, Escape) — Esc
   closes any popover or returns from a detail screen to the main menu
 - Live telemetry refresh: ≤ 1 s for service gauges, ≤ 5 s for system stats
 - Update notification appears within 5 minutes of release publication
 - Graceful shutdown succeeds for all running services in ≤ 10 s, or shows
   a per-service failure list
-- App passes Apple notarisation; ships signed with a Developer ID cert
-- No Dock icon; no app menu in the menu bar (status-item only)
+- macOS app passes Apple notarisation; ships signed with a Developer ID cert
+  (not yet in place — see Status)
+- No Dock icon on macOS; no app menu in the menu bar (status-item only). On
+  Windows, a normal per-user install with a notification-area icon, no
+  elevation required for everyday tray use
+- Windows build produces a clean x64 MSI on a clean checkout; installing it
+  creates a per-user app that runs in the logged-on desktop session (never
+  Session 0 only)
 
 ## Tone & copy
 

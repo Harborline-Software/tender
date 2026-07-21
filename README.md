@@ -1,17 +1,18 @@
 # Harborline Toolbox
 
-Harborline Toolbox (repo name: `tender`) is a **macOS menu-bar tray app** for
-monitoring and managing local Harborline services from a single place. It lives
-in the menu bar and surfaces service health, Tailscale device status, log
-viewers, a Projects tab for your git repositories, and bundle-manifest
-inspection. Optionally, it can also report on remote operator hosts you run
-yourself (model inventory, GPU VRAM residency, paid-compute ledgers) — those
-features are off by default (see [Configuration](#configuration)).
+Harborline Toolbox (repo name: `tender`) is a **tray app for monitoring and
+managing local Harborline services from a single place** — a **macOS
+menu-bar** app and a **Windows notification-area (system tray)** app, built
+from the same Tauri codebase. It surfaces service health, Tailscale device
+status, log viewers, a Projects tab for your git repositories, and
+bundle-manifest inspection. Optionally, it can also report on remote operator
+hosts you run yourself (model inventory, GPU VRAM residency, paid-compute
+ledgers) — those features are off by default (see [Configuration](#configuration)).
 
-**Who it's for:** operators running Harborline services on a Mac who want an
-at-a-glance tray view without keeping a terminal open. It is a standalone `.app`
-— you do **not** need to clone any other Harborline repository to build or run
-it.
+**Who it's for:** operators running Harborline services on a Mac or Windows PC
+who want an at-a-glance tray view without keeping a terminal open. It is a
+standalone app — you do **not** need to clone any other Harborline repository
+to build or run it.
 
 - Repository: <https://github.com/Harborline-Software/tender>
 - License: MIT (see [`LICENSE`](./LICENSE) and
@@ -21,28 +22,52 @@ it.
 
 Harborline Toolbox is **pre-1.0** and under active development.
 
-- **Builds are currently UNSIGNED.** macOS Gatekeeper will warn on first launch
-  ("cannot verify the developer"). You can allow it via **System Settings →
-  Privacy & Security → Open Anyway**. Code-signing/notarization is not yet in
-  place; no timeline is promised here.
+- **macOS builds are currently UNSIGNED.** macOS Gatekeeper will warn on first
+  launch ("cannot verify the developer"). You can allow it via **System
+  Settings → Privacy & Security → Open Anyway**. Code-signing/notarization is
+  not yet in place; no timeline is promised here.
+- **Windows builds are currently UNSIGNED.** Windows SmartScreen may warn on
+  first run ("Windows protected your PC"). Choose **More info → Run anyway**.
+  Code-signing is not yet in place.
 - **There is no auto-updater yet.** Updating means building or downloading a new
   version and replacing the app manually.
 
 ## Install / build
 
-Harborline Toolbox ships as a self-contained `.app`. No sibling clone of any
-other Harborline repo is required.
+Harborline Toolbox ships as a self-contained desktop app on both platforms. No
+sibling clone of any other Harborline repo is required.
 
 ```bash
 git clone https://github.com/Harborline-Software/tender.git
 cd tender/apps/desktop
 npm install
-npm run tauri build   # produces "Harborline Toolbox.app" in src-tauri/target/
+npm run tauri build   # macOS: "Harborline Toolbox.app"; Windows: an x64 MSI installer
 ```
+
+On Windows, the build produces an MSI under
+`apps/desktop/src-tauri/target/release/bundle/msi/`. Installing it registers a
+normal per-user application with a notification-area icon — no administrator
+elevation is required for everyday tray use. See
+[`scripts/release-windows.ps1`](./scripts/release-windows.ps1) for the release
+build used in CI/ops.
 
 The bundle-manifest data and all TypeScript type definitions are bundled inside
 the application at build time. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the
 full toolchain (Node, Rust, Tauri) and dev-mode instructions.
+
+## Platform notes
+
+Both platforms share one Rust core and React UI; a small `platform.rs` seam
+(`apps/desktop/src-tauri/src/platform.rs`) isolates the handful of things that
+differ:
+
+| Behavior | macOS | Windows |
+|---|---|---|
+| Tray surface | Menu-bar status item, no Dock icon | Notification-area (system tray) icon |
+| Left-click | Opens/closes the panel below the menu-bar icon | Opens/closes the panel near the tray icon |
+| Opening links/paths | `open` | `explorer.exe` |
+| Start at login | Per-user LaunchAgent (`io.harborline.tender` identity, migrated automatically across installs) | Tauri's platform autostart manager (`tauri-plugin-autostart`); state is readable live in **Dock Settings** |
+| Install | `.app` bundle, drag-install or build output | Per-user MSI, no elevation required |
 
 ## Configuration
 
@@ -61,36 +86,17 @@ own, so those panes stay empty until you set them to your own hosts:
 | `TENDER_FLIGHTDECK_BASE_URL` | Base URL for the Flight-deck service |
 | `TENDER_STABILITY_MATRIX_DIR` | Local path to a Stability Matrix install (read-only) |
 | `TENDER_INSECURE_TLS` | Set to allow self-signed TLS on the above hosts (use with care) |
-| `TENDER_COORDINATION_DIR` | Local coordination checkout used for daemon status and logs |
-| `TENDER_FLEET_DASHBOARD_URL` | Optional Fleet Dashboard URL fallback when Dock Settings has no saved value |
-| `TENDER_ALLOW_COORDINATION_DAEMON_START` | Set to `1` only after the installed daemon safety fix is verified; unlocks Start and Run now |
-| `HARBORLINE_COORDINATOR_CONFIG` | Optional path to the shared Ordinance coordinator config; defaults to `~/.config/harborline/coordinator.json` |
-| `HARBORLINE_COORDINATOR_URL` | Optional session override for the Fleet Coordinator origin |
-| `HARBORLINE_COORDINATOR_TOKEN_FILE` | Optional session override for the local coordinator bearer-token file |
 
 If you don't set these, the corresponding panes simply show nothing — the app
 does not require any operator host to run, and never points at a host you don't
 control unless you configure it to.
-
-The **Coordination Daemons** pane is read-only by default. It reports launchd,
-active-marker, freshness, and log state without starting another sync engine.
-Stop is always available for a loaded job and establishes a reboot-persistent
-maintenance hold by removing its active marker before unloading it. Start and
-Run now stay locked unless `TENDER_ALLOW_COORDINATION_DAEMON_START=1` is present
-in the Toolbox process environment; set that only after the coordination daemon
-safety update has been installed and verified. The fleet-dashboard link has no
-committed host default. Configure it in **Dock Settings → Connections**; the
-saved value takes priority over `TENDER_FLEET_DASHBOARD_URL`, which remains
-available as an environment fallback. The same settings section edits the Fleet
-Coordinator origin shared with Ordinance clients. Tender reads the local token
-file only in its native process, never sends the token to the webview, and ships
-without a machine- or customer-specific coordinator default.
 
 ## Projects tab
 
 The **Projects** tab shows your git repositories:
 
 1. **Curated list:** `~/Library/Application Support/Tender/projects.json`
+   (macOS) or `%APPDATA%\Tender\projects.json` (Windows)
    ```json
    [{ "name": "my-project", "path": "~/Code/my-project", "status": "active" }]
    ```
@@ -100,15 +106,16 @@ When neither source is available, the tab shows an empty state.
 
 ## Bundle manifests — resource bundling
 
-Bundle-manifest JSON files (`*.bundle.json`) are shipped inside the `.app` under
-`Contents/Resources/resources/bundles/`. A committed snapshot in
+Bundle-manifest JSON files (`*.bundle.json`) are shipped inside the app under
+`Contents/Resources/resources/bundles/` (macOS) or `resources/bundles/` next
+to the installed binary (Windows). A committed snapshot in
 `src-tauri/resources/bundles/` is what ships in a normal build, so no external
 data source is needed.
 
 **Resolution order at runtime:**
 
-1. `<Harborline Toolbox.app>/Contents/Resources/resources/bundles/` — always
-   available in shipped builds and in `tauri dev` after the first build.
+1. The app's bundled resources directory — always available in shipped builds
+   and in `tauri dev` after the first build.
 2. A local fleet-developer path (see below) — dev fallback only.
 
 The **Plugins** entry in the gear menu opens the bundle-manifest viewer
@@ -146,21 +153,28 @@ external contracts package, so `npm install` works with no extra clones.
 ## Upgrading from a `Tender.app` install
 
 `productName`/`mainBinaryName` changed from `Tender` to `Harborline Toolbox`. A
-rebuilt app now bundles as `Harborline Toolbox.app` and shows as **Harborline
-Toolbox** in Activity Monitor. `Tender.app` does **not** update in place (there
-is no auto-updater yet).
+rebuilt app now bundles as `Harborline Toolbox.app` (macOS) or as
+`Harborline Toolbox` (Windows MSI) and shows under that name in Activity
+Monitor / Task Manager. An existing `Tender.app` does **not** update in place
+(there is no auto-updater yet).
 
-**What migrates automatically:** the per-user auto-start LaunchAgent. Its label
-(`io.harborline.tender`) and the `~/Library/Application Support/Tender/` config
-directory are intentionally **not** renamed, so no user data moves. On first
-launch the app checks whether an existing LaunchAgent plist points at the old
-`Tender.app` path and, if so, rewrites it in place to point at the new install —
-auto-start keeps working with no user action.
+**What migrates automatically:** the per-user auto-start registration.
+- macOS: the LaunchAgent label (`io.harborline.tender`) and the
+  `~/Library/Application Support/Tender/` config directory are intentionally
+  **not** renamed, so no user data moves. On first launch the app checks
+  whether an existing LaunchAgent plist points at the old `Tender.app` path
+  and, if so, rewrites it in place to point at the new install — auto-start
+  keeps working with no user action.
+- Windows: auto-start is managed by Tauri's platform autostart manager, which
+  registers the currently-installed binary; a fresh install simply points
+  auto-start at itself.
 
-**What requires a manual step:** the old `Tender.app` is left in place — the app
-cannot safely delete a sibling `.app` bundle out from under itself, and there is
-no updater to hand that off to. Once `Harborline Toolbox.app` is confirmed
-running, drag the old `Tender.app` to the Trash yourself.
+**What requires a manual step (macOS only):** the old `Tender.app` is left in
+place — the app cannot safely delete a sibling `.app` bundle out from under
+itself, and there is no updater to hand that off to. Once
+`Harborline Toolbox.app` is confirmed running, drag the old `Tender.app` to
+the Trash yourself. On Windows, installing the new MSI supersedes the old
+install directly.
 
 **Why the bundle identifier (`io.harborline.tender`) and Application Support
 folder stay as `tender`:** changing the reverse-DNS identifier would reset macOS

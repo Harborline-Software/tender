@@ -744,7 +744,13 @@ mod tests {
     /// stop_by_pattern against a real process: spawn a uniquely-marked sleep,
     /// confirm the helper SIGTERMs it and reports stopped; a second call
     /// returns None (nothing left matching).
+    ///
+    /// Unix-only: relies on `bash`/`exec -a`/`pkill -f`, none of which exist on
+    /// Windows -- `stop_by_pattern`'s own implementation is pkill-based and has
+    /// no Windows backend yet (pre-existing gap, out of scope for the Windows
+    /// tray card; see tender#2956).
     #[test]
+    #[cfg(not(target_os = "windows"))]
     fn stop_by_pattern_terminates_a_live_process_then_reports_none() {
         let marker = format!("tender-stoptest-{}", std::process::id());
         let mut child = std::process::Command::new("bash")
