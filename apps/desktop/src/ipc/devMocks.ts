@@ -337,9 +337,11 @@ const WINHUB_SNAPSHOT = {
     { name: 'MusicService', classification: 'reclaimable', status: 'stopped', canControl: true },
     { name: 'KokoroTTSService', classification: 'reclaimable', status: 'stopped', canControl: true },
     { name: 'InferenceStudioService', classification: 'reclaimable', status: 'stopped', canControl: true },
-    { name: 'SunfishOllama', classification: 'reclaimable', status: 'running', canControl: true },
     { name: 'CaddyPreviewHost', classification: 'essential', status: 'running', canControl: false },
     { name: 'HarborlineDogfood', classification: 'essential', status: 'running', canControl: false },
+    // Fleet PR #61 (Admiral ruling): SunfishOllama/ollama back
+    // ordinance/bin/local-review + the support-desk direction — essential.
+    { name: 'SunfishOllama', classification: 'essential', status: 'running', canControl: false },
   ],
   memFreeBytes: 30_064_771_072,
   memTotalBytes: 34_359_738_368,

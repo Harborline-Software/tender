@@ -565,14 +565,16 @@ mod tests {
                 "HarborlineDogfood".into(),
                 "nssm".into(),
                 "svchost".into(),
+                // Fleet PR #61 (Admiral ruling): SunfishOllama/ollama back
+                // ordinance/bin/local-review + the support-desk direction — essential.
+                "SunfishOllama".into(),
+                "ollama".into(),
             ],
             reclaimable: vec![
                 "ComfyUIService".into(),
                 "KokoroTTSService".into(),
                 "Kokoro".into(),
                 "TTSService".into(),
-                "ollama".into(),
-                "SunfishOllama".into(),
             ],
         }
     }
@@ -615,11 +617,14 @@ mod tests {
 
     #[test]
     fn sunfish_ollama_follows_config_not_hardcode() {
-        // Per the vendored config, SunfishOllama matches reclaimable and no
-        // essential pattern ⇒ reclaimable. (Documented discrepancy with the
-        // dispatch note; config is the single source of truth by contract.)
+        // Per fleet PR #61 (Admiral ruling): SunfishOllama/ollama back
+        // ordinance/bin/local-review + the support-desk direction, so the
+        // vendored config classifies them essential (status-only, no control).
+        // This test still exists to pin "classification comes from the config,
+        // never a code-level special-case" — only the config's answer changed.
         let c = winhub_cfg();
-        assert_eq!(classify("SunfishOllama", &c), ShipClass::Reclaimable);
+        assert_eq!(classify("SunfishOllama", &c), ShipClass::Essential);
+        assert_eq!(classify("ollama", &c), ShipClass::Essential);
     }
 
     #[test]
