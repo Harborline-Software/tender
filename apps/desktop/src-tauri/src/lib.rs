@@ -20,6 +20,7 @@ mod projects;
 pub mod provider_health;
 pub mod residency;
 pub mod settings;
+pub mod ships;
 mod telemetry;
 
 /// Open the full Toolbox main window (dual-surface, shipyard #2973).
@@ -206,6 +207,9 @@ pub fn run() {
             commands::get_model_inventory,
             commands::get_gpu_residency,
             commands::get_paid_compute,
+            commands::get_ship_hosts,
+            commands::get_ship_services,
+            commands::set_ship_service,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Harborline Toolbox");

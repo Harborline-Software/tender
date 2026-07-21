@@ -57,6 +57,7 @@
       "icons/icon.ico"
     ],
     "resources": {
+      "resources/ships/*.json": "resources/ships",
       "resources/bundles/*.bundle.json": "resources/bundles",
       "resources/catalog/*.app.json": "resources/catalog"
     }
