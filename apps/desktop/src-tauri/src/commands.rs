@@ -645,6 +645,39 @@ pub async fn get_paid_compute() -> crate::paidcompute::PaidComputeSnapshot {
     crate::paidcompute::get_paid_compute().await
 }
 
+// ── Remote ship service control (shipyard#2998) ──────────────────────────────
+
+/// List the allow-listed remote hosts for the Ships view (from the committed
+/// `resources/ships/hosts.json`). Errors only if that config is missing/
+/// unparseable — a build always ships it.
+#[tauri::command]
+pub async fn get_ship_hosts() -> Result<Vec<crate::ships::ShipHostSummary>, String> {
+    crate::ships::get_ship_hosts()
+}
+
+/// Probe one host's fleet-relevant services (classified essential/reclaimable
+/// via the vendored allowlist) plus its free/total physical memory, over the
+/// operator's ssh identity. Never errors — an unreachable host is captured
+/// honestly as `reachable=false` with the ssh detail (see `ships`).
+#[tauri::command]
+pub async fn get_ship_services(host_id: String) -> crate::ships::ShipsSnapshot {
+    crate::ships::get_ship_services(host_id).await
+}
+
+/// Start or stop ONE reclaimable service on a host, then re-query for a VERIFIED
+/// post-state. Rejects (errors) unless the host is allow-listed, the service
+/// name clears the strict charset guard, and the service exists on the live host
+/// AND classifies reclaimable — the command-injection + fail-safe fence
+/// (see `ships::set_ship_service`).
+#[tauri::command]
+pub async fn set_ship_service(
+    host_id: String,
+    service_name: String,
+    action: String,
+) -> Result<crate::ships::ShipActionOutcome, String> {
+    crate::ships::set_ship_service(host_id, service_name, action).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

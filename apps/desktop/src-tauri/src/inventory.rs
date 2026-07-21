@@ -204,7 +204,7 @@ fn is_leap(year: u64) -> bool {
     (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
 }
 
-fn now_iso() -> String {
+pub(crate) fn now_iso() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let epoch = SystemTime::now()
         .duration_since(UNIX_EPOCH)
