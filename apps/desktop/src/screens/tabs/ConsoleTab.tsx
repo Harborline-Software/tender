@@ -15,6 +15,7 @@
  */
 import { useTheme } from '@/theme/ThemeProvider'
 import { FiberDivider } from '@/components/FiberDivider'
+import { openToolbox } from '@/ipc/tauri'
 import type { DetailId } from '@/state/types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -93,65 +94,102 @@ function ConsoleMenuRow({
   const a = theme.accent
   const toneColor = entry.tone ? theme[entry.tone] : undefined
 
+  // Row = primary in-popup navigation + a trailing deep-link that opens the same
+  // surface in the full Toolbox window (dual-surface, shipyard #2973). Two
+  // sibling buttons in a hover container — never a button nested in a button.
   return (
-    <button
-      onClick={() => onNavigate(entry.id)}
+    <div
       style={{
-        width: '100%',
-        textAlign: 'left',
-        background: 'transparent',
-        border: 'none',
-        borderBottom: `1px solid ${theme.border}`,
-        padding: '10px 14px',
         display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        cursor: 'pointer',
+        alignItems: 'stretch',
+        borderBottom: `1px solid ${theme.border}`,
         color: theme.text,
       }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${a}0d` }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
     >
-      {/* Icon */}
-      <span style={{
-        fontFamily: theme.fontMono,
-        fontSize: 14,
-        color: toneColor ?? a,
-        width: 20,
-        textAlign: 'center',
-        flexShrink: 0,
-      }}>
-        {entry.icon}
-      </span>
-
-      {/* Label + sub */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: theme.sizeRowTitle,
-          fontWeight: 600,
+      <button
+        onClick={() => onNavigate(entry.id)}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          textAlign: 'left',
+          background: 'transparent',
+          border: 'none',
+          padding: '10px 4px 10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          cursor: 'pointer',
           color: theme.text,
-          marginBottom: 2,
-        }}>
-          {entry.label}
-        </div>
-        <div style={{
+        }}
+      >
+        {/* Icon */}
+        <span style={{
           fontFamily: theme.fontMono,
-          fontSize: theme.sizeLabel,
-          color: theme.textMuted,
-          letterSpacing: 0.6,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
+          fontSize: 14,
+          color: toneColor ?? a,
+          width: 20,
+          textAlign: 'center',
+          flexShrink: 0,
         }}>
-          {entry.sub}
-        </div>
-      </div>
+          {entry.icon}
+        </span>
 
-      {/* Chevron */}
-      <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0 }}>
-        <path d="M4 2L7 5L4 8" stroke={theme.textDim} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </button>
+        {/* Label + sub */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: theme.sizeRowTitle,
+            fontWeight: 600,
+            color: theme.text,
+            marginBottom: 2,
+          }}>
+            {entry.label}
+          </div>
+          <div style={{
+            fontFamily: theme.fontMono,
+            fontSize: theme.sizeLabel,
+            color: theme.textMuted,
+            letterSpacing: 0.6,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {entry.sub}
+          </div>
+        </div>
+
+        {/* Chevron */}
+        <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0 }}>
+          <path d="M4 2L7 5L4 8" stroke={theme.textDim} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {/* Deep-link: open this surface in the full Toolbox window. */}
+      <button
+        onClick={() => { openToolbox(`console:${entry.id}`).catch(() => {}) }}
+        title={`Open ${entry.label} in Toolbox window`}
+        aria-label={`Open ${entry.label} in Toolbox window`}
+        style={{
+          flexShrink: 0,
+          background: 'transparent',
+          border: 'none',
+          borderInlineStart: `1px solid ${theme.border}`,
+          padding: '0 10px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          color: theme.textMuted,
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = a }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = theme.textMuted }}
+      >
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+          <rect x="1.6" y="1.6" width="10.8" height="10.8" rx="2" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M5.5 8.5L9 5M9 5H6.4M9 5V7.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+    </div>
   )
 }
 

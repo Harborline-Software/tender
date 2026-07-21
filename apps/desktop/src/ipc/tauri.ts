@@ -158,6 +158,19 @@ export async function quitApp(): Promise<void> {
   return invoke('quit_app')
 }
 
+/**
+ * Open the full Toolbox main window (dual-surface, shipyard #2973), optionally
+ * focused on a section or a specific item. Shows the decorated window, flips the
+ * macOS activation policy to Regular (Dock icon appears), and emits
+ * `toolbox-navigate` so the window pre-selects the target.
+ *
+ * @param target `<section>` (e.g. `"fleet"`) or `<section>:<item>`
+ *   (e.g. `"console:logs"`). Omit to open on the default section.
+ */
+export async function openToolbox(target?: string): Promise<void> {
+  return invoke('open_toolbox', { section: target ?? null })
+}
+
 export async function emergencyStop(): Promise<string> {
   return invoke<string>('emergency_stop')
 }

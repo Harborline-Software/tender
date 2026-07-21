@@ -15,7 +15,7 @@
  */
 import { useState, useEffect } from 'react'
 import { useTheme } from '@/theme/ThemeProvider'
-import { getDevices, getSettings, type DeviceData, type Mode } from '@/ipc/tauri'
+import { getDevices, getSettings, openToolbox, type DeviceData, type Mode } from '@/ipc/tauri'
 import { MenuShell } from '@/components/MenuShell'
 import { FiberDivider } from '@/components/FiberDivider'
 import { Logomark } from '@/components/Logomark'
@@ -231,6 +231,33 @@ export function Panel({ onNavigate }: Props) {
             }} />
           </button>
         )}
+
+        {/* Open Toolbox — expands the tray popup into the full main window
+            (dual-surface, shipyard #2973). The popup keeps its glanceable role;
+            this hands off to the workspace chrome for anything that needs room. */}
+        <button
+          onClick={() => { closePopovers(); openToolbox().catch(() => {}) }}
+          title="Open Toolbox window"
+          aria-label="Open Toolbox window"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            width: 26,
+            height: 26,
+            borderRadius: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${a}22` }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+        >
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+            <rect x="1.6" y="1.6" width="10.8" height="10.8" rx="2" stroke={theme.textDim} strokeWidth="1.3" />
+            <path d="M5.5 8.5L9 5M9 5H6.4M9 5V7.6" stroke={a} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
 
         {/* Gear icon */}
         <button

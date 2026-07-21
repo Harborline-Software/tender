@@ -22,6 +22,35 @@ pub mod residency;
 pub mod settings;
 mod telemetry;
 
+/// Open the full Toolbox main window (dual-surface, shipyard #2973).
+///
+/// Shows the decorated `toolbox` window, flips the macOS activation policy to
+/// `Regular` (so the Dock icon appears while the window is open — standard macOS
+/// behavior), focuses it, and — when a deep-link target is given — emits
+/// `toolbox-navigate` so the window pre-selects that section/item. The window
+/// closes back to the tray (see `CloseRequested` handling) rather than quitting.
+#[tauri::command]
+fn open_toolbox(app: tauri::AppHandle, section: Option<String>) -> Result<(), String> {
+    let window = app
+        .get_webview_window("toolbox")
+        .ok_or_else(|| "toolbox window not found".to_string())?;
+
+    // Dock icon visible while the main window is open (ActivationPolicy switch).
+    #[cfg(target_os = "macos")]
+    let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_focus();
+
+    if let Some(target) = section {
+        // The toolbox webview is created (hidden) at launch, so its listener is
+        // already mounted by the time the operator opens it from the tray.
+        let _ = window.emit("toolbox-navigate", target);
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -81,8 +110,13 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // Keep the main window hidden until the tray icon is clicked.
+            // Keep the tray popup ("main") hidden until the tray icon is clicked,
+            // and the full Toolbox window hidden until explicitly opened. Both
+            // webviews still load at launch so their event listeners are ready.
             if let Some(window) = app.get_webview_window("main") {
+                let _ = window.hide();
+            }
+            if let Some(window) = app.get_webview_window("toolbox") {
                 let _ = window.hide();
             }
 
@@ -94,10 +128,27 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             match event {
-                // Close the panel when it loses keyboard focus (click outside).
+                // Close the tray popup when it loses keyboard focus (click
+                // outside). The Toolbox window is a normal window — it must NOT
+                // hide on blur, only on an explicit close.
                 tauri::WindowEvent::Focused(false) => {
                     if window.label() == "main" {
                         let _ = window.hide();
+                    }
+                }
+                // The Toolbox window closes back to the tray — the app never
+                // quits from the window's close button. Hide it and drop the Dock
+                // icon (back to menu-bar-only) instead of destroying the window.
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    if window.label() == "toolbox" {
+                        api.prevent_close();
+                        let _ = window.hide();
+                        #[cfg(target_os = "macos")]
+                        {
+                            let _ = window
+                                .app_handle()
+                                .set_activation_policy(tauri::ActivationPolicy::Accessory);
+                        }
                     }
                 }
                 // Notify the frontend when the system appearance flips so it
@@ -121,6 +172,7 @@ pub fn run() {
             commands::get_local_services,
             commands::get_devices,
             commands::open_external,
+            open_toolbox,
             commands::quit_app,
             commands::emergency_stop,
             commands::stop_services,

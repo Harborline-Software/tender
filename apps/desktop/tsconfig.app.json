@@ -19,7 +19,8 @@
     "preserveSymlinks": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@shipyard/workspace-shell": ["src/toolbox/workspace-shell.d.ts"]
     }
   },
   "include": ["src"]

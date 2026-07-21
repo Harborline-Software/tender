@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Harborline Toolbox</title>
+    <link rel="icon" type="image/svg+xml" href="/src/assets/brand/harborline-mark-small.svg" />
+    <style>
+      /* Full-window surface (dual-surface main window, shipyard #2973) — the
+         opposite of the 360px popup: fill the decorated window, let the ui-react
+         AppLayout own the internal scroll regions. --color-background is stamped
+         by the toolbox ThemeProvider (tender palette bridged onto ui-react). */
+      html, body, #root {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+      }
+      html { background: var(--color-background, #15171c); }
+      body { overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/toolbox/main.tsx"></script>
+  </body>
+</html>

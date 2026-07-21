@@ -1,0 +1,49 @@
+/* Toolbox main-window chrome adjustments over @shipyard/workspace-shell
+   (dual-surface, shipyard #2973). The shell ships its own workspace-shell.css;
+   these rules give the frame a full-window height model and tune the header for
+   the Toolbox surface. Tokens are the shell's own --eco-* inputs (bridged to the
+   tender palette in shellTheme.ts). */
+
+/* Frame fills the window; the shell grid fills the space below the header. */
+.toolbox-frame {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.toolbox-frame > .workspace-shell {
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+
+/* Header surface. */
+.toolbox-header {
+  background: var(--eco-surface, Canvas);
+  border-block-end: 1px solid var(--eco-border, color-mix(in srgb, CanvasText 18%, transparent));
+}
+
+/* Only the navigation panel is used in the Toolbox — the shell's built-in
+   inspector/utility/shortcut controls are hidden; a single icon-only navigation
+   toggle is placed in the header lead instead (its aria-label carries the name). */
+.toolbox-frame .workspace-shell__header-controls {
+  display: none;
+}
+.toolbox-frame .workspace-shell__panel-toggle span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Right-aligned header cluster (search · Pilot · mode). */
+.toolbox-header-trailing {
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
