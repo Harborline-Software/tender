@@ -237,8 +237,8 @@ struct OllamaModel {
 
 /// Pure parse — no I/O — so it is unit-testable against a fixture string.
 fn parse_ollama_tags(body: &str) -> Result<Vec<ModelEntry>, String> {
-    let parsed: OllamaTagsResponse =
-        serde_json::from_str(body).map_err(|e| format!("unparseable Ollama /api/tags response: {e}"))?;
+    let parsed: OllamaTagsResponse = serde_json::from_str(body)
+        .map_err(|e| format!("unparseable Ollama /api/tags response: {e}"))?;
     Ok(parsed
         .models
         .into_iter()
@@ -270,10 +270,9 @@ async fn fetch_ollama_tags(host: &str) -> Result<Vec<ModelEntry>, ProbeFailure> 
         )));
     }
 
-    let body = resp
-        .text()
-        .await
-        .map_err(|e| ProbeFailure::Unreachable(format!("could not read Ollama response body: {e}")))?;
+    let body = resp.text().await.map_err(|e| {
+        ProbeFailure::Unreachable(format!("could not read Ollama response body: {e}"))
+    })?;
 
     parse_ollama_tags(&body).map_err(ProbeFailure::Unreachable)
 }
@@ -293,15 +292,18 @@ struct OpenAiModel {
 }
 
 fn parse_tts_models(body: &str) -> Result<Vec<ModelEntry>, String> {
-    let parsed: OpenAiModelsResponse =
-        serde_json::from_str(body).map_err(|e| format!("unparseable TTS /v1/models response: {e}"))?;
+    let parsed: OpenAiModelsResponse = serde_json::from_str(body)
+        .map_err(|e| format!("unparseable TTS /v1/models response: {e}"))?;
     Ok(parsed
         .data
         .into_iter()
         .map(|m| ModelEntry {
             name: m.id,
             size_bytes: None,
-            last_modified_at: m.created.filter(|c| *c >= 0).map(|c| epoch_to_iso(c as u64)),
+            last_modified_at: m
+                .created
+                .filter(|c| *c >= 0)
+                .map(|c| epoch_to_iso(c as u64)),
         })
         .collect())
 }
@@ -316,11 +318,10 @@ async fn fetch_tts_models(host: &str) -> Result<Vec<ModelEntry>, ProbeFailure> {
         .build()
         .map_err(|e| ProbeFailure::Unreachable(format!("HTTP client build failed: {e}")))?;
 
-    let resp = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| ProbeFailure::Unreachable(format!("cannot reach TTS proxy at {url}: {e}")))?;
+    let resp =
+        client.get(&url).send().await.map_err(|e| {
+            ProbeFailure::Unreachable(format!("cannot reach TTS proxy at {url}: {e}"))
+        })?;
 
     if !resp.status().is_success() {
         return Err(ProbeFailure::Unreachable(format!(
@@ -364,8 +365,9 @@ fn parse_remote_dir_listing(raw: &str, remote_path: &str) -> Result<Vec<ModelEnt
         serde_json::from_str(trimmed)
             .map_err(|e| ProbeFailure::Unreachable(format!("unparseable directory listing: {e}")))?
     } else {
-        let one: RemoteDirEntry = serde_json::from_str(trimmed)
-            .map_err(|e| ProbeFailure::Unreachable(format!("unparseable directory listing: {e}")))?;
+        let one: RemoteDirEntry = serde_json::from_str(trimmed).map_err(|e| {
+            ProbeFailure::Unreachable(format!("unparseable directory listing: {e}"))
+        })?;
         vec![one]
     };
 
@@ -401,14 +403,25 @@ async fn ssh_list_dir(ssh_host: &str, remote_path: &str) -> Result<Vec<ModelEntr
     let output = tokio::time::timeout(
         Duration::from_secs(12),
         tokio::process::Command::new("ssh")
-            .args(["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", ssh_host, &command])
+            .args([
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=6",
+                ssh_host,
+                &command,
+            ])
             .output(),
     )
     .await;
 
     let output = match output {
         Ok(Ok(o)) => o,
-        Ok(Err(e)) => return Err(ProbeFailure::Unreachable(format!("could not spawn ssh: {e}"))),
+        Ok(Err(e)) => {
+            return Err(ProbeFailure::Unreachable(format!(
+                "could not spawn ssh: {e}"
+            )))
+        }
         Err(_) => {
             return Err(ProbeFailure::Unreachable(format!(
                 "ssh to {ssh_host} timed out after 12s"
@@ -431,7 +444,13 @@ async fn ssh_list_dir(ssh_host: &str, remote_path: &str) -> Result<Vec<ModelEntr
 
 // ── Per-backend group builders ────────────────────────────────────────────────
 
-fn ok_group(target_id: &str, display_name: &str, kind: BackendKind, host: &str, models: Vec<ModelEntry>) -> InventoryGroup {
+fn ok_group(
+    target_id: &str,
+    display_name: &str,
+    kind: BackendKind,
+    host: &str,
+    models: Vec<ModelEntry>,
+) -> InventoryGroup {
     InventoryGroup {
         target_id: target_id.to_string(),
         display_name: display_name.to_string(),
@@ -496,10 +515,21 @@ fn failed_group(
 async fn probe_ollama() -> InventoryGroup {
     let host = winhub_http_host();
     if host.is_empty() {
-        return not_configured_group("ollama", "Ollama (LLM)", BackendKind::LlmServing, "TENDER_WINHUB_HOST");
+        return not_configured_group(
+            "ollama",
+            "Ollama (LLM)",
+            BackendKind::LlmServing,
+            "TENDER_WINHUB_HOST",
+        );
     }
     match fetch_ollama_tags(&host).await {
-        Ok(models) => ok_group("ollama", "Ollama (LLM)", BackendKind::LlmServing, &host, models),
+        Ok(models) => ok_group(
+            "ollama",
+            "Ollama (LLM)",
+            BackendKind::LlmServing,
+            &host,
+            models,
+        ),
         Err(f) => failed_group("ollama", "Ollama (LLM)", BackendKind::LlmServing, &host, f),
     }
 }
@@ -507,7 +537,12 @@ async fn probe_ollama() -> InventoryGroup {
 async fn probe_tts() -> InventoryGroup {
     let host = winhub_http_host();
     if host.is_empty() {
-        return not_configured_group("tts-proxy", "TTS (voices)", BackendKind::Tts, "TENDER_WINHUB_HOST");
+        return not_configured_group(
+            "tts-proxy",
+            "TTS (voices)",
+            BackendKind::Tts,
+            "TENDER_WINHUB_HOST",
+        );
     }
     match fetch_tts_models(&host).await {
         Ok(models) => ok_group("tts-proxy", "TTS (voices)", BackendKind::Tts, &host, models),
@@ -524,18 +559,40 @@ const COMFYUI_CHECKPOINTS_DIR: &str = r"C:\Projects\ComfyUI\models\checkpoints";
 async fn probe_comfyui() -> InventoryGroup {
     let ssh_host = winhub_ssh_host();
     if ssh_host.is_empty() {
-        return not_configured_group("comfyui-checkpoints", "ComfyUI (checkpoints)", BackendKind::ImageWorker, "TENDER_WINHUB_SSH_HOST");
+        return not_configured_group(
+            "comfyui-checkpoints",
+            "ComfyUI (checkpoints)",
+            BackendKind::ImageWorker,
+            "TENDER_WINHUB_SSH_HOST",
+        );
     }
     match ssh_list_dir(&ssh_host, COMFYUI_CHECKPOINTS_DIR).await {
-        Ok(models) => ok_group("comfyui-checkpoints", "ComfyUI (checkpoints)", BackendKind::ImageWorker, &ssh_host, models),
-        Err(f) => failed_group("comfyui-checkpoints", "ComfyUI (checkpoints)", BackendKind::ImageWorker, &ssh_host, f),
+        Ok(models) => ok_group(
+            "comfyui-checkpoints",
+            "ComfyUI (checkpoints)",
+            BackendKind::ImageWorker,
+            &ssh_host,
+            models,
+        ),
+        Err(f) => failed_group(
+            "comfyui-checkpoints",
+            "ComfyUI (checkpoints)",
+            BackendKind::ImageWorker,
+            &ssh_host,
+            f,
+        ),
     }
 }
 
 async fn probe_stability_matrix() -> InventoryGroup {
     let ssh_host = winhub_ssh_host();
     if ssh_host.is_empty() {
-        return not_configured_group("stability-matrix", "Stability Matrix (checkpoints)", BackendKind::ImageWorker, "TENDER_WINHUB_SSH_HOST");
+        return not_configured_group(
+            "stability-matrix",
+            "Stability Matrix (checkpoints)",
+            BackendKind::ImageWorker,
+            "TENDER_WINHUB_SSH_HOST",
+        );
     }
     match stability_matrix_dir() {
         None => InventoryGroup {
@@ -647,8 +704,14 @@ mod tests {
         assert_eq!(models[0].name, "kokoro");
         assert!(models[0].last_modified_at.is_some());
         assert_eq!(models[2].name, "tts-1");
-        assert!(models[2].last_modified_at.is_none(), "missing created ⇒ honestly null");
-        assert!(models.iter().all(|m| m.size_bytes.is_none()), "OpenAI /v1/models never has size");
+        assert!(
+            models[2].last_modified_at.is_none(),
+            "missing created ⇒ honestly null"
+        );
+        assert!(
+            models.iter().all(|m| m.size_bytes.is_none()),
+            "OpenAI /v1/models never has size"
+        );
     }
 
     // ── Remote directory listing parsing ──────────────────────────────────
@@ -703,7 +766,10 @@ mod tests {
     #[test]
     fn dir_listing_command_filters_zero_byte_placeholders() {
         let cmd = remote_dir_listing_command(COMFYUI_CHECKPOINTS_DIR);
-        assert!(cmd.contains("$_.Length -gt 0"), "must exclude 0-byte placeholder files");
+        assert!(
+            cmd.contains("$_.Length -gt 0"),
+            "must exclude 0-byte placeholder files"
+        );
         assert!(cmd.contains(COMFYUI_CHECKPOINTS_DIR));
         assert!(cmd.contains(DIR_MISSING_SENTINEL));
     }
@@ -744,7 +810,10 @@ mod tests {
         // NotConfigured, never an empty Ok.
         // (We test the pure branch directly rather than the env var, since
         // parallel tests could race on process-wide env state.)
-        assert_eq!(InventoryStatus::NotConfigured, InventoryStatus::NotConfigured);
+        assert_eq!(
+            InventoryStatus::NotConfigured,
+            InventoryStatus::NotConfigured
+        );
     }
 
     // ── Timestamp helper ───────────────────────────────────────────────────
@@ -759,14 +828,26 @@ mod tests {
 
     #[test]
     fn backend_kind_serialises_kebab_case() {
-        assert_eq!(serde_json::to_string(&BackendKind::LlmServing).unwrap(), "\"llm-serving\"");
-        assert_eq!(serde_json::to_string(&BackendKind::ImageWorker).unwrap(), "\"image-worker\"");
+        assert_eq!(
+            serde_json::to_string(&BackendKind::LlmServing).unwrap(),
+            "\"llm-serving\""
+        );
+        assert_eq!(
+            serde_json::to_string(&BackendKind::ImageWorker).unwrap(),
+            "\"image-worker\""
+        );
         assert_eq!(serde_json::to_string(&BackendKind::Tts).unwrap(), "\"tts\"");
     }
 
     #[test]
     fn inventory_status_serialises_camel_case() {
-        assert_eq!(serde_json::to_string(&InventoryStatus::DirMissing).unwrap(), "\"dirMissing\"");
-        assert_eq!(serde_json::to_string(&InventoryStatus::NotConfigured).unwrap(), "\"notConfigured\"");
+        assert_eq!(
+            serde_json::to_string(&InventoryStatus::DirMissing).unwrap(),
+            "\"dirMissing\""
+        );
+        assert_eq!(
+            serde_json::to_string(&InventoryStatus::NotConfigured).unwrap(),
+            "\"notConfigured\""
+        );
     }
 }

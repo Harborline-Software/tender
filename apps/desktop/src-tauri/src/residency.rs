@@ -167,7 +167,20 @@ fn days_to_ymd(mut days: u64) -> (u64, u64, u64) {
         year += 1;
     }
     let leap = is_leap(year);
-    let month_lengths: [u64; 12] = [31, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let month_lengths: [u64; 12] = [
+        31,
+        if leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
     let mut month = 1u64;
     for len in month_lengths {
         if days < len {
@@ -185,7 +198,10 @@ fn is_leap(year: u64) -> bool {
 
 fn now_iso() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
-    let epoch = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let epoch = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
     epoch_to_iso(epoch)
 }
 
@@ -203,15 +219,30 @@ async fn ssh_exec(ssh_host: &str, remote_command: &str) -> Result<String, ProbeF
     let output = tokio::time::timeout(
         Duration::from_secs(10),
         tokio::process::Command::new("ssh")
-            .args(["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", ssh_host, remote_command])
+            .args([
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=6",
+                ssh_host,
+                remote_command,
+            ])
             .output(),
     )
     .await;
 
     let output = match output {
         Ok(Ok(o)) => o,
-        Ok(Err(e)) => return Err(ProbeFailure::Unreachable(format!("could not spawn ssh: {e}"))),
-        Err(_) => return Err(ProbeFailure::Unreachable(format!("ssh to {ssh_host} timed out after 10s"))),
+        Ok(Err(e)) => {
+            return Err(ProbeFailure::Unreachable(format!(
+                "could not spawn ssh: {e}"
+            )))
+        }
+        Err(_) => {
+            return Err(ProbeFailure::Unreachable(format!(
+                "ssh to {ssh_host} timed out after 10s"
+            )))
+        }
     };
 
     if !output.status.success() {
@@ -235,11 +266,19 @@ fn parse_gpu_headline(csv_line: &str) -> Result<GpuHeadline, String> {
     let line = csv_line.lines().next().unwrap_or("").trim();
     let parts: Vec<&str> = line.split(',').map(|s| s.trim()).collect();
     if parts.len() != 3 {
-        return Err(format!("expected 3 CSV fields (total,used,free), got: {csv_line:?}"));
+        return Err(format!(
+            "expected 3 CSV fields (total,used,free), got: {csv_line:?}"
+        ));
     }
-    let total = parts[0].parse::<u64>().map_err(|e| format!("bad total_vram_mb {:?}: {e}", parts[0]))?;
-    let used = parts[1].parse::<u64>().map_err(|e| format!("bad used_vram_mb {:?}: {e}", parts[1]))?;
-    let free = parts[2].parse::<u64>().map_err(|e| format!("bad free_vram_mb {:?}: {e}", parts[2]))?;
+    let total = parts[0]
+        .parse::<u64>()
+        .map_err(|e| format!("bad total_vram_mb {:?}: {e}", parts[0]))?;
+    let used = parts[1]
+        .parse::<u64>()
+        .map_err(|e| format!("bad used_vram_mb {:?}: {e}", parts[1]))?;
+    let free = parts[2]
+        .parse::<u64>()
+        .map_err(|e| format!("bad free_vram_mb {:?}: {e}", parts[2]))?;
     Ok(GpuHeadline {
         total_vram_mb: total,
         used_vram_mb: used,
@@ -329,12 +368,18 @@ struct OllamaPsModel {
 
 /// Pure parse — no I/O.
 fn parse_ollama_ps(body: &str) -> Result<Vec<(String, Option<u64>, Option<String>)>, String> {
-    let parsed: OllamaPsResponse =
-        serde_json::from_str(body).map_err(|e| format!("unparseable Ollama /api/ps response: {e}"))?;
-    Ok(parsed.models.into_iter().map(|m| (m.name, m.size_vram, m.expires_at)).collect())
+    let parsed: OllamaPsResponse = serde_json::from_str(body)
+        .map_err(|e| format!("unparseable Ollama /api/ps response: {e}"))?;
+    Ok(parsed
+        .models
+        .into_iter()
+        .map(|m| (m.name, m.size_vram, m.expires_at))
+        .collect())
 }
 
-async fn fetch_ollama_ps(host: &str) -> Result<Vec<(String, Option<u64>, Option<String>)>, ProbeFailure> {
+async fn fetch_ollama_ps(
+    host: &str,
+) -> Result<Vec<(String, Option<u64>, Option<String>)>, ProbeFailure> {
     let url = format!("http://{host}:11434/api/ps");
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(6))
@@ -348,13 +393,15 @@ async fn fetch_ollama_ps(host: &str) -> Result<Vec<(String, Option<u64>, Option<
         .map_err(|e| ProbeFailure::Unreachable(format!("cannot reach Ollama at {url}: {e}")))?;
 
     if !resp.status().is_success() {
-        return Err(ProbeFailure::Unreachable(format!("Ollama at {url} returned {}", resp.status())));
+        return Err(ProbeFailure::Unreachable(format!(
+            "Ollama at {url} returned {}",
+            resp.status()
+        )));
     }
 
-    let body = resp
-        .text()
-        .await
-        .map_err(|e| ProbeFailure::Unreachable(format!("could not read Ollama response body: {e}")))?;
+    let body = resp.text().await.map_err(|e| {
+        ProbeFailure::Unreachable(format!("could not read Ollama response body: {e}"))
+    })?;
 
     parse_ollama_ps(&body).map_err(ProbeFailure::Unreachable)
 }
@@ -363,7 +410,10 @@ async fn fetch_ollama_ps(host: &str) -> Result<Vec<(String, Option<u64>, Option<
 
 async fn probe_tts_reachable(host: &str) -> bool {
     let url = format!("http://{host}:8881/v1/models");
-    let client = match reqwest::Client::builder().timeout(Duration::from_secs(5)).build() {
+    let client = match reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+    {
         Ok(c) => c,
         Err(_) => return false,
     };
@@ -410,9 +460,11 @@ const PATH_MATCH_TARGETS: &[PathMatchTarget] = &[
 
 fn match_process_to_target(process_path: &str) -> Option<&'static PathMatchTarget> {
     let lower = process_path.to_ascii_lowercase();
-    PATH_MATCH_TARGETS
-        .iter()
-        .find(|t| t.patterns.iter().any(|p| lower.contains(&p.to_ascii_lowercase())))
+    PATH_MATCH_TARGETS.iter().find(|t| {
+        t.patterns
+            .iter()
+            .any(|p| lower.contains(&p.to_ascii_lowercase()))
+    })
 }
 
 // ── Public entry point ───────────────────────────────────────────────────────
@@ -450,7 +502,11 @@ pub async fn get_gpu_residency() -> GpuResidencySnapshot {
             })
             .collect();
         return GpuResidencySnapshot {
-            gpu: GpuHeadline { total_vram_mb: 0, used_vram_mb: 0, free_vram_mb: 0 },
+            gpu: GpuHeadline {
+                total_vram_mb: 0,
+                used_vram_mb: 0,
+                free_vram_mb: 0,
+            },
             per_process_attribution_available: false,
             unattributed_vram_mb: None,
             rows,
@@ -487,7 +543,11 @@ pub async fn get_gpu_residency() -> GpuResidencySnapshot {
                 })
                 .collect();
             return GpuResidencySnapshot {
-                gpu: GpuHeadline { total_vram_mb: 0, used_vram_mb: 0, free_vram_mb: 0 },
+                gpu: GpuHeadline {
+                    total_vram_mb: 0,
+                    used_vram_mb: 0,
+                    free_vram_mb: 0,
+                },
                 per_process_attribution_available: false,
                 unattributed_vram_mb: None,
                 rows,
@@ -497,7 +557,8 @@ pub async fn get_gpu_residency() -> GpuResidencySnapshot {
     };
 
     let processes = processes_res.unwrap_or_default();
-    let per_process_attribution_available = !processes.is_empty() && processes.iter().any(|p| p.used_memory_mb.is_some());
+    let per_process_attribution_available =
+        !processes.is_empty() && processes.iter().any(|p| p.used_memory_mb.is_some());
 
     // Correlate every GPU-active process to a known service target.
     let mut by_service: HashMap<&'static str, Vec<&GpuProcess>> = HashMap::new();
@@ -691,12 +752,16 @@ mod tests {
     fn parses_real_compute_apps_with_na_memory() {
         // Ground-truthed live shape (winhub, 2026-07-07) — every row's
         // used_memory is the [N/A] sentinel (the real WDDM driver caveat).
-        let csv = "25864, [N/A], C:\\Users\\redacted\\AppData\\Local\\Programs\\Ollama\\ollama.exe\n\
+        let csv =
+            "25864, [N/A], C:\\Users\\redacted\\AppData\\Local\\Programs\\Ollama\\ollama.exe\n\
                    33940, [N/A], C:\\Users\\redacted\\Miniconda3\\envs\\svcvec\\python.exe";
         let procs = parse_gpu_processes(csv);
         assert_eq!(procs.len(), 2);
         assert_eq!(procs[0].pid, 25864);
-        assert_eq!(procs[0].used_memory_mb, None, "[N/A] must degrade to None, never 0");
+        assert_eq!(
+            procs[0].used_memory_mb, None,
+            "[N/A] must degrade to None, never 0"
+        );
         assert!(procs[0].process_path.ends_with("ollama.exe"));
     }
 
@@ -718,7 +783,11 @@ mod tests {
     fn malformed_line_is_skipped_not_panicking() {
         let csv = "not,even,close,to,valid\n111, 100, C:\\a.exe";
         let procs = parse_gpu_processes(csv);
-        assert_eq!(procs.len(), 1, "the one valid line still parses despite a garbage sibling");
+        assert_eq!(
+            procs.len(),
+            1,
+            "the one valid line still parses despite a garbage sibling"
+        );
     }
 
     // ── Ollama /api/ps parsing ─────────────────────────────────────────
@@ -752,13 +821,17 @@ mod tests {
         // Even though the real path embeds a username, matching is by
         // filename only — the personal fragment is never part of the match
         // pattern (module docs / PII-gate discipline).
-        let t = match_process_to_target("C:\\Users\\anyone\\AppData\\Local\\Programs\\Ollama\\ollama.exe");
+        let t = match_process_to_target(
+            "C:\\Users\\anyone\\AppData\\Local\\Programs\\Ollama\\ollama.exe",
+        );
         assert_eq!(t.map(|t| t.service_id), Some("ollama"));
     }
 
     #[test]
     fn matches_ollama_llama_server_variant() {
-        let t = match_process_to_target("C:\\Users\\anyone\\AppData\\Local\\Programs\\Ollama\\ollama_llama_server.exe");
+        let t = match_process_to_target(
+            "C:\\Users\\anyone\\AppData\\Local\\Programs\\Ollama\\ollama_llama_server.exe",
+        );
         assert_eq!(t.map(|t| t.service_id), Some("ollama"));
     }
 
@@ -797,15 +870,31 @@ mod tests {
 
     #[test]
     fn residency_status_serialises_camel_case() {
-        assert_eq!(serde_json::to_string(&ResidencyStatus::Unreachable).unwrap(), "\"unreachable\"");
-        assert_eq!(serde_json::to_string(&ResidencyStatus::Unknown).unwrap(), "\"unknown\"");
-        assert_eq!(serde_json::to_string(&ResidencyStatus::Loaded).unwrap(), "\"loaded\"");
-        assert_eq!(serde_json::to_string(&ResidencyStatus::Idle).unwrap(), "\"idle\"");
+        assert_eq!(
+            serde_json::to_string(&ResidencyStatus::Unreachable).unwrap(),
+            "\"unreachable\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ResidencyStatus::Unknown).unwrap(),
+            "\"unknown\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ResidencyStatus::Loaded).unwrap(),
+            "\"loaded\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ResidencyStatus::Idle).unwrap(),
+            "\"idle\""
+        );
     }
 
     #[test]
     fn gpu_headline_field_names_are_camel_case() {
-        let h = GpuHeadline { total_vram_mb: 1, used_vram_mb: 2, free_vram_mb: 3 };
+        let h = GpuHeadline {
+            total_vram_mb: 1,
+            used_vram_mb: 2,
+            free_vram_mb: 3,
+        };
         let v = serde_json::to_value(&h).unwrap();
         assert!(v.get("totalVramMb").is_some());
         assert!(v.get("usedVramMb").is_some());

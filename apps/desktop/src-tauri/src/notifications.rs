@@ -49,12 +49,15 @@ async fn check_services(app: &AppHandle) {
 
             let silence_key = format!("{}:{}", svc.id, current);
             let now = Instant::now();
-            let silenced = last.get(&silence_key)
+            let silenced = last
+                .get(&silence_key)
                 .map(|t| now.duration_since(*t).as_secs() < SILENCE_WINDOW_SECS)
                 .unwrap_or(false);
 
             if !silenced {
-                if let Some((title, body)) = build_notification(&svc.display_name, previous, &current) {
+                if let Some((title, body)) =
+                    build_notification(&svc.display_name, previous, &current)
+                {
                     fire_notification(app, &title, &body);
                     last.insert(silence_key, now);
                 }
@@ -67,40 +70,29 @@ async fn check_services(app: &AppHandle) {
 
 fn build_notification(name: &str, prev: &str, next: &str) -> Option<(String, String)> {
     match (prev, next) {
-        ("running", "stopped") | ("running", "error") | ("degraded", "stopped") | ("degraded", "error") => {
-            Some((
-                format!("{name} stopped"),
-                format!("{name} is no longer reachable."),
-            ))
-        }
-        (_, "error") => {
-            Some((
-                format!("{name} error"),
-                format!("{name} reported an error."),
-            ))
-        }
+        ("running", "stopped")
+        | ("running", "error")
+        | ("degraded", "stopped")
+        | ("degraded", "error") => Some((
+            format!("{name} stopped"),
+            format!("{name} is no longer reachable."),
+        )),
+        (_, "error") => Some((
+            format!("{name} error"),
+            format!("{name} reported an error."),
+        )),
         ("stopped", "running") | ("error", "running") => {
-            Some((
-                format!("{name} online"),
-                format!("{name} is now running."),
-            ))
+            Some((format!("{name} online"), format!("{name} is now running.")))
         }
-        ("running", "degraded") => {
-            Some((
-                format!("{name} degraded"),
-                format!("{name} performance is degraded."),
-            ))
-        }
+        ("running", "degraded") => Some((
+            format!("{name} degraded"),
+            format!("{name} performance is degraded."),
+        )),
         _ => None,
     }
 }
 
 fn fire_notification(app: &AppHandle, title: &str, body: &str) {
     use tauri_plugin_notification::NotificationExt;
-    let _ = app
-        .notification()
-        .builder()
-        .title(title)
-        .body(body)
-        .show();
+    let _ = app.notification().builder().title(title).body(body).show();
 }
