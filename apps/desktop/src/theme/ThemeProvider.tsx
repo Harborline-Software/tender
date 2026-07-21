@@ -3,14 +3,33 @@ import { listen } from '@tauri-apps/api/event'
 import { type Theme, dark, light } from './tokens'
 import { getAppearance } from '@/ipc/tauri'
 
+/**
+ * Theme PREFERENCE (CIC amendment, tender#103 fix pass 4 — avatar-menu theme
+ * segmented control): 'system' keeps the original tray-app behavior
+ * (mode source = macOS appearance via IPC); 'light'/'dark' PIN the mode
+ * regardless of what IPC reports. Distinct from `mode` (the resolved
+ * dark/light the app actually renders) and from the existing
+ * `STORAGE_KEY`-backed pre-paint fallback (below), which continues to cache
+ * whatever the last RESOLVED mode was for first-paint, unaffected by this.
+ */
+export type ThemePreference = 'light' | 'system' | 'dark'
+
 interface ThemeContextValue {
   theme: Theme
   mode: 'dark' | 'light'
+  preference: ThemePreference
+  setPreference: (next: ThemePreference) => void
 }
 
-const ThemeContext = createContext<ThemeContextValue>({ theme: dark, mode: 'dark' })
+const ThemeContext = createContext<ThemeContextValue>({
+  theme: dark,
+  mode: 'dark',
+  preference: 'system',
+  setPreference: () => {},
+})
 
 const STORAGE_KEY = 'tender-theme'
+const PREFERENCE_KEY = 'tender-theme-preference'
 
 function storedMode(): 'dark' | 'light' | null {
   try {
@@ -18,6 +37,15 @@ function storedMode(): 'dark' | 'light' | null {
     return v === 'light' || v === 'dark' ? v : null
   } catch {
     return null
+  }
+}
+
+function storedPreference(): ThemePreference {
+  try {
+    const v = localStorage.getItem(PREFERENCE_KEY)
+    return v === 'light' || v === 'dark' || v === 'system' ? v : 'system'
+  } catch {
+    return 'system'
   }
 }
 
@@ -65,27 +93,44 @@ function applyMode(mode: 'dark' | 'light') {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<'dark' | 'light'>(() => storedMode() ?? 'dark')
+  // systemMode = what macOS appearance actually is (IPC-driven, unchanged from
+  // before). preference = the user's explicit choice (Light / System / Dark),
+  // new in fix pass 4. `mode` (the resolved value everything else consumes) is
+  // systemMode UNLESS the user pinned a preference — pinning ignores IPC
+  // updates until the user switches back to System.
+  const [systemMode, setSystemMode] = useState<'dark' | 'light'>(() => storedMode() ?? 'dark')
+  const [preference, setPreferenceState] = useState<ThemePreference>(() => storedPreference())
 
   useEffect(() => {
-    getAppearance().then(setMode).catch(() => {})
+    getAppearance().then(setSystemMode).catch(() => {})
 
     let unlisten: (() => void) | undefined
     if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
       listen<string>('appearance-changed', (e) => {
-        setMode(e.payload === 'light' ? 'light' : 'dark')
+        setSystemMode(e.payload === 'light' ? 'light' : 'dark')
       }).then((fn) => { unlisten = fn })
     }
 
     return () => { unlisten?.() }
   }, [])
 
+  const mode = preference === 'system' ? systemMode : preference
+
   useEffect(() => { applyMode(mode) }, [mode])
+
+  const setPreference = (next: ThemePreference) => {
+    setPreferenceState(next)
+    try {
+      localStorage.setItem(PREFERENCE_KEY, next)
+    } catch {
+      // storage unavailable — the choice still applies for this session
+    }
+  }
 
   const theme = mode === 'light' ? light : dark
 
   return (
-    <ThemeContext.Provider value={{ theme, mode }}>
+    <ThemeContext.Provider value={{ theme, mode, preference, setPreference }}>
       {children}
     </ThemeContext.Provider>
   )

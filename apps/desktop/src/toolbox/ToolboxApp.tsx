@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { listen } from '@tauri-apps/api/event'
 import { WorkspaceShell, WorkspaceShellPanelToggle } from '@shipyard/workspace-shell'
-import { Search, Sparkles, Ship, FolderGit2, Activity, TerminalSquare, Sun, Moon } from 'lucide-react'
+import { Search, Sparkles, Ship, FolderGit2, Activity, TerminalSquare, X } from 'lucide-react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { Logomark } from '@/components/Logomark'
 import { getDevices } from '@/ipc/tauri'
+import { DockSettingsDetail } from '@/screens/detail/DockSettingsDetail'
 import { ModuleSwitcher, type ModuleSwitcherSection } from './ModuleSwitcher'
+import { AvatarMenu } from './AvatarMenu'
+import { AboutPanel } from './AboutPanel'
 import { FleetSection } from './sections/FleetSection'
 import { ProjectsSection } from './sections/ProjectsSection'
 import { ServicesSection } from './sections/ServicesSection'
@@ -27,8 +30,12 @@ const SECTIONS: ModuleSwitcherSection[] = [
 const SECTION_IDS = new Set<string>(SECTIONS.map((s) => s.id))
 
 export function ToolboxApp() {
-  const { theme, mode } = useTheme()
+  const { theme } = useTheme()
   const [section, setSection] = useState<SectionId>('fleet')
+  // Settings / About overlays (CIC amendment, tender#103 fix pass 4 — avatar
+  // menu). Simple centered overlays over the WorkspaceShell content, not a
+  // 5th master-detail section — these are meta, not fleet data.
+  const [overlay, setOverlay] = useState<'settings' | 'about' | null>(null)
   const [focusItem, setFocusItem] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   // Portal target for the active module's master list (CIC design amendment,
@@ -90,6 +97,16 @@ export function ToolboxApp() {
     setFocusItem(null)
     setQuery('')
   }, [])
+
+  // Escape closes the Settings/About overlay (fix pass 4).
+  useEffect(() => {
+    if (!overlay) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); setOverlay(null) }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [overlay])
 
   const navigation = (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -204,82 +221,18 @@ export function ToolboxApp() {
           the Pilot slot above is careful to avoid. Add it if/when a real event
           source exists. */}
 
-      {/* Appearance indicator — icon-button TREATMENT for Carrier-parity (item
-          3), but honestly non-interactive: unlike Carrier's ThemeToggle (manual
-          light/dark/system override), the Toolbox's mode is IPC-driven from
-          the macOS appearance setting only (ThemeProvider) — there is nothing
-          to toggle here. Styling it as a ghost icon-button (ghost, dim, no
-          click behavior) matches Carrier's visual language without adding a
-          fake control that does nothing when clicked. */}
-      <span
-        title={`Following system appearance · ${mode}`}
-        aria-label={`Appearance: following system, currently ${mode}`}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 30,
-          height: 30,
-          borderRadius: 6,
-          border: `1px solid ${theme.border}`,
-          color: theme.textMuted,
-          flexShrink: 0,
-        }}
-      >
-        {mode === 'dark' ? <Moon size={14} aria-hidden /> : <Sun size={14} aria-hidden />}
-      </span>
-
-      {/* Identity chip — "identity = local operator" (item 3): the Toolbox has
-          no accounts, so identity is honestly the local device/hostname this
-          instance runs on (same source as the tray popup's workspace chip),
-          not a fabricated user profile. */}
+      {/* Avatar menu — identity chip + popup (CIC amendment, tender#103 fix
+          pass 4). REPLACES both the fix-pass-3 bare appearance indicator
+          (theme now lives IN this menu, matching Carrier — it never was a
+          separate header icon there either) and the plain identity chip
+          (now interactive). See AvatarMenu.tsx for the full item-by-item
+          honesty mapping against Carrier's actual avatar-menu composition. */}
       {hostname && (
-        <span
-          title={`Local operator · ${hostname}`}
-          aria-label={`Local operator: ${hostname}`}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '4px 8px 4px 4px',
-            borderRadius: 99,
-            border: `1px solid ${theme.border}`,
-            background: theme.surface,
-            flexShrink: 0,
-          }}
-        >
-          <span
-            aria-hidden
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 20,
-              height: 20,
-              borderRadius: '50%',
-              background: `${theme.accent}22`,
-              color: theme.accent,
-              fontFamily: theme.fontDisplay,
-              fontSize: 10,
-              fontWeight: 700,
-            }}
-          >
-            {hostname.trim().charAt(0).toUpperCase()}
-          </span>
-          <span
-            style={{
-              maxWidth: 120,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              fontFamily: theme.fontRow,
-              fontSize: theme.sizeBody,
-              color: theme.text,
-            }}
-          >
-            {hostname}
-          </span>
-        </span>
+        <AvatarMenu
+          hostname={hostname}
+          onOpenSettings={() => setOverlay('settings')}
+          onOpenAbout={() => setOverlay('about')}
+        />
       )}
     </div>
   )
@@ -290,41 +243,101 @@ export function ToolboxApp() {
   const sectionProps = { narrow: false, query, focusItem, masterSlotEl }
 
   return (
-    <WorkspaceShell
-      id={SHELL_ID}
-      className="toolbox-frame"
-      headerClassName="toolbox-header"
-      contextTitle="Harborline Toolbox"
-      contextHref="#"
-      headerTitle={headerTitle}
-      headerLeading={
-        <WorkspaceShellPanelToggle
-          shellId={SHELL_ID}
-          panel="navigation"
-          controls={NAVIGATION_ID}
-          label="Toggle sections"
-        />
-      }
-      headerTrailing={headerTrailing}
-      switcher={null}
-      navigation={navigation}
-      inspector={null}
-      utility={null}
-      inspectorMode="hidden"
-      utilityMode="hidden"
-      panelSizes={{ navigation: 260 }}
-      navigationLabel="Toolbox modules"
-      mainLabel="Toolbox content"
-      showShortcuts={false}
-      labels={{ navigation: 'Toggle sections' }}
-    >
-      <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', background: theme.bg }}>
-        {section === 'fleet' && <FleetSection {...sectionProps} />}
-        {section === 'projects' && <ProjectsSection {...sectionProps} />}
-        {section === 'services' && <ServicesSection {...sectionProps} />}
-        {section === 'console' && <ConsoleSection {...sectionProps} />}
-      </div>
-    </WorkspaceShell>
+    <>
+      <WorkspaceShell
+        id={SHELL_ID}
+        className="toolbox-frame"
+        headerClassName="toolbox-header"
+        contextTitle="Harborline Toolbox"
+        contextHref="#"
+        headerTitle={headerTitle}
+        headerLeading={
+          <WorkspaceShellPanelToggle
+            shellId={SHELL_ID}
+            panel="navigation"
+            controls={NAVIGATION_ID}
+            label="Toggle sections"
+          />
+        }
+        headerTrailing={headerTrailing}
+        switcher={null}
+        navigation={navigation}
+        inspector={null}
+        utility={null}
+        inspectorMode="hidden"
+        utilityMode="hidden"
+        panelSizes={{ navigation: 260 }}
+        navigationLabel="Toolbox modules"
+        mainLabel="Toolbox content"
+        showShortcuts={false}
+        labels={{ navigation: 'Toggle sections' }}
+      >
+        <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', background: theme.bg }}>
+          {section === 'fleet' && <FleetSection {...sectionProps} />}
+          {section === 'projects' && <ProjectsSection {...sectionProps} />}
+          {section === 'services' && <ServicesSection {...sectionProps} />}
+          {section === 'console' && <ConsoleSection {...sectionProps} />}
+        </div>
+      </WorkspaceShell>
+
+      {/* Settings / About overlays (avatar menu, fix pass 4) — centered modal
+          layer over the whole window. `DockSettingsDetail` brings its own
+          MenuShell frame (the same 440px card every reused tray-detail screen
+          renders itself in); that floating-card look reads as an intentional
+          modal here, so it's reused unmodified rather than re-implemented. */}
+      {overlay && (
+        <div
+          role="presentation"
+          onClick={() => setOverlay(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 50,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.5)',
+          }}
+        >
+          {overlay === 'settings' && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <DockSettingsDetail onBack={() => setOverlay(null)} />
+            </div>
+          )}
+          {overlay === 'about' && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: 'relative',
+                background: theme.bg,
+                borderRadius: 10,
+                border: `1px solid ${theme.border}`,
+                boxShadow: `0 28px 60px ${theme.shadow}`,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setOverlay(null)}
+                aria-label="Close"
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  insetInlineEnd: 8,
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: theme.textMuted,
+                  display: 'flex',
+                }}
+              >
+                <X size={16} aria-hidden />
+              </button>
+              <AboutPanel />
+            </div>
+          )}
+        </div>
+      )}
+    </>
   )
 }
 
