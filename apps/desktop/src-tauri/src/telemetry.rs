@@ -288,7 +288,7 @@ pub async fn get_system_stats() -> SystemStats {
             mem_total_bytes: mem_total,
             disk_used_bytes: disk_used,
             disk_total_bytes: disk_total,
-            net_mbps: 0.0,      // network delta needs two samples; M3
+            net_mbps: 0.0, // network delta needs two samples; M3
             net_max_mbps: 1000.0,
             top_processes,
         }
@@ -346,7 +346,11 @@ fn get_top_processes_sync() -> Vec<LocalService> {
         })
         .collect();
 
-    procs.sort_by(|a, b| b.cpu.partial_cmp(&a.cpu).unwrap_or(std::cmp::Ordering::Equal));
+    procs.sort_by(|a, b| {
+        b.cpu
+            .partial_cmp(&a.cpu)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     procs.truncate(10);
     procs
 }
@@ -381,7 +385,10 @@ mod tests {
     fn managed_app_reports_recorded_version() {
         let app = managed("0.3.0-dev");
         let (installed, version) = honest_install(Some(&app), false);
-        assert!(installed, "a Tender-managed app is installed even if stopped");
+        assert!(
+            installed,
+            "a Tender-managed app is installed even if stopped"
+        );
         assert_eq!(version, "0.3.0-dev");
     }
 
@@ -482,7 +489,10 @@ mod tests {
 
     #[test]
     fn end_user_mode_hides_non_released_apps() {
-        let entries = vec![fleet_entry("released-app", true), fleet_entry("packaged-app", false)];
+        let entries = vec![
+            fleet_entry("released-app", true),
+            fleet_entry("packaged-app", false),
+        ];
         let out = filter_fleet_by_mode(entries, crate::settings::Mode::EndUser);
         assert_eq!(out.len(), 1, "end-user shows only released apps");
         assert_eq!(out[0].manifest.id, "released-app");

@@ -37,17 +37,15 @@ fn log_paths_for_service(service_id: &str) -> Vec<std::path::PathBuf> {
         // Guard against path traversal — a `service_id` containing a path
         // separator or `..` could escape the logs dir; reject with no paths.
         id if id.contains('/') || id.contains('\\') || id.contains("..") => vec![],
-        id => vec![
-            format!("{}/{}.log", hl_logs, id).into(),
-        ],
+        id => vec![format!("{}/{}.log", hl_logs, id).into()],
     }
 }
 
 /// Read the tail of a log file — returns the last `lines` lines as a Vec.
 /// Returns an empty Vec if the file does not exist yet.
 fn tail_file(path: &std::path::Path, lines: usize) -> std::io::Result<Vec<String>> {
-    use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
     use std::fs::File;
+    use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 
     let mut f = match File::open(path) {
         Ok(f) => f,
@@ -169,7 +167,10 @@ pub async fn emergency_stop() -> Result<String, String> {
     let base = std::env::var("TENDER_FLIGHTDECK_BASE_URL")
         .unwrap_or_else(|_| "http://localhost:3080".to_string());
     let resp = client
-        .post(format!("{}/api/admin/emergency-stop", base.trim_end_matches('/')))
+        .post(format!(
+            "{}/api/admin/emergency-stop",
+            base.trim_end_matches('/')
+        ))
         .send()
         .await
         .map_err(|e| format!("Flight-Deck unreachable: {}", e))?;
@@ -382,7 +383,9 @@ pub async fn get_log_tail(service_id: String, lines: Option<u32>) -> Result<Vec<
         .map_err(|e| format!("Task join error: {}", e))?;
 
     if paths.is_empty() {
-        return Ok(vec!["[no log paths configured for this service]".to_string()]);
+        return Ok(vec![
+            "[no log paths configured for this service]".to_string()
+        ]);
     }
 
     let mut result: Vec<String> = Vec::new();
@@ -661,12 +664,18 @@ mod tests {
 
         let outcome = stop_by_pattern(&marker);
         let (stopped, detail) = outcome.expect("sleeper should have been detected");
-        assert!(stopped, "sleeper should stop on SIGTERM, got detail {detail:?}");
+        assert!(
+            stopped,
+            "sleeper should stop on SIGTERM, got detail {detail:?}"
+        );
 
         // Reap the child so it doesn't linger as a zombie.
         let _ = child.wait();
 
-        assert!(stop_by_pattern(&marker).is_none(), "nothing should match after stop");
+        assert!(
+            stop_by_pattern(&marker).is_none(),
+            "nothing should match after stop"
+        );
     }
     use crate::install_config::{InstallConfig, InstalledApp, LaunchContract};
     use crate::profile::CapabilityProfile;
@@ -696,6 +705,9 @@ mod tests {
         let config = InstallConfig::default();
         let err = resolve_start_command(&config, "signal-bridge").unwrap_err();
         assert!(err.contains("not Tender-managed"));
-        assert!(!err.contains("Projects"), "must not reference a dev-layout path");
+        assert!(
+            !err.contains("Projects"),
+            "must not reference a dev-layout path"
+        );
     }
 }

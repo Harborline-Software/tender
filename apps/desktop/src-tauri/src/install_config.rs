@@ -155,8 +155,7 @@ fn save_to(config: &InstallConfig, path: &std::path::Path) -> Result<(), String>
     }
     let json = serde_json::to_string_pretty(config)
         .map_err(|e| format!("cannot serialise install config: {e}"))?;
-    std::fs::write(path, json)
-        .map_err(|e| format!("cannot write {}: {e}", path.display()))
+    std::fs::write(path, json).map_err(|e| format!("cannot write {}: {e}", path.display()))
 }
 
 #[cfg(test)]
