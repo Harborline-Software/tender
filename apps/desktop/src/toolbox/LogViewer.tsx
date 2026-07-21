@@ -84,7 +84,9 @@ export function LogViewer({ narrow, onBack }: { narrow: boolean; onBack: () => v
                 background: `${theme.accent}1a`,
                 border: `1px solid ${theme.accent}55`,
                 borderRadius: 4,
-                color: theme.accent,
+                // accentText (design-review D1, tender#103): this IS the label
+                // text — accent-as-fill/-border above stays on plain `accent`.
+                color: theme.accentText,
                 fontFamily: theme.fontMono,
                 fontSize: theme.sizeLabel,
                 letterSpacing: 1.1,

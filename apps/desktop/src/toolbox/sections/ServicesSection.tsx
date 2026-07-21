@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Activity, Cpu, HardDrive, Network } from 'lucide-react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { getLocalServices, getSystemStats, type ProcessData, type StatsData } from '@/ipc/tauri'
-import { MasterDetail, MasterRow, MasterHeader, PaneHeader, EmptyState, SkeletonList } from '../ui'
+import { MasterRow, MasterHeader, PaneHeader, EmptyState, SkeletonList } from '../ui'
 
 function fmtBytes(n: number): string {
   if (n <= 0) return '0 B'
@@ -13,7 +14,16 @@ function fmtBytes(n: number): string {
 
 const PROC_KEY = (p: ProcessData) => `${p.name}:${p.pid ?? 'n'}`
 
-export function ServicesSection({ narrow, query, focusItem }: { narrow: boolean; query: string; focusItem: string | null }) {
+interface Props {
+  narrow: boolean
+  query: string
+  focusItem: string | null
+  /** Portal target in the shell's navigation region (CIC design amendment,
+   *  tender#103) — see FleetSection for the pattern. */
+  masterSlotEl: HTMLElement | null
+}
+
+export function ServicesSection({ narrow, query, focusItem, masterSlotEl }: Props) {
   const [procs, setProcs] = useState<ProcessData[] | null>(null)
   const [stats, setStats] = useState<StatsData | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -79,13 +89,10 @@ export function ServicesSection({ narrow, query, focusItem }: { narrow: boolean;
   )
 
   return (
-    <MasterDetail
-      master={master}
-      detail={detail}
-      narrow={narrow}
-      hasSelection={!!selectedProc}
-      masterLabel="Services list"
-    />
+    <>
+      {masterSlotEl && createPortal(master, masterSlotEl)}
+      {detail}
+    </>
   )
 }
 
@@ -105,7 +112,7 @@ function SystemOverview({ stats }: { stats: StatsData | null }) {
         </div>
       )}
       <div style={{ padding: '0 18px 18px', fontFamily: theme.fontMono, fontSize: theme.sizeLabel, letterSpacing: 0.6, color: theme.textMuted, lineHeight: 1.6 }}>
-        Select a process on the left for its per-service metrics.
+        Select a process in the Services list for its per-service metrics.
       </div>
     </div>
   )

@@ -1,62 +1,20 @@
 // Shared toolbox content-layer primitives (dual-surface, shipyard #2973).
 //
-// The CHROME is ui-react (AppLayout / SideNav / AppBar). The CONTENT inside each
-// section is tender-styled (inline styles over `useTheme()`) so it reads as one
-// system with the 13 reused detail screens, all of which consume the same
-// palette. These primitives give every section the same master-detail geometry,
-// row grammar, and honest empty/placeholder states.
-import React from 'react'
+// The CHROME is `@shipyard/workspace-shell`'s `WorkspaceShell`. The CONTENT
+// inside each module is tender-styled (inline styles over `useTheme()`) so it
+// reads as one system with the 13 reused detail screens, all of which consume
+// the same palette. These primitives give every module the same row grammar
+// and honest empty/placeholder states.
+//
+// Layout note (CIC design amendment, tender#103): each module's master list now
+// portals into the shell's `navigation` region (below the `ModuleSwitcher`),
+// while its detail pane renders as the shell's `main` region content — mirroring
+// Carrier's switcher-atop-SideNav / Outlet-in-main split. There is no
+// `MasterDetail` two-column primitive anymore; the shell's own nav region owns
+// that geometry (and its own responsive rail/overlay collapse), so a module only
+// supplies `master` (portaled) and `detail` (rendered in place).
+import type { ReactNode } from 'react'
 import { useTheme } from '@/theme/ThemeProvider'
-
-/** Two-column master-detail; folds to a single column when `narrow`. */
-export function MasterDetail({
-  master,
-  detail,
-  narrow,
-  hasSelection,
-  masterLabel,
-}: {
-  master: React.ReactNode
-  detail: React.ReactNode
-  narrow: boolean
-  hasSelection: boolean
-  masterLabel: string
-}) {
-  const { theme } = useTheme()
-
-  if (narrow) {
-    // One column at a time. The detail pane carries its own back affordance
-    // (the reused detail screens' DetailHeader, or PaneHeader here).
-    return (
-      <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        {hasSelection ? detail : (
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>{master}</div>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div style={{ height: '100%', minHeight: 0, display: 'flex' }}>
-      <aside
-        aria-label={masterLabel}
-        style={{
-          width: 300,
-          flexShrink: 0,
-          minHeight: 0,
-          overflowY: 'auto',
-          borderInlineEnd: `1px solid ${theme.border}`,
-          background: theme.bg,
-        }}
-      >
-        {master}
-      </aside>
-      <section style={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', background: theme.bg }}>
-        {detail}
-      </section>
-    </div>
-  )
-}
 
 /** A selectable master-list row (icon · title · sub · optional trailing). */
 export function MasterRow({
@@ -68,12 +26,12 @@ export function MasterRow({
   trailing,
   onClick,
 }: {
-  icon?: React.ReactNode
+  icon?: ReactNode
   title: string
   sub?: string
   selected?: boolean
   tone?: 'healthy' | 'warn' | 'danger'
-  trailing?: React.ReactNode
+  trailing?: ReactNode
   onClick: () => void
 }) {
   const { theme } = useTheme()
@@ -116,7 +74,11 @@ export function MasterRow({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: toneColor ?? a,
+            // One-Accent Rule (design-review D2, tender#103): blue is
+            // action/selection ONLY — a static master-row icon is neither, so it
+            // defaults to neutral, mirroring the nav rail's own pattern
+            // (`active ? accent : textMuted`). `tone` (health) still wins when set.
+            color: toneColor ?? (selected ? a : theme.textMuted),
           }}
         >
           {icon}
@@ -194,7 +156,9 @@ export function MasterHeader({ label, count }: { label: string; count?: string }
             fontFamily: theme.fontMono,
             fontSize: theme.sizeLabel,
             letterSpacing: 0.8,
-            color: theme.accent,
+            // accentText (design-review D1, tender#103): accent-as-text needs the
+            // AA-pass shade, not the border/fill/icon `accent` value.
+            color: theme.accentText,
           }}
         >
           {count}
@@ -214,7 +178,7 @@ export function PaneHeader({
   title: string
   sub?: string
   onBack?: () => void
-  actions?: React.ReactNode
+  actions?: ReactNode
 }) {
   const { theme } = useTheme()
   const a = theme.accent
@@ -280,7 +244,7 @@ export function PaneHeader({
  * The empty detail-pane placeholder shown in wide layout when nothing is
  * selected. Teaches (never a bare "nothing here"): names the primary action.
  */
-export function DetailPlaceholder({ icon, message }: { icon?: React.ReactNode; message: string }) {
+export function DetailPlaceholder({ icon, message }: { icon?: ReactNode; message: string }) {
   const { theme } = useTheme()
   return (
     <div

@@ -4,7 +4,7 @@ import { WorkspaceShell, WorkspaceShellPanelToggle } from '@shipyard/workspace-s
 import { Search, Sparkles, Ship, FolderGit2, Activity, TerminalSquare } from 'lucide-react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { Logomark } from '@/components/Logomark'
-import { useMediaQuery, NARROW_QUERY } from './useMediaQuery'
+import { ModuleSwitcher, type ModuleSwitcherSection } from './ModuleSwitcher'
 import { FleetSection } from './sections/FleetSection'
 import { ProjectsSection } from './sections/ProjectsSection'
 import { ServicesSection } from './sections/ServicesSection'
@@ -16,7 +16,7 @@ type SectionId = 'fleet' | 'projects' | 'services' | 'console'
 const SHELL_ID = 'toolbox'
 const NAVIGATION_ID = `${SHELL_ID}-navigation`
 
-const SECTIONS: { id: SectionId; label: string; hint: string; icon: typeof Ship }[] = [
+const SECTIONS: ModuleSwitcherSection[] = [
   { id: 'fleet', label: 'Fleet', hint: 'Harborline apps', icon: Ship },
   { id: 'projects', label: 'Projects', hint: 'Local repos', icon: FolderGit2 },
   { id: 'services', label: 'Services', hint: 'Processes & system', icon: Activity },
@@ -30,7 +30,13 @@ export function ToolboxApp() {
   const [section, setSection] = useState<SectionId>('fleet')
   const [focusItem, setFocusItem] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const narrow = useMediaQuery(NARROW_QUERY)
+  // Portal target for the active module's master list (CIC design amendment,
+  // tender#103): the shell's `navigation` region now holds the ModuleSwitcher +
+  // whichever module is active's own list — mirroring Carrier's
+  // switcher-atop-SideNav composition — while `main` holds ONLY the detail pane.
+  // A ref-callback (not useRef) so the portal target is available on first
+  // render, before any effect runs.
+  const [masterSlotEl, setMasterSlotEl] = useState<HTMLDivElement | null>(null)
 
   // Deep-link navigation from the tray popup (Rust emits `toolbox-navigate` with
   // `<section>` or `<section>:<item>`). The section consumes `focusItem` to
@@ -50,50 +56,22 @@ export function ToolboxApp() {
     return () => { unlisten?.() }
   }, [])
 
-  const selectSection = useCallback((id: SectionId) => {
-    setSection(id)
+  const selectSection = useCallback((id: string) => {
+    setSection(id as SectionId)
     setFocusItem(null)
     setQuery('')
   }, [])
 
   const navigation = (
-    <nav aria-label="Toolbox sections" style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {SECTIONS.map((s) => {
-        const Icon = s.icon
-        const active = s.id === section
-        return (
-          <button
-            key={s.id}
-            onClick={() => selectSection(s.id)}
-            aria-current={active ? 'page' : undefined}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '9px 11px',
-              borderRadius: 7,
-              border: `1px solid ${active ? `${theme.accent}55` : 'transparent'}`,
-              background: active ? `${theme.accent}1f` : 'transparent',
-              color: active ? theme.text : theme.textDim,
-              cursor: 'pointer',
-              textAlign: 'left',
-              fontFamily: theme.fontRow,
-              transition: 'background 150ms ease',
-            }}
-            onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = `${theme.accent}0d` }}
-            onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-          >
-            <Icon size={17} aria-hidden style={{ color: active ? theme.accent : theme.textMuted, flexShrink: 0 }} />
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: 'block', fontSize: theme.sizeRowTitle, fontWeight: 600 }}>{s.label}</span>
-              <span style={{ display: 'block', fontFamily: theme.fontMono, fontSize: theme.sizeLabel, letterSpacing: 0.6, color: theme.textMuted, marginTop: 1 }}>
-                {s.hint}
-              </span>
-            </span>
-          </button>
-        )
-      })}
-    </nav>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <ModuleSwitcher sections={SECTIONS} activeId={section} onSwitch={selectSection} />
+      {/* Portal target for the active module's master list. The shell's own
+          navigation region is `overflow: hidden` by design (it clips to the rail
+          width while the consumer supplies its own inner scroller) — this div is
+          that inner scroller, exactly as Carrier's own sideNavEl wraps its
+          SideNav in a `flex-1 overflow-y-auto` div for the same reason. */}
+      <div ref={setMasterSlotEl} style={{ flex: 1, minHeight: 0, overflowY: 'auto' }} />
+    </div>
   )
 
   const headerTitle = (
@@ -182,7 +160,10 @@ export function ToolboxApp() {
     </div>
   )
 
-  const sectionProps = { narrow, query, focusItem }
+  // narrow/back-affordance signal is now the shell's OWN nav-collapse state, not
+  // a hand-rolled fold — kept false here; see ModuleSwitcher + the shell's own
+  // rail/overlay responsive behavior for narrow-viewport handling.
+  const sectionProps = { narrow: false, query, focusItem, masterSlotEl }
 
   return (
     <WorkspaceShell
@@ -207,8 +188,8 @@ export function ToolboxApp() {
       utility={null}
       inspectorMode="hidden"
       utilityMode="hidden"
-      panelSizes={{ navigation: 240 }}
-      navigationLabel="Toolbox sections"
+      panelSizes={{ navigation: 260 }}
+      navigationLabel="Toolbox modules"
       mainLabel="Toolbox content"
       showShortcuts={false}
       labels={{ navigation: 'Toggle sections' }}

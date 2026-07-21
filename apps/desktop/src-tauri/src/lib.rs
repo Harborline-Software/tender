@@ -39,14 +39,25 @@ fn open_toolbox(app: tauri::AppHandle, section: Option<String>) -> Result<(), St
     #[cfg(target_os = "macos")]
     let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
 
-    let _ = window.unminimize();
-    let _ = window.show();
-    let _ = window.set_focus();
+    // Log (never silently swallow) — these are the only signal an operator/dev
+    // has that the window failed to surface (code-review PR #103, nit: was
+    // `let _ = ...` on every call).
+    if let Err(e) = window.unminimize() {
+        eprintln!("[open_toolbox] unminimize failed (non-fatal): {e}");
+    }
+    if let Err(e) = window.show() {
+        eprintln!("[open_toolbox] show failed: {e}");
+    }
+    if let Err(e) = window.set_focus() {
+        eprintln!("[open_toolbox] set_focus failed (non-fatal): {e}");
+    }
 
     if let Some(target) = section {
         // The toolbox webview is created (hidden) at launch, so its listener is
         // already mounted by the time the operator opens it from the tray.
-        let _ = window.emit("toolbox-navigate", target);
+        if let Err(e) = window.emit("toolbox-navigate", target) {
+            eprintln!("[open_toolbox] emit(toolbox-navigate) failed: {e}");
+        }
     }
     Ok(())
 }

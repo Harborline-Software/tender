@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Boxes, Table2, CircleDot, DollarSign, Archive, ArrowLeftRight, Gauge, ScrollText } from 'lucide-react'
-import { MasterDetail, MasterRow, MasterHeader, DetailPlaceholder, EmptyState } from '../ui'
+import { MasterRow, MasterHeader, DetailPlaceholder, EmptyState } from '../ui'
 import { LogViewer } from '../LogViewer'
 import { BundlesDetail } from '@/screens/detail/BundlesDetail'
 import { ModelInventoryDetail } from '@/screens/detail/ModelInventoryDetail'
@@ -46,7 +47,16 @@ function renderDetail(id: ConsoleId, narrow: boolean, onBack: () => void): React
   }
 }
 
-export function ConsoleSection({ narrow, query, focusItem }: { narrow: boolean; query: string; focusItem: string | null }) {
+interface Props {
+  narrow: boolean
+  query: string
+  focusItem: string | null
+  /** Portal target in the shell's navigation region (CIC design amendment,
+   *  tender#103) — see FleetSection for the pattern. */
+  masterSlotEl: HTMLElement | null
+}
+
+export function ConsoleSection({ narrow, query, focusItem, masterSlotEl }: Props) {
   const [selected, setSelected] = useState<ConsoleId | null>(null)
 
   useEffect(() => {
@@ -90,12 +100,9 @@ export function ConsoleSection({ narrow, query, focusItem }: { narrow: boolean; 
   )
 
   return (
-    <MasterDetail
-      master={master}
-      detail={detail}
-      narrow={narrow}
-      hasSelection={!!selected}
-      masterLabel="Operator management list"
-    />
+    <>
+      {masterSlotEl && createPortal(master, masterSlotEl)}
+      {detail}
+    </>
   )
 }

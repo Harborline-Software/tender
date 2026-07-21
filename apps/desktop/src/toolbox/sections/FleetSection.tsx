@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Ship, Play } from 'lucide-react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { getFleet, launchApp, type FleetEntry } from '@/ipc/tauri'
-import { MasterDetail, MasterRow, MasterHeader, PaneHeader, DetailPlaceholder, EmptyState, SkeletonList } from '../ui'
+import { MasterRow, MasterHeader, PaneHeader, DetailPlaceholder, EmptyState, SkeletonList } from '../ui'
 import { SignalBridgeDetail } from '@/screens/detail/SignalBridgeDetail'
 import { SunfishDetail } from '@/screens/detail/SunfishDetail'
 import { FlightDeckDetail } from '@/screens/detail/FlightDeckDetail'
@@ -28,7 +29,17 @@ function subFor(e: FleetEntry): string {
   return `${v} · ${e.status}`
 }
 
-export function FleetSection({ narrow, query, focusItem }: { narrow: boolean; query: string; focusItem: string | null }) {
+interface Props {
+  narrow: boolean
+  query: string
+  focusItem: string | null
+  /** Portal target in the shell's navigation region (CIC design amendment,
+   *  tender#103) — the master list renders there via `createPortal`, the
+   *  detail pane renders in place (the shell's `main` region). */
+  masterSlotEl: HTMLElement | null
+}
+
+export function FleetSection({ narrow, query, focusItem, masterSlotEl }: Props) {
   const [fleet, setFleet] = useState<FleetEntry[] | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
 
@@ -84,13 +95,10 @@ export function FleetSection({ narrow, query, focusItem }: { narrow: boolean; qu
   }
 
   return (
-    <MasterDetail
-      master={master}
-      detail={detail}
-      narrow={narrow}
-      hasSelection={!!selectedEntry}
-      masterLabel="Fleet list"
-    />
+    <>
+      {masterSlotEl && createPortal(master, masterSlotEl)}
+      {detail}
+    </>
   )
 }
 
@@ -118,7 +126,9 @@ function FleetInfoPane({ entry, narrow, onBack, onLaunched }: { entry: FleetEntr
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               background: `${theme.accent}1a`, border: `1px solid ${theme.accent}55`,
-              borderRadius: 4, color: theme.accent,
+              // accentText (design-review D1, tender#103): this IS the label
+              // text — accent-as-fill/-border above stays on plain `accent`.
+              borderRadius: 4, color: theme.accentText,
               fontFamily: theme.fontMono, fontSize: theme.sizeLabel,
               letterSpacing: 1.1, textTransform: 'uppercase', padding: '5px 10px',
               cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,

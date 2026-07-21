@@ -29,10 +29,21 @@ jobs:
       # (../../../shipyard/packages/workspace-shell), and the package's source
       # reaches into shipyard/_shared/design. Check shipyard out as a sibling so
       # `npm ci` + the Vite build can resolve it (both repos are public, so the
-      # default GITHUB_TOKEN suffices). Sparse: only the paths the shell needs.
+      # default GITHUB_TOKEN suffices).
+      #
+      # `ref` is PINNED to a known-good shipyard SHA (code-review PR #103, V3):
+      # without a pin, tender CI silently builds against shipyard main's moving
+      # HEAD, so an unrelated shipyard change to workspace-shell/_shared/design
+      # could break tender CI (or silently change bundled behavior) out-of-band.
+      # Bump deliberately when the toolbox needs a newer shell.
+      #
+      # Sparse paths are a HAND-DERIVED subset (verified today: the shell's
+      # runtime imports stay inside _shared/design) -- if the shell ever adds an
+      # import outside this subtree, widen the sparse-checkout list below.
       - uses: actions/checkout@v7
         with:
           repository: Harborline-Software/shipyard
+          ref: 8ab928dabcbb0d9c671de8434af5f68f232d5163 # main @ 2026-07-21; bump deliberately
           path: shipyard
           sparse-checkout: |
             packages/workspace-shell

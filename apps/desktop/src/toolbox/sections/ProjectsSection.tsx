@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { FolderGit2, ExternalLink } from 'lucide-react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { getProjects, openExternal, type ProjectData } from '@/ipc/tauri'
-import { MasterDetail, MasterRow, MasterHeader, PaneHeader, DetailPlaceholder, EmptyState, SkeletonList } from '../ui'
+import { MasterRow, MasterHeader, PaneHeader, DetailPlaceholder, EmptyState, SkeletonList } from '../ui'
 
 const STATUS_TONE: Record<ProjectData['status'], 'healthy' | 'warn' | 'danger' | undefined> = {
   active: 'healthy',
@@ -10,7 +11,16 @@ const STATUS_TONE: Record<ProjectData['status'], 'healthy' | 'warn' | 'danger' |
   archived: undefined,
 }
 
-export function ProjectsSection({ narrow, query, focusItem }: { narrow: boolean; query: string; focusItem: string | null }) {
+interface Props {
+  narrow: boolean
+  query: string
+  focusItem: string | null
+  /** Portal target in the shell's navigation region (CIC design amendment,
+   *  tender#103) — see FleetSection for the pattern. */
+  masterSlotEl: HTMLElement | null
+}
+
+export function ProjectsSection({ narrow, query, focusItem, masterSlotEl }: Props) {
   const { theme } = useTheme()
   const [projects, setProjects] = useState<ProjectData[] | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -71,7 +81,9 @@ export function ProjectsSection({ narrow, query, focusItem }: { narrow: boolean;
               background: `${theme.accent}1a`,
               border: `1px solid ${theme.accent}55`,
               borderRadius: 4,
-              color: theme.accent,
+              // accentText (design-review D1, tender#103): this IS the label
+              // text — accent-as-fill/-border above stays on plain `accent`.
+              color: theme.accentText,
               fontFamily: theme.fontMono,
               fontSize: theme.sizeLabel,
               letterSpacing: 1.1,
@@ -95,13 +107,10 @@ export function ProjectsSection({ narrow, query, focusItem }: { narrow: boolean;
   )
 
   return (
-    <MasterDetail
-      master={master}
-      detail={detail}
-      narrow={narrow}
-      hasSelection={!!selectedProject}
-      masterLabel="Projects list"
-    />
+    <>
+      {masterSlotEl && createPortal(master, masterSlotEl)}
+      {detail}
+    </>
   )
 }
 
