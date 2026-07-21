@@ -3,8 +3,9 @@
  *
  * R8 Console tab added (design-review F1.3 + F6): operator management
  * surfaces (Bundles, Backups, Sync/Relay, Diagnostics) now live in the
- * Console tab instead of the gear menu grab-bag. Four tabs fit 360px at
- * 90px each without cramping.
+ * Console tab instead of the gear menu grab-bag. Four tabs fit the panel
+ * width (440px, widened from 360px per CIC amendment, tender#103 fix pass 2)
+ * at 110px each without cramping.
  */
 import { useTheme } from '@/theme/ThemeProvider'
 

@@ -17,8 +17,8 @@
       {
         "label": "main",
         "title": "Harborline Toolbox",
-        "width": 360,
-        "height": 560,
+        "width": 440,
+        "height": 610,
         "resizable": false,
         "decorations": false,
         "transparent": true,
@@ -26,6 +26,21 @@
         "skipTaskbar": true,
         "visible": false,
         "shadow": false
+      },
+      {
+        "label": "toolbox",
+        "url": "toolbox.html",
+        "title": "Harborline Toolbox",
+        "width": 1100,
+        "height": 720,
+        "minWidth": 800,
+        "minHeight": 560,
+        "resizable": true,
+        "decorations": true,
+        "transparent": false,
+        "alwaysOnTop": false,
+        "skipTaskbar": false,
+        "visible": false
       }
     ],
     "security": {
