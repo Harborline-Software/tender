@@ -134,7 +134,11 @@ export function Panel({ onNavigate }: Props) {
 
         <div style={{ flex: 1 }} />
 
-        {/* Workspace dropdown */}
+        {/* Workspace dropdown — CIC amendment (tender#103 fix pass 2): the host
+            chip (e.g. "MacBook Pro 2016") wrapped to 3 lines at 360px. Widening
+            the panel (below) is the primary fix; `whiteSpace: nowrap` +
+            `flexShrink: 0` here is the belt-and-suspenders hardening so a long
+            hostname never wraps again regardless of neighboring header width. */}
         <button
           onClick={() => { setWsOpen((o) => !o); setGearOpen(false) }}
           style={{
@@ -151,6 +155,8 @@ export function Panel({ onNavigate }: Props) {
             letterSpacing: 0.6,
             cursor: 'pointer',
             boxShadow: `0 0 6px ${a}22, inset 0 0 4px ${a}1a`,
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
           }}
         >
           <span style={{
@@ -158,9 +164,12 @@ export function Panel({ onNavigate }: Props) {
             background: a,
             boxShadow: `0 0 4px ${a}, 0 0 8px ${a}88`,
             animation: 'dotPulse 3s ease-in-out infinite',
+            flexShrink: 0,
           }} />
-          {workspace}
-          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180 }}>
+            {workspace}
+          </span>
+          <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style={{ flexShrink: 0 }}>
             <path d="M2 3L4 5L6 3" stroke={theme.text} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
@@ -232,33 +241,6 @@ export function Panel({ onNavigate }: Props) {
           </button>
         )}
 
-        {/* Open Toolbox — expands the tray popup into the full main window
-            (dual-surface, shipyard #2973). The popup keeps its glanceable role;
-            this hands off to the workspace chrome for anything that needs room. */}
-        <button
-          onClick={() => { closePopovers(); openToolbox().catch(() => {}) }}
-          title="Open Toolbox window"
-          aria-label="Open Toolbox window"
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            width: 26,
-            height: 26,
-            borderRadius: 4,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${a}22` }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
-        >
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-            <rect x="1.6" y="1.6" width="10.8" height="10.8" rx="2" stroke={theme.textDim} strokeWidth="1.3" />
-            <path d="M5.5 8.5L9 5M9 5H6.4M9 5V7.6" stroke={a} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-
         {/* Gear icon */}
         <button
           onClick={() => { setGearOpen((o) => !o); setWsOpen(false) }}
@@ -308,8 +290,19 @@ export function Panel({ onNavigate }: Props) {
         {tab === 'console'  && <ConsoleTab  onNavigate={handleNavigate} />}
       </div>
 
-      {/* Bottom separator + Dry Dock */}
+      {/* Bottom separator + persistent footer actions.
+          CIC amendment (tender#103 fix pass 2): the only door to the main window
+          was a 26px unlabeled icon button in the header (no visible text — not
+          discoverable unaided). Moved to an explicit, always-visible, labeled
+          footer action, mirroring Dry Dock's own always-reachable placement —
+          keyboard accessible (ConsoleRow is a role="button" + Enter-activates),
+          One-Accent-correct (it IS an action, so the indicator is accent-tinted
+          via `active`, same channel as selection/action elsewhere). */}
       <FiberDivider />
+      <ConsoleRow
+        name="Open Toolbox" subLabel="Full workspace window" indicator="grid" active
+        onClick={() => openToolbox().catch(() => {})}
+      />
       <ConsoleRow
         name="Dry Dock" subLabel="Graceful shutdown" danger
         onClick={() => handleNavigate('dry-dock')}

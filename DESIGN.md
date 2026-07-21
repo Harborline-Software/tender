@@ -26,14 +26,26 @@ Dual-mode, follows macOS appearance (IPC-driven; `.dark`/`.light` class on docum
 
 - StatusPill, MeterBar, Sparkline, Dial, GaugeCard — data primitives, mono numerals
 - ConsoleIndicator — lucide-react icons at 11px (radio, layout-grid, waves, cpu, settings, power, container, message-square)
-- MenuShell + TabStrip (Fleet / Projects / Services / Console) — 360px tray panel
+- MenuShell + TabStrip (Fleet / Projects / Services / Console) — 440px tray panel
+  (widened from 360px, CIC amendment tender#103 fix pass 2 — 360 wrapped the
+  header's host chip to 3 lines)
 - Honest-state rows: "not configured" / "unreachable" render as designed guidance states, not errors
 
 ## Layout
 
 Two surfaces, one token system (dual-surface, shipyard #2973):
 
-**Tray popup (`main` window, `index.html`).** Fixed 360px width, macOS tray dropdown; dense rows ~34–44px; detail screens push in-place. Unchanged pixel-role — it renders in its own bundle and never loads the workspace-shell stylesheet. Adds only an Open Toolbox affordance (header) and per-row deep-links into the main window (Console rows carry a trailing "open in Toolbox" control alongside the in-popup chevron — two sibling buttons, never nested).
+**Tray popup (`main` window, `index.html`).** Fixed 440px width (widened from the
+original 360px — CIC amendment, tender#103 fix pass 2: 360px wrapped the header's
+host/workspace chip, e.g. "MacBook Pro 2016", to 3 lines and crowded the row; 440px
+keeps it to one line while staying tray-native), macOS tray dropdown; dense rows
+~34–44px; detail screens push in-place. Unchanged pixel-role otherwise — it renders
+in its own bundle and never loads the workspace-shell stylesheet. Adds an explicit,
+visibly-labeled **"Open Toolbox"** action (persistent footer row, mirroring the
+Dry Dock row's always-reachable placement — CIC amendment, fix pass 2: the prior
+26px icon-only header button had no visible text and was not discoverable) and
+per-row deep-links into the main window (Console rows carry a trailing "open in
+Toolbox" control alongside the in-popup chevron — two sibling buttons, never nested).
 
 **Main window ("Toolbox", `toolbox` window, `toolbox.html`).** Decorated, resizable, ~1100×720 (min 800×560). Chrome is the *actual* shipyard workspace shell — `@shipyard/workspace-shell`'s `WorkspaceShell` (the Carrier-family chrome), consumed as a `file:` dependency, NOT a hand-rolled frame. Structure:
 - Header: navigation-panel toggle (icon-only, `WorkspaceShellPanelToggle`) · Logomark + wordmark · section-scoped search · honest Pilot slot (Pilot is not wired into the Toolbox surface — a quiet "not available here" designed state, never a dead button) · appearance indicator.

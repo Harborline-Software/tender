@@ -4,6 +4,7 @@ import { Ship, Play } from 'lucide-react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { getFleet, launchApp, type FleetEntry } from '@/ipc/tauri'
 import { MasterRow, MasterHeader, PaneHeader, DetailPlaceholder, EmptyState, SkeletonList } from '../ui'
+import { StatusPill } from '@/components/StatusPill'
 import { SignalBridgeDetail } from '@/screens/detail/SignalBridgeDetail'
 import { SunfishDetail } from '@/screens/detail/SunfishDetail'
 import { FlightDeckDetail } from '@/screens/detail/FlightDeckDetail'
@@ -87,7 +88,16 @@ export function FleetSection({ narrow, query, focusItem, masterSlotEl }: Props) 
 
   let detail: ReactNode
   if (!selectedEntry) {
-    detail = <DetailPlaceholder icon={<Ship size={28} />} message="Select an app to see its live status, links, and metrics. Running apps open their full instrument panel." />
+    const running = filtered?.filter((e) => e.status === 'running').length ?? 0
+    detail = (
+      <DetailPlaceholder
+        icon={<Ship size={28} />}
+        message="Select an app to see its live status, links, and metrics. Running apps open their full instrument panel."
+        sectionTitle="Fleet"
+        sectionHint="Harborline apps"
+        statusChip={filtered && <StatusPill text={`${running}/${filtered.length} running`} />}
+      />
+    )
   } else if (selectedEntry.installed && DETAIL[selectedEntry.manifest.id]) {
     detail = DETAIL[selectedEntry.manifest.id](clear)
   } else {

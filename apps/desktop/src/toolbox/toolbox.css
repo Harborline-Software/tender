@@ -40,6 +40,39 @@
   border: 0;
 }
 
+/* Panel-collapse toggle icon fix (CIC amendment, tender#103 fix pass 2):
+   `PanelLayoutIcon` in @shipyard/workspace-shell renders `fill="none"` on the
+   root <svg> with no `stroke`/`fill` set on its <rect>/<path> children anywhere
+   in the shell's own stylesheet, so the icon painted nothing at all — an empty
+   box, not an unstyled default. Root cause lives upstream
+   (shipyard/_shared/design/workspace-shell/workspace-shell.css); this scoped
+   override paints it from the Toolbox's own ghost icon-button treatment
+   (transparent, dim until hover/focus — matching the header's other icon
+   buttons) without editing the shared package. Follow-up: file a shipyard card
+   to fix `PanelLayoutIcon` at the source so every consumer benefits. */
+.toolbox-frame .workspace-shell__panel-toggle {
+  color: var(--eco-text, currentColor);
+  opacity: 0.62;
+  border-color: transparent;
+  transition: opacity 120ms ease, background 120ms ease;
+}
+.toolbox-frame .workspace-shell__panel-toggle:hover,
+.toolbox-frame .workspace-shell__panel-toggle:focus-visible {
+  opacity: 1;
+  background: color-mix(in srgb, var(--eco-focus, CanvasText) 14%, transparent);
+}
+.toolbox-frame .workspace-shell__panel-toggle .eco-bar__panel-icon rect {
+  stroke: currentColor;
+  fill: none;
+}
+.toolbox-frame .workspace-shell__panel-toggle .eco-bar__panel-icon path:not(.eco-bar__panel-state) {
+  stroke: currentColor;
+}
+.toolbox-frame .workspace-shell__panel-toggle .eco-bar__panel-icon .eco-bar__panel-state {
+  fill: currentColor;
+  opacity: 0.32;
+}
+
 /* Right-aligned header cluster (search · Pilot · mode). */
 .toolbox-header-trailing {
   margin-inline-start: auto;

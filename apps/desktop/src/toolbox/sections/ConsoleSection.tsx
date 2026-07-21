@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Boxes, Table2, CircleDot, DollarSign, Archive, ArrowLeftRight, Gauge, ScrollText } from 'lucide-react'
 import { MasterRow, MasterHeader, DetailPlaceholder, EmptyState } from '../ui'
+import { StatusPill } from '@/components/StatusPill'
 import { LogViewer } from '../LogViewer'
 import { BundlesDetail } from '@/screens/detail/BundlesDetail'
 import { ModelInventoryDetail } from '@/screens/detail/ModelInventoryDetail'
@@ -96,6 +97,9 @@ export function ConsoleSection({ narrow, query, focusItem, masterSlotEl }: Props
     <DetailPlaceholder
       icon={<Gauge size={28} />}
       message="Select an operator surface — bundles, model inventory, GPU residency, paid-compute ledger, backups, relay, diagnostics, or the full-height log viewer."
+      sectionTitle="Console"
+      sectionHint="Operator management"
+      statusChip={<StatusPill text={`${ENTRIES.length} surfaces`} />}
     />
   )
 

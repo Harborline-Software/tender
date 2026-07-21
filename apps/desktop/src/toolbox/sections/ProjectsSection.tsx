@@ -4,6 +4,7 @@ import { FolderGit2, ExternalLink } from 'lucide-react'
 import { useTheme } from '@/theme/ThemeProvider'
 import { getProjects, openExternal, type ProjectData } from '@/ipc/tauri'
 import { MasterRow, MasterHeader, PaneHeader, DetailPlaceholder, EmptyState, SkeletonList } from '../ui'
+import { StatusPill } from '@/components/StatusPill'
 
 const STATUS_TONE: Record<ProjectData['status'], 'healthy' | 'warn' | 'danger' | undefined> = {
   active: 'healthy',
@@ -103,7 +104,13 @@ export function ProjectsSection({ narrow, query, focusItem, masterSlotEl }: Prop
       </dl>
     </div>
   ) : (
-    <DetailPlaceholder icon={<FolderGit2 size={28} />} message="Select a project to see its path, status, and reveal it in Finder." />
+    <DetailPlaceholder
+      icon={<FolderGit2 size={28} />}
+      message="Select a project to see its path, status, and reveal it in Finder."
+      sectionTitle="Projects"
+      sectionHint="Local repos"
+      statusChip={filtered && <StatusPill text={`${filtered.length} tracked`} />}
+    />
   )
 
   return (

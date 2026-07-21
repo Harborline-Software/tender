@@ -243,34 +243,58 @@ export function PaneHeader({
 /**
  * The empty detail-pane placeholder shown in wide layout when nothing is
  * selected. Teaches (never a bare "nothing here"): names the primary action.
+ *
+ * `sectionTitle`/`sectionHint`/`statusChip` (CIC amendment, tender#103 fix pass
+ * 2 — parity item 4): renders the same content-region header row Carrier gives
+ * every main region (title + subtitle, right-aligned status chip) so the EMPTY
+ * state isn't a headerless void — reuses `PaneHeader` so populated and empty
+ * states share one header treatment.
  */
-export function DetailPlaceholder({ icon, message }: { icon?: ReactNode; message: string }) {
+export function DetailPlaceholder({
+  icon,
+  message,
+  sectionTitle,
+  sectionHint,
+  statusChip,
+}: {
+  icon?: ReactNode
+  message: string
+  sectionTitle?: string
+  sectionHint?: string
+  statusChip?: ReactNode
+}) {
   const { theme } = useTheme()
   return (
-    <div
-      style={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 12,
-        padding: 32,
-        textAlign: 'center',
-      }}
-    >
-      {icon && <div aria-hidden style={{ color: theme.textMuted, opacity: 0.7 }}>{icon}</div>}
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {sectionTitle && <PaneHeader title={sectionTitle} sub={sectionHint} actions={statusChip} />}
       <div
         style={{
-          fontFamily: theme.fontMono,
-          fontSize: theme.sizeBody,
-          letterSpacing: 0.6,
-          color: theme.textMuted,
-          maxWidth: 320,
-          lineHeight: 1.6,
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 12,
+          padding: 32,
+          textAlign: 'center',
         }}
       >
-        {message}
+        {icon && <div aria-hidden style={{ color: theme.textMuted, opacity: 0.7 }}>{icon}</div>}
+        <div
+          style={{
+            // Register (DESIGN.md, CIC amendment tender#103 fix pass 2 — parity
+            // item 6): this is PROSE, not a data value/label — mono is reserved
+            // for values/metrics; ambient copy uses the Inter row font.
+            fontFamily: theme.fontRow,
+            fontSize: theme.sizeBody,
+            color: theme.textMuted,
+            maxWidth: 320,
+            lineHeight: 1.6,
+          }}
+        >
+          {message}
+        </div>
       </div>
     </div>
   )

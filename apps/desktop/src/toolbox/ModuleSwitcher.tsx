@@ -28,6 +28,14 @@ export interface ModuleSwitcherSection {
  *
  * One-Accent Rule: the active option is the only accent-tinted row (selection),
  * exactly like `MasterRow`'s own selected treatment one file over.
+ *
+ * Density (CIC amendment, tender#103 fix pass 2 — parity item 5): the trigger
+ * was a bordered, filled, two-line (label + hint) card — boxy next to
+ * Carrier's actual `WorkspaceSwitcher` trigger, which is a transparent
+ * ghost button, single line (icon + label + chevron only, no hint), that only
+ * shows a background on hover. Restyled to match that density; the panel below
+ * still shows each module's hint (that part of Carrier's composition — the
+ * popover list — keeps its descriptive row).
  */
 export function ModuleSwitcher({
   sections,
@@ -83,38 +91,43 @@ export function ModuleSwitcher({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 9,
+          gap: 8,
           width: '100%',
-          padding: '8px 10px',
-          borderRadius: 7,
-          border: `1px solid ${theme.border}`,
-          background: theme.surface,
+          padding: '6px 8px',
+          borderRadius: 6,
+          border: '1px solid transparent',
+          background: 'transparent',
           color: theme.text,
           cursor: 'pointer',
           textAlign: 'left',
           fontFamily: theme.fontRow,
+          fontSize: theme.sizeBody,
+          fontWeight: 600,
           transition: 'background 150ms ease',
         }}
         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = theme.bgSoft }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = theme.surface }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
       >
-        <ActiveIcon size={16} aria-hidden />
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', fontSize: theme.sizeRowTitle, fontWeight: 600 }}>{active.label}</span>
-          <span
-            style={{
-              display: 'block',
-              fontFamily: theme.fontMono,
-              fontSize: theme.sizeLabel,
-              letterSpacing: 0.6,
-              color: theme.textMuted,
-              marginTop: 1,
-            }}
-          >
-            {active.hint}
-          </span>
+        <span
+          aria-hidden
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 22,
+            height: 22,
+            borderRadius: 5,
+            background: `${theme.accent}1f`,
+            color: theme.accent,
+            flexShrink: 0,
+          }}
+        >
+          <ActiveIcon size={13} aria-hidden />
         </span>
-        <ChevronsUpDown size={14} aria-hidden style={{ color: theme.textMuted, flexShrink: 0 }} />
+        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {active.label}
+        </span>
+        <ChevronsUpDown size={13} aria-hidden style={{ color: theme.textMuted, flexShrink: 0 }} />
       </button>
 
       {open && (
