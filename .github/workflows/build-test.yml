@@ -78,27 +78,16 @@ jobs:
 
   rust:
     name: Rust / Tauri backend
-    runs-on: ubuntu-latest
+    # macos-latest: tender is a macOS-first Tauri app and its tests spawn the
+    # macOS-only /usr/bin/ditto (src/install.rs), which fails on ubuntu. macOS
+    # runner minutes are free on this public repo. WebKit ships natively on the
+    # macOS image, so no GTK/webkit system packages need installing here.
+    runs-on: macos-latest
     defaults:
       run:
         working-directory: apps/desktop/src-tauri
     steps:
       - uses: actions/checkout@v7
-
-      - name: Install Tauri system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libgtk-3-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            build-essential \
-            curl \
-            wget \
-            file \
-            libssl-dev
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
