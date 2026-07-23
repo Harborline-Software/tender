@@ -8,12 +8,21 @@
          repo (src/assets/brand/); swap when the final mark lands (grep: INTERIM MARK) -->
     <link rel="icon" type="image/svg+xml" href="/src/assets/brand/harborline-mark-small.svg" />
     <style>
+      /* Width tracks the Tauri window size (tauri.conf.json), not a hardcoded
+         value — CIC amendment (tender#103 fix pass 2): this WAS hardcoded to
+         360px, silently clipping the popup's own content whenever the window
+         width changed (found widening to 440px: MenuShell rendered at its full
+         440px width but this fixed 360px body clipped/hid the overflow,
+         cutting off the Console tab and part of every row). 100% + the OS
+         window's actual size is the single source of truth; MenuShell keeps
+         its own explicit width for the panel's internal layout. */
       html, body, #root {
         margin: 0;
         padding: 0;
         background: transparent;
         overflow: hidden;
-        width: 360px;
+        width: 100%;
+        height: 100%;
       }
     </style>
   </head>

@@ -29,7 +29,9 @@ pub fn plist_path() -> Option<PathBuf> {
 
 /// Minimal XML escaping for a value placed in a plist `<string>`.
 fn xml_escape(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 /// Render the LaunchAgent plist XML for a program path.
@@ -131,8 +133,8 @@ fn migrate_program_path_at(path: &Path, current_program: &str) -> Result<bool, S
     if !path.exists() {
         return Ok(false); // auto-start not enabled — nothing to migrate
     }
-    let body = std::fs::read_to_string(path)
-        .map_err(|e| format!("read plist {}: {e}", path.display()))?;
+    let body =
+        std::fs::read_to_string(path).map_err(|e| format!("read plist {}: {e}", path.display()))?;
     if body.contains(current_program) {
         return Ok(false); // already points at the current install
     }
@@ -152,7 +154,11 @@ mod tests {
     /// isolated.
     fn tmp_plist(label: &str) -> PathBuf {
         std::env::temp_dir()
-            .join(format!("tender-autostart-test-{}-{}", std::process::id(), label))
+            .join(format!(
+                "tender-autostart-test-{}-{}",
+                std::process::id(),
+                label
+            ))
             .join("io.harborline.tender.plist")
     }
 
@@ -170,8 +176,11 @@ mod tests {
         let path = tmp_plist("migrate-noop-not-enabled");
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
 
-        let migrated = migrate_program_path_at(&path, "/Applications/Harborline Toolbox.app/Contents/MacOS/Harborline Toolbox")
-            .expect("noop ok");
+        let migrated = migrate_program_path_at(
+            &path,
+            "/Applications/Harborline Toolbox.app/Contents/MacOS/Harborline Toolbox",
+        )
+        .expect("noop ok");
         assert!(!migrated, "no plist ⇒ nothing to migrate");
 
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
@@ -185,7 +194,10 @@ mod tests {
         write_plist_at(&path, current).expect("write");
 
         let migrated = migrate_program_path_at(&path, current).expect("noop ok");
-        assert!(!migrated, "already pointing at current program ⇒ no rewrite");
+        assert!(
+            !migrated,
+            "already pointing at current program ⇒ no rewrite"
+        );
 
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
@@ -202,7 +214,10 @@ mod tests {
         assert!(migrated, "stale program path ⇒ rewrite");
 
         let body = std::fs::read_to_string(&path).unwrap();
-        assert!(body.contains(current), "plist now points at the new install");
+        assert!(
+            body.contains(current),
+            "plist now points at the new install"
+        );
         assert!(
             body.contains("<string>io.harborline.tender</string>"),
             "label is unchanged — same LaunchAgent, only the program path moved"

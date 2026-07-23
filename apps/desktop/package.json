@@ -7,9 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test": "node scripts/check-workspace-shell-shim.mjs"
   },
   "dependencies": {
+    "@shipyard/workspace-shell": "file:../../../shipyard/packages/workspace-shell",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-positioner": "^2",
     "lucide-react": "^1.24.0",

@@ -88,8 +88,7 @@ pub struct ProviderHealthRecord {
 /// Returns the Bridge base URL from `TENDER_BRIDGE_BASE_URL` env var or falls
 /// back to the Aspire dev default `http://localhost:5000`.
 fn bridge_base_url() -> String {
-    std::env::var("TENDER_BRIDGE_BASE_URL")
-        .unwrap_or_else(|_| "http://localhost:5000".to_string())
+    std::env::var("TENDER_BRIDGE_BASE_URL").unwrap_or_else(|_| "http://localhost:5000".to_string())
 }
 
 // ── Provider health fetcher ──────────────────────────────────────────────────
@@ -107,7 +106,10 @@ fn allow_invalid_certs_for(base: &str) -> bool {
     cfg!(debug_assertions)
         && Url::parse(base)
             .ok()
-            .and_then(|u| u.host_str().map(|h| h == "localhost" || h == "127.0.0.1" || h == "::1"))
+            .and_then(|u| {
+                u.host_str()
+                    .map(|h| h == "localhost" || h == "127.0.0.1" || h == "::1")
+            })
             .unwrap_or(false)
 }
 
@@ -166,7 +168,10 @@ pub async fn fetch_provider_health() -> Result<Vec<ProviderHealthRecord>, String
             configured: false,
             using_mock: false,
             status: ProbeStatus::Unknown,
-            status_detail: Some(format!("Bridge returned unexpected status: {}", status_code)),
+            status_detail: Some(format!(
+                "Bridge returned unexpected status: {}",
+                status_code
+            )),
         }]);
     }
 

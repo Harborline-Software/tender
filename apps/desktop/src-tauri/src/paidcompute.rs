@@ -173,7 +173,11 @@ fn bifrost_base_url() -> String {
     if host.is_empty() {
         return String::new();
     }
-    let host = if host.contains(':') { host } else { format!("{host}:8892") };
+    let host = if host.contains(':') {
+        host
+    } else {
+        format!("{host}:8892")
+    };
     format!("http://{host}")
 }
 
@@ -207,7 +211,20 @@ fn now_iso() -> String {
         year += 1;
     }
     let leap = is_leap(year);
-    let month_lengths = [31, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let month_lengths = [
+        31,
+        if leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
     let mut month = 1u64;
     for len in month_lengths {
         if days < len {
@@ -259,7 +276,10 @@ struct GovBudget {
 const VKEY_ORDER: [&str; 3] = ["pilot-dogfood", "code-review", "fleet-offload"];
 
 fn vkey_sort_index(name: &str) -> usize {
-    VKEY_ORDER.iter().position(|n| *n == name).unwrap_or(VKEY_ORDER.len())
+    VKEY_ORDER
+        .iter()
+        .position(|n| *n == name)
+        .unwrap_or(VKEY_ORDER.len())
 }
 
 /// Pure parse — no I/O — of the governance virtual-keys response. Deserializes
@@ -308,7 +328,10 @@ async fn fetch_gateway_ledger() -> GatewayLedger {
     // catch-all trap — bug-logged in the gateway README), but we don't need it
     // here: an unreachable governance read is itself the honest failure signal.
     let url = format!("{base}/api/governance/virtual-keys");
-    let client = match reqwest::Client::builder().timeout(Duration::from_secs(6)).build() {
+    let client = match reqwest::Client::builder()
+        .timeout(Duration::from_secs(6))
+        .build()
+    {
         Ok(c) => c,
         Err(e) => return unreachable_ledger(label, host, format!("HTTP client build failed: {e}")),
     };
@@ -325,21 +348,39 @@ async fn fetch_gateway_ledger() -> GatewayLedger {
     };
     if !resp.status().is_success() {
         let code = resp.status();
-        return unreachable_ledger(label, host, format!("gateway governance API returned {code}"));
+        return unreachable_ledger(
+            label,
+            host,
+            format!("gateway governance API returned {code}"),
+        );
     }
     // The raw body carries vkey bearer secrets in `value` fields — NEVER log it.
     let body = match resp.text().await {
         Ok(b) => b,
-        Err(e) => return unreachable_ledger(label, host, format!("could not read gateway response: {e}")),
+        Err(e) => {
+            return unreachable_ledger(label, host, format!("could not read gateway response: {e}"))
+        }
     };
     match parse_governance_vkeys(&body) {
-        Ok(rows) => GatewayLedger { label, host, status: LedgerStatus::Ok, rows, detail: None },
+        Ok(rows) => GatewayLedger {
+            label,
+            host,
+            status: LedgerStatus::Ok,
+            rows,
+            detail: None,
+        },
         Err(e) => unreachable_ledger(label, host, e),
     }
 }
 
 fn unreachable_ledger(label: String, host: String, detail: String) -> GatewayLedger {
-    GatewayLedger { label, host, status: LedgerStatus::Unreachable, rows: Vec::new(), detail: Some(detail) }
+    GatewayLedger {
+        label,
+        host,
+        status: LedgerStatus::Unreachable,
+        rows: Vec::new(),
+        detail: Some(detail),
+    }
 }
 
 // ── WRAP-API providers via the winhub key slot (OpenRouter, fal) ─────────────
@@ -389,7 +430,14 @@ async fn check_slot(ssh_host: &str, slot_filename: &str) -> SlotState {
     let output = tokio::time::timeout(
         Duration::from_secs(12),
         tokio::process::Command::new("ssh")
-            .args(["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", ssh_host, &command])
+            .args([
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=6",
+                ssh_host,
+                &command,
+            ])
             .output(),
     )
     .await;
@@ -459,8 +507,8 @@ struct FalBillingResponse {
 
 /// Pure parse of the fal billing response → remaining credit balance.
 fn parse_fal_billing(body: &str) -> Result<f64, String> {
-    let parsed: FalBillingResponse = serde_json::from_str(body)
-        .map_err(|e| format!("unparseable fal billing response: {e}"))?;
+    let parsed: FalBillingResponse =
+        serde_json::from_str(body).map_err(|e| format!("unparseable fal billing response: {e}"))?;
     parsed
         .balance
         .ok_or_else(|| "fal billing response had no recognizable credit-balance field".to_string())
@@ -483,7 +531,14 @@ async fn ssh_run(ssh_host: &str, command: &str) -> Result<String, String> {
     let output = tokio::time::timeout(
         Duration::from_secs(15),
         tokio::process::Command::new("ssh")
-            .args(["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", ssh_host, command])
+            .args([
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=6",
+                ssh_host,
+                command,
+            ])
             .output(),
     )
     .await;
@@ -617,7 +672,9 @@ async fn build_fal_tile(ssh_host: &str) -> ProviderTile {
                 },
                 Err(e) => ProviderTile {
                     status: ProviderStatus::Unreachable,
-                    detail: Some(format!("fal balance read failed (verify endpoint shape): {e}")),
+                    detail: Some(format!(
+                        "fal balance read failed (verify endpoint shape): {e}"
+                    )),
                     ..base
                 },
             },
@@ -676,7 +733,11 @@ pub async fn get_paid_compute() -> PaidComputeSnapshot {
         ),
     ];
 
-    PaidComputeSnapshot { gateway_ledger, providers, probed_at: now_iso() }
+    PaidComputeSnapshot {
+        gateway_ledger,
+        providers,
+        probed_at: now_iso(),
+    }
 }
 
 #[cfg(test)]
@@ -693,12 +754,27 @@ mod tests {
         std::env::remove_var("TENDER_BIFROST_HOST");
         std::env::remove_var("TENDER_WINHUB_SSH_HOST");
         let snap = get_paid_compute().await;
-        assert!(matches!(snap.gateway_ledger.status, LedgerStatus::Unreachable));
+        assert!(matches!(
+            snap.gateway_ledger.status,
+            LedgerStatus::Unreachable
+        ));
         assert!(snap.gateway_ledger.host.is_empty());
-        assert!(snap.gateway_ledger.detail.as_deref().unwrap_or("").contains("not configured"));
-        for tile in snap.providers.iter().filter(|t| t.kind == ProviderKind::WrapApi) {
+        assert!(snap
+            .gateway_ledger
+            .detail
+            .as_deref()
+            .unwrap_or("")
+            .contains("not configured"));
+        for tile in snap
+            .providers
+            .iter()
+            .filter(|t| t.kind == ProviderKind::WrapApi)
+        {
             assert!(
-                tile.detail.as_deref().unwrap_or("").contains("not configured"),
+                tile.detail
+                    .as_deref()
+                    .unwrap_or("")
+                    .contains("not configured"),
                 "{} tile should be not configured",
                 tile.id
             );
@@ -760,8 +836,14 @@ mod tests {
         // audience-segregation "nothing to steal" rule at the parse boundary.
         let rows = parse_governance_vkeys(REAL_GOV_BODY_WITH_SECRETS).expect("parses");
         let json = serde_json::to_string(&rows).expect("serializes");
-        assert!(!json.contains("sk-bf-"), "a vkey bearer secret leaked into frontend JSON");
-        assert!(!json.contains("value"), "a `value` secret field leaked into frontend JSON");
+        assert!(
+            !json.contains("sk-bf-"),
+            "a vkey bearer secret leaked into frontend JSON"
+        );
+        assert!(
+            !json.contains("value"),
+            "a `value` secret field leaked into frontend JSON"
+        );
         // But the safe fields ARE present.
         assert!(json.contains("code-review"));
         assert!(json.contains("currentUsage"));
@@ -813,7 +895,10 @@ mod tests {
     #[test]
     fn parses_fal_billing_credit_balance_field_variants() {
         assert_eq!(parse_fal_billing(r#"{"balance":42.0}"#).unwrap(), 42.0);
-        assert_eq!(parse_fal_billing(r#"{"credit_balance":15.25}"#).unwrap(), 15.25);
+        assert_eq!(
+            parse_fal_billing(r#"{"credit_balance":15.25}"#).unwrap(),
+            15.25
+        );
         assert_eq!(parse_fal_billing(r#"{"credits":3.0}"#).unwrap(), 3.0);
     }
 
@@ -831,17 +916,29 @@ mod tests {
         let cmd = slot_presence_command("openrouter-management.key");
         assert!(cmd.contains("Test-Path"));
         assert!(cmd.contains(".Length -gt 0"));
-        assert!(cmd.contains("$env:USERPROFILE"), "path must be portable, no hardcoded username");
+        assert!(
+            cmd.contains("$env:USERPROFILE"),
+            "path must be portable, no hardcoded username"
+        );
         assert!(cmd.contains("openrouter-management.key"));
         // Must NOT read the file's contents.
-        assert!(!cmd.contains("Get-Content"), "presence check must never read the key contents");
+        assert!(
+            !cmd.contains("Get-Content"),
+            "presence check must never read the key contents"
+        );
     }
 
     #[test]
     fn parse_slot_presence_maps_sentinels() {
-        assert_eq!(parse_slot_presence("__SLOT_PRESENT__\n"), SlotState::Present);
+        assert_eq!(
+            parse_slot_presence("__SLOT_PRESENT__\n"),
+            SlotState::Present
+        );
         assert_eq!(parse_slot_presence("  __SLOT_EMPTY__  "), SlotState::Empty);
-        assert!(matches!(parse_slot_presence("ssh banner noise"), SlotState::SshError(_)));
+        assert!(matches!(
+            parse_slot_presence("ssh banner noise"),
+            SlotState::SshError(_)
+        ));
     }
 
     // ── Balance-probe command safety (key used on winhub, never returned) ─────
@@ -855,8 +952,14 @@ mod tests {
         // The key variable ($k) is used only in the Authorization header; the
         // emitted object is a fixed numeric field set — $k is never in the output.
         assert!(cmd.contains("Authorization = \"Bearer $k\""));
-        assert!(!cmd.contains("$k }"), "the key must not be piped into the output object");
-        assert!(!cmd.contains("key = $k"), "the key must not appear as an emitted field");
+        assert!(
+            !cmd.contains("$k }"),
+            "the key must not be piped into the output object"
+        );
+        assert!(
+            !cmd.contains("key = $k"),
+            "the key must not appear as an emitted field"
+        );
     }
 
     #[test]
@@ -873,7 +976,10 @@ mod tests {
         let t = deep_link_tile("modal", "Modal", MODAL_USAGE_URL, "no API");
         assert_eq!(t.status, ProviderStatus::DashboardOnly);
         assert_eq!(t.kind, ProviderKind::DeepLink);
-        assert!(t.balance.is_none(), "a deep-link provider must never carry a fabricated balance");
+        assert!(
+            t.balance.is_none(),
+            "a deep-link provider must never carry a fabricated balance"
+        );
         assert!(t.usage.is_none());
         assert!(t.subscription_url.contains("modal.com"));
     }
@@ -882,11 +988,26 @@ mod tests {
 
     #[test]
     fn enums_serialise_camel_case() {
-        assert_eq!(serde_json::to_string(&LedgerStatus::Unreachable).unwrap(), "\"unreachable\"");
-        assert_eq!(serde_json::to_string(&ProviderKind::WrapApi).unwrap(), "\"wrapApi\"");
-        assert_eq!(serde_json::to_string(&ProviderKind::DeepLink).unwrap(), "\"deepLink\"");
-        assert_eq!(serde_json::to_string(&ProviderStatus::NotConfigured).unwrap(), "\"notConfigured\"");
-        assert_eq!(serde_json::to_string(&ProviderStatus::DashboardOnly).unwrap(), "\"dashboardOnly\"");
+        assert_eq!(
+            serde_json::to_string(&LedgerStatus::Unreachable).unwrap(),
+            "\"unreachable\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ProviderKind::WrapApi).unwrap(),
+            "\"wrapApi\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ProviderKind::DeepLink).unwrap(),
+            "\"deepLink\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ProviderStatus::NotConfigured).unwrap(),
+            "\"notConfigured\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ProviderStatus::DashboardOnly).unwrap(),
+            "\"dashboardOnly\""
+        );
     }
 
     #[test]

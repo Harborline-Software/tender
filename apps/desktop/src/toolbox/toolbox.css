@@ -1,0 +1,82 @@
+/* Toolbox main-window chrome adjustments over @shipyard/workspace-shell
+   (dual-surface, shipyard #2973). The shell ships its own workspace-shell.css;
+   these rules give the frame a full-window height model and tune the header for
+   the Toolbox surface. Tokens are the shell's own --eco-* inputs (bridged to the
+   tender palette in shellTheme.ts). */
+
+/* Frame fills the window; the shell grid fills the space below the header. */
+.toolbox-frame {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.toolbox-frame > .workspace-shell {
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+
+/* Header surface. */
+.toolbox-header {
+  background: var(--eco-surface, Canvas);
+  border-block-end: 1px solid var(--eco-border, color-mix(in srgb, CanvasText 18%, transparent));
+}
+
+/* Only the navigation panel is used in the Toolbox — the shell's built-in
+   inspector/utility/shortcut controls are hidden; a single icon-only navigation
+   toggle is placed in the header lead instead (its aria-label carries the name). */
+.toolbox-frame .workspace-shell__header-controls {
+  display: none;
+}
+.toolbox-frame .workspace-shell__panel-toggle span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Panel-collapse toggle icon fix (CIC amendment, tender#103 fix pass 2):
+   `PanelLayoutIcon` in @shipyard/workspace-shell renders `fill="none"` on the
+   root <svg> with no `stroke`/`fill` set on its <rect>/<path> children anywhere
+   in the shell's own stylesheet, so the icon painted nothing at all — an empty
+   box, not an unstyled default. Root cause lives upstream
+   (shipyard/_shared/design/workspace-shell/workspace-shell.css); this scoped
+   override paints it from the Toolbox's own ghost icon-button treatment
+   (transparent, dim until hover/focus — matching the header's other icon
+   buttons) without editing the shared package. Follow-up: file a shipyard card
+   to fix `PanelLayoutIcon` at the source so every consumer benefits. */
+.toolbox-frame .workspace-shell__panel-toggle {
+  color: var(--eco-text, currentColor);
+  opacity: 0.62;
+  border-color: transparent;
+  transition: opacity 120ms ease, background 120ms ease;
+}
+.toolbox-frame .workspace-shell__panel-toggle:hover,
+.toolbox-frame .workspace-shell__panel-toggle:focus-visible {
+  opacity: 1;
+  background: color-mix(in srgb, var(--eco-focus, CanvasText) 14%, transparent);
+}
+.toolbox-frame .workspace-shell__panel-toggle .eco-bar__panel-icon rect {
+  stroke: currentColor;
+  fill: none;
+}
+.toolbox-frame .workspace-shell__panel-toggle .eco-bar__panel-icon path:not(.eco-bar__panel-state) {
+  stroke: currentColor;
+}
+.toolbox-frame .workspace-shell__panel-toggle .eco-bar__panel-icon .eco-bar__panel-state {
+  fill: currentColor;
+  opacity: 0.32;
+}
+
+/* Right-aligned header cluster (search · Pilot · mode). */
+.toolbox-header-trailing {
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

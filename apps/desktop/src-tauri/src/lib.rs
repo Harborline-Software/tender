@@ -12,15 +12,56 @@ mod devices;
 pub mod install;
 pub mod install_config;
 pub mod inventory;
-pub mod paidcompute;
 mod notifications;
+pub mod paidcompute;
 pub mod probe;
 pub mod profile;
-pub mod provider_health;
 mod projects;
+pub mod provider_health;
 pub mod residency;
 pub mod settings;
+pub mod ships;
 mod telemetry;
+
+/// Open the full Toolbox main window (dual-surface, shipyard #2973).
+///
+/// Shows the decorated `toolbox` window, flips the macOS activation policy to
+/// `Regular` (so the Dock icon appears while the window is open — standard macOS
+/// behavior), focuses it, and — when a deep-link target is given — emits
+/// `toolbox-navigate` so the window pre-selects that section/item. The window
+/// closes back to the tray (see `CloseRequested` handling) rather than quitting.
+#[tauri::command]
+fn open_toolbox(app: tauri::AppHandle, section: Option<String>) -> Result<(), String> {
+    let window = app
+        .get_webview_window("toolbox")
+        .ok_or_else(|| "toolbox window not found".to_string())?;
+
+    // Dock icon visible while the main window is open (ActivationPolicy switch).
+    #[cfg(target_os = "macos")]
+    let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+
+    // Log (never silently swallow) — these are the only signal an operator/dev
+    // has that the window failed to surface (code-review PR #103, nit: was
+    // `let _ = ...` on every call).
+    if let Err(e) = window.unminimize() {
+        eprintln!("[open_toolbox] unminimize failed (non-fatal): {e}");
+    }
+    if let Err(e) = window.show() {
+        eprintln!("[open_toolbox] show failed: {e}");
+    }
+    if let Err(e) = window.set_focus() {
+        eprintln!("[open_toolbox] set_focus failed (non-fatal): {e}");
+    }
+
+    if let Some(target) = section {
+        // The toolbox webview is created (hidden) at launch, so its listener is
+        // already mounted by the time the operator opens it from the tray.
+        if let Err(e) = window.emit("toolbox-navigate", target) {
+            eprintln!("[open_toolbox] emit(toolbox-navigate) failed: {e}");
+        }
+    }
+    Ok(())
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -81,8 +122,13 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // Keep the main window hidden until the tray icon is clicked.
+            // Keep the tray popup ("main") hidden until the tray icon is clicked,
+            // and the full Toolbox window hidden until explicitly opened. Both
+            // webviews still load at launch so their event listeners are ready.
             if let Some(window) = app.get_webview_window("main") {
+                let _ = window.hide();
+            }
+            if let Some(window) = app.get_webview_window("toolbox") {
                 let _ = window.hide();
             }
 
@@ -94,10 +140,27 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             match event {
-                // Close the panel when it loses keyboard focus (click outside).
+                // Close the tray popup when it loses keyboard focus (click
+                // outside). The Toolbox window is a normal window — it must NOT
+                // hide on blur, only on an explicit close.
                 tauri::WindowEvent::Focused(false) => {
                     if window.label() == "main" {
                         let _ = window.hide();
+                    }
+                }
+                // The Toolbox window closes back to the tray — the app never
+                // quits from the window's close button. Hide it and drop the Dock
+                // icon (back to menu-bar-only) instead of destroying the window.
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    if window.label() == "toolbox" {
+                        api.prevent_close();
+                        let _ = window.hide();
+                        #[cfg(target_os = "macos")]
+                        {
+                            let _ = window
+                                .app_handle()
+                                .set_activation_policy(tauri::ActivationPolicy::Accessory);
+                        }
                     }
                 }
                 // Notify the frontend when the system appearance flips so it
@@ -121,6 +184,7 @@ pub fn run() {
             commands::get_local_services,
             commands::get_devices,
             commands::open_external,
+            open_toolbox,
             commands::quit_app,
             commands::emergency_stop,
             commands::stop_services,
@@ -143,6 +207,9 @@ pub fn run() {
             commands::get_model_inventory,
             commands::get_gpu_residency,
             commands::get_paid_compute,
+            commands::get_ship_hosts,
+            commands::get_ship_services,
+            commands::set_ship_service,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Harborline Toolbox");

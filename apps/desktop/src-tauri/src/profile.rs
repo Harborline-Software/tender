@@ -15,9 +15,7 @@ use std::collections::BTreeMap;
 
 /// Named capability profile (ADR 0116 D2). Ordered floor → ceiling so an
 /// opt-up/opt-down (D3) is a simple comparison.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ProfileName {
     Minimum,
@@ -202,10 +200,7 @@ mod tests {
             serde_json::to_string(&ProfileName::Minimum).unwrap(),
             "\"minimum\""
         );
-        assert_eq!(
-            serde_json::to_string(&ProfileName::Max).unwrap(),
-            "\"max\""
-        );
+        assert_eq!(serde_json::to_string(&ProfileName::Max).unwrap(), "\"max\"");
     }
 
     #[test]
@@ -220,12 +215,15 @@ mod tests {
         let json = serde_json::to_string(&p).unwrap();
         let back: CapabilityProfile = serde_json::from_str(&json).unwrap();
         assert_eq!(back.name, ProfileName::Standard);
-        assert_eq!(back.axes.get("persistence").map(String::as_str), Some("sqlite"));
+        assert_eq!(
+            back.axes.get("persistence").map(String::as_str),
+            Some("sqlite")
+        );
     }
 
     // ── Mapping (H4) tests ───────────────────────────────────────────────────
 
-    use crate::probe::{Architecture, HardwareProfile, OsFamily, ProbeResult, DiskVolume};
+    use crate::probe::{Architecture, DiskVolume, HardwareProfile, OsFamily, ProbeResult};
 
     /// Build a keying-complete probe with the given stable signals (GiB inputs).
     fn probe(ram_gib: u64, cores: u32, free_gib: u64) -> ProbeResult {
@@ -262,17 +260,26 @@ mod tests {
     #[test]
     fn low_ram_box_recommends_minimum() {
         // 4 GB box (below the 8 GB standard gate) → minimum.
-        assert_eq!(ProfileName::recommend(&probe(4, 4, 50)), ProfileName::Minimum);
+        assert_eq!(
+            ProfileName::recommend(&probe(4, 4, 50)),
+            ProfileName::Minimum
+        );
     }
 
     #[test]
     fn eight_gb_box_recommends_standard() {
-        assert_eq!(ProfileName::recommend(&probe(8, 2, 4)), ProfileName::Standard);
+        assert_eq!(
+            ProfileName::recommend(&probe(8, 2, 4)),
+            ProfileName::Standard
+        );
     }
 
     #[test]
     fn sixteen_gb_box_recommends_capable() {
-        assert_eq!(ProfileName::recommend(&probe(16, 4, 10)), ProfileName::Capable);
+        assert_eq!(
+            ProfileName::recommend(&probe(16, 4, 10)),
+            ProfileName::Capable
+        );
     }
 
     #[test]
@@ -284,7 +291,10 @@ mod tests {
     fn weakest_gated_axis_caps_the_tier() {
         // Lots of RAM + cores but only 5 GB free disk: fails the capable gate's
         // 10 GB disk floor → caps at standard.
-        assert_eq!(ProfileName::recommend(&probe(32, 8, 5)), ProfileName::Standard);
+        assert_eq!(
+            ProfileName::recommend(&probe(32, 8, 5)),
+            ProfileName::Standard
+        );
     }
 
     #[test]
@@ -301,7 +311,10 @@ mod tests {
     #[test]
     fn persistence_opt_up_only_at_capable_and_above() {
         assert_eq!(persistence_default(ProfileName::Minimum), ("sqlite", false));
-        assert_eq!(persistence_default(ProfileName::Standard), ("sqlite", false));
+        assert_eq!(
+            persistence_default(ProfileName::Standard),
+            ("sqlite", false)
+        );
         assert_eq!(persistence_default(ProfileName::Capable), ("sqlite", true));
         assert_eq!(persistence_default(ProfileName::Max), ("sqlite", true));
     }
