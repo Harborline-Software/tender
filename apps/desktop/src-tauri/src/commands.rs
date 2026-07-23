@@ -37,17 +37,15 @@ fn log_paths_for_service(service_id: &str) -> Vec<std::path::PathBuf> {
         // Guard against path traversal — a `service_id` containing a path
         // separator or `..` could escape the logs dir; reject with no paths.
         id if id.contains('/') || id.contains('\\') || id.contains("..") => vec![],
-        id => vec![
-            format!("{}/{}.log", hl_logs, id).into(),
-        ],
+        id => vec![format!("{}/{}.log", hl_logs, id).into()],
     }
 }
 
 /// Read the tail of a log file — returns the last `lines` lines as a Vec.
 /// Returns an empty Vec if the file does not exist yet.
 fn tail_file(path: &std::path::Path, lines: usize) -> std::io::Result<Vec<String>> {
-    use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
     use std::fs::File;
+    use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 
     let mut f = match File::open(path) {
         Ok(f) => f,
@@ -169,7 +167,10 @@ pub async fn emergency_stop() -> Result<String, String> {
     let base = std::env::var("TENDER_FLIGHTDECK_BASE_URL")
         .unwrap_or_else(|_| "http://localhost:3080".to_string());
     let resp = client
-        .post(format!("{}/api/admin/emergency-stop", base.trim_end_matches('/')))
+        .post(format!(
+            "{}/api/admin/emergency-stop",
+            base.trim_end_matches('/')
+        ))
         .send()
         .await
         .map_err(|e| format!("Flight-Deck unreachable: {}", e))?;
@@ -382,7 +383,9 @@ pub async fn get_log_tail(service_id: String, lines: Option<u32>) -> Result<Vec<
         .map_err(|e| format!("Task join error: {}", e))?;
 
     if paths.is_empty() {
-        return Ok(vec!["[no log paths configured for this service]".to_string()]);
+        return Ok(vec![
+            "[no log paths configured for this service]".to_string()
+        ]);
     }
 
     let mut result: Vec<String> = Vec::new();
@@ -642,6 +645,39 @@ pub async fn get_paid_compute() -> crate::paidcompute::PaidComputeSnapshot {
     crate::paidcompute::get_paid_compute().await
 }
 
+// ── Remote ship service control (shipyard#2998) ──────────────────────────────
+
+/// List the allow-listed remote hosts for the Ships view (from the committed
+/// `resources/ships/hosts.json`). Errors only if that config is missing/
+/// unparseable — a build always ships it.
+#[tauri::command]
+pub async fn get_ship_hosts() -> Result<Vec<crate::ships::ShipHostSummary>, String> {
+    crate::ships::get_ship_hosts()
+}
+
+/// Probe one host's fleet-relevant services (classified essential/reclaimable
+/// via the vendored allowlist) plus its free/total physical memory, over the
+/// operator's ssh identity. Never errors — an unreachable host is captured
+/// honestly as `reachable=false` with the ssh detail (see `ships`).
+#[tauri::command]
+pub async fn get_ship_services(host_id: String) -> crate::ships::ShipsSnapshot {
+    crate::ships::get_ship_services(host_id).await
+}
+
+/// Start or stop ONE reclaimable service on a host, then re-query for a VERIFIED
+/// post-state. Rejects (errors) unless the host is allow-listed, the service
+/// name clears the strict charset guard, and the service exists on the live host
+/// AND classifies reclaimable — the command-injection + fail-safe fence
+/// (see `ships::set_ship_service`).
+#[tauri::command]
+pub async fn set_ship_service(
+    host_id: String,
+    service_name: String,
+    action: String,
+) -> Result<crate::ships::ShipActionOutcome, String> {
+    crate::ships::set_ship_service(host_id, service_name, action).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -661,12 +697,18 @@ mod tests {
 
         let outcome = stop_by_pattern(&marker);
         let (stopped, detail) = outcome.expect("sleeper should have been detected");
-        assert!(stopped, "sleeper should stop on SIGTERM, got detail {detail:?}");
+        assert!(
+            stopped,
+            "sleeper should stop on SIGTERM, got detail {detail:?}"
+        );
 
         // Reap the child so it doesn't linger as a zombie.
         let _ = child.wait();
 
-        assert!(stop_by_pattern(&marker).is_none(), "nothing should match after stop");
+        assert!(
+            stop_by_pattern(&marker).is_none(),
+            "nothing should match after stop"
+        );
     }
     use crate::install_config::{InstallConfig, InstalledApp, LaunchContract};
     use crate::profile::CapabilityProfile;
@@ -696,6 +738,9 @@ mod tests {
         let config = InstallConfig::default();
         let err = resolve_start_command(&config, "signal-bridge").unwrap_err();
         assert!(err.contains("not Tender-managed"));
-        assert!(!err.contains("Projects"), "must not reference a dev-layout path");
+        assert!(
+            !err.contains("Projects"),
+            "must not reference a dev-layout path"
+        );
     }
 }

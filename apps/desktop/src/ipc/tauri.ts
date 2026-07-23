@@ -13,7 +13,11 @@ const IN_TAURI = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in windo
  */
 function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (!IN_TAURI && import.meta.env.DEV && cmd in DEV_MOCKS) {
-    return Promise.resolve(DEV_MOCKS[cmd] as T)
+    const mock = DEV_MOCKS[cmd]
+    // Some mocks are functions of the call args (e.g. host-parameterized Ships
+    // probes) so browser-dev renders each honest state; the rest are static.
+    const value = typeof mock === 'function' ? (mock as (a?: Record<string, unknown>) => unknown)(args) : mock
+    return Promise.resolve(value as T)
   }
   return tauriInvoke<T>(cmd, args)
 }
@@ -156,6 +160,19 @@ export async function openExternal(url: string): Promise<void> {
 
 export async function quitApp(): Promise<void> {
   return invoke('quit_app')
+}
+
+/**
+ * Open the full Toolbox main window (dual-surface, shipyard #2973), optionally
+ * focused on a section or a specific item. Shows the decorated window, flips the
+ * macOS activation policy to Regular (Dock icon appears), and emits
+ * `toolbox-navigate` so the window pre-selects the target.
+ *
+ * @param target `<section>` (e.g. `"fleet"`) or `<section>:<item>`
+ *   (e.g. `"console:logs"`). Omit to open on the default section.
+ */
+export async function openToolbox(target?: string): Promise<void> {
+  return invoke('open_toolbox', { section: target ?? null })
 }
 
 export async function emergencyStop(): Promise<string> {
@@ -395,4 +412,83 @@ export type {
  */
 export async function getPaidCompute(): Promise<PaidComputeSnapshot> {
   return invoke<PaidComputeSnapshot>('get_paid_compute')
+}
+
+// ── Remote ship service control (shipyard#2998) ──────────────────────────────
+
+/** How a service is classified by the vendored allowlist (the control guard). */
+export type ShipClass = 'essential' | 'reclaimable'
+
+/** Live remote service status — 'unknown' is honest, never a guess. */
+export type ShipStatus = 'running' | 'stopped' | 'unknown'
+
+export interface ShipService {
+  name: string
+  classification: ShipClass
+  status: ShipStatus
+  /** True ONLY for reclaimable services — the UI reads this to decide whether
+   *  to render a Start/Stop control (mirrors the Rust guard; never inferred). */
+  canControl: boolean
+}
+
+export interface ShipHostSummary {
+  id: string
+  displayName: string
+  sshTarget: string
+  /** Whether a vendored classification exists for this host. */
+  classified: boolean
+}
+
+export interface ShipsSnapshot {
+  hostId: string
+  displayName: string
+  sshTarget: string
+  reachable: boolean
+  /** ssh / probe detail when unreachable — surfaced honestly, never hidden. */
+  detail?: string | null
+  classified: boolean
+  services: ShipService[]
+  /** Vendored classification source filename (staleness surfaced in the UI). */
+  classificationSource?: string | null
+  memFreeBytes?: number | null
+  memTotalBytes?: number | null
+  probedAt: string
+}
+
+export interface ShipActionOutcome {
+  hostId: string
+  serviceName: string
+  action: 'start' | 'stop'
+  ok: boolean
+  /** Re-queried post-state — the VERIFIED status, never assumed. */
+  verifiedStatus: ShipStatus
+  detail?: string | null
+  memFreeBeforeBytes?: number | null
+  memFreeAfterBytes?: number | null
+}
+
+/** List the allow-listed remote hosts for the Ships view. */
+export async function getShipHosts(): Promise<ShipHostSummary[]> {
+  return invoke<ShipHostSummary[]>('get_ship_hosts')
+}
+
+/**
+ * Probe one host's fleet services + memory over the operator's ssh identity.
+ * Never throws — an unreachable host is captured as `reachable=false`.
+ */
+export async function getShipServices(hostId: string): Promise<ShipsSnapshot> {
+  return invoke<ShipsSnapshot>('get_ship_services', { hostId })
+}
+
+/**
+ * Start or stop ONE reclaimable service, returning a VERIFIED post-state.
+ * Rejects (throws a string) unless the host is allow-listed, the name clears
+ * the charset guard, and the service exists AND classifies reclaimable.
+ */
+export async function setShipService(
+  hostId: string,
+  serviceName: string,
+  action: 'start' | 'stop',
+): Promise<ShipActionOutcome> {
+  return invoke<ShipActionOutcome>('set_ship_service', { hostId, serviceName, action })
 }

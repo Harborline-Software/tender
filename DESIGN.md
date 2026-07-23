@@ -26,12 +26,37 @@ Dual-mode, follows macOS appearance (IPC-driven; `.dark`/`.light` class on docum
 
 - StatusPill, MeterBar, Sparkline, Dial, GaugeCard — data primitives, mono numerals
 - ConsoleIndicator — lucide-react icons at 11px (radio, layout-grid, waves, cpu, settings, power, container, message-square)
-- MenuShell + TabStrip (Fleet / Projects / Services / Console) — 360px tray panel
+- MenuShell + TabStrip (Fleet / Projects / Services / Console) — 440px tray panel
+  (widened from 360px, CIC amendment tender#103 fix pass 2 — 360 wrapped the
+  header's host chip to 3 lines)
 - Honest-state rows: "not configured" / "unreachable" render as designed guidance states, not errors
 
 ## Layout
 
-- Fixed 360px width, macOS tray dropdown; dense rows ~34–44px; detail screens push in-place
+Two surfaces, one token system (dual-surface, shipyard #2973):
+
+**Tray popup (`main` window, `index.html`).** Fixed 440px width (widened from the
+original 360px — CIC amendment, tender#103 fix pass 2: 360px wrapped the header's
+host/workspace chip, e.g. "MacBook Pro 2016", to 3 lines and crowded the row; 440px
+keeps it to one line while staying tray-native), macOS tray dropdown; dense rows
+~34–44px; detail screens push in-place. Unchanged pixel-role otherwise — it renders
+in its own bundle and never loads the workspace-shell stylesheet. Adds an explicit,
+visibly-labeled **"Open Toolbox"** action (persistent footer row, mirroring the
+Dry Dock row's always-reachable placement — CIC amendment, fix pass 2: the prior
+26px icon-only header button had no visible text and was not discoverable) and
+per-row deep-links into the main window (Console rows carry a trailing "open in
+Toolbox" control alongside the in-popup chevron — two sibling buttons, never nested).
+
+**Main window ("Toolbox", `toolbox` window, `toolbox.html`).** Decorated, resizable, ~1100×720 (min 800×560). Chrome is the *actual* shipyard workspace shell — `@shipyard/workspace-shell`'s `WorkspaceShell` (the Carrier-family chrome), consumed as a `file:` dependency, NOT a hand-rolled frame. Structure:
+- Header: navigation-panel toggle (icon-only, `WorkspaceShellPanelToggle`) · Logomark + wordmark · section-scoped search · honest Pilot slot (Pilot is not wired into the Toolbox surface — a quiet "not available here" designed state, never a dead button) · appearance indicator.
+- Navigation panel (toggleable, ~240px): the four sections (Fleet / Projects / Services / Console).
+- Main region: the active section as **master-detail** — a ~300px master list + a detail pane. The detail pane reuses the existing 13 detail screens (no rescope); Console's Logs entry is a full-height log viewer with a real measure.
+- Inspector / utility panels are unused (hidden) — the Toolbox is a two-region (nav + master-detail) workspace.
+- Responsiveness is JS-gated (`useMediaQuery`, `max-width: 860px`), structural: below the breakpoint the master-detail folds to a single column (master, then detail-with-back), and the navigation panel collapses via the shell's own toggle.
+- Window lifecycle: opens from the tray, closes back to the tray (never quits); the macOS Dock icon appears/disappears with the window (Tauri ActivationPolicy).
+
+**Chrome token bridge.** `WorkspaceShell`'s stylesheet keys off `--eco-*` / `--brand-*` chrome tokens (which fall back to system `Canvas`/`CanvasText`). `src/toolbox/shellTheme.ts` maps the tender palette onto those inputs per mode (`--eco-surface`←bg, `--eco-surface-raised`←bgSoft, `--eco-text`←text, `--eco-border`←border, `--eco-focus`/`--brand-primary`←accent), applied as documentElement custom properties — so the shipyard chrome wears the Harborline palette and One-Accent Rule (selection = blue only). The shell's dark/light is driven by the same `.dark`/`[data-theme]` the ThemeProvider stamps.
+
 - Radius: 8px (`radiusLg`) containers, pill (`radiusFull`) for badges/pills; legacy micro-elements at 2–5px pending reconciliation
 
 ## Iconography & Brand
