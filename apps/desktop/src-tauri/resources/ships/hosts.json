@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "_doc": "Committed SSH host allowlist for the Toolbox Ships view (shipyard#2998). Transport is shape A per #2982: the Toolbox shells the OPERATOR'S OWN ssh identity (~/.ssh) at these hosts — no keys are bundled and no new server surface is introduced. Hosts are identified by their Tailscale MagicDNS name, NEVER a raw Tailscale IP (fleet convention 'winhub IP not in GitHub' — the raw 100.x address is a PII-gate pattern; the MagicDNS name is the sanctioned committed form, matching coordination/runbooks/winhub-bootstrap.md). This file is the ALLOWLIST: the Ships view only ever ssh-es hosts named here, and set_ship_service only ever acts on a host in this list. `essentialConfig` names the vendored classification file (ship-essential-<host>.json) that decides which services are controllable; a host with essentialConfig=null has NO ship classification, so the fail-safe treats every service as essential (status-only, no control). Admiral-maintained; keep host targets in sync with the tailnet.",
+  "hosts": [
+    {
+      "id": "winhub",
+      "displayName": "winhub",
+      "sshTarget": "desktop-umt08rn.taildefd38.ts.net",
+      "sshUser": "chris",
+      "shell": "powershell",
+      "essentialConfig": "ship-essential-winhub.json"
+    },
+    {
+      "id": "surface",
+      "displayName": "surface",
+      "sshTarget": "surface-pro.taildefd38.ts.net",
+      "sshUser": "chris wood",
+      "shell": "powershell",
+      "essentialConfig": null
+    }
+  ]
+}

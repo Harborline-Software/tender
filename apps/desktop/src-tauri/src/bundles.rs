@@ -20,8 +20,8 @@
 //! The C# record uses `System.Text.Json` with default `camelCase` property names.
 //! All fields here use `#[serde(rename_all = "camelCase")]`.
 
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 // ── Enums ────────────────────────────────────────────────────────────────────
 
@@ -225,9 +225,7 @@ fn bundle_manifests_dir() -> Result<std::path::PathBuf, String> {
 
         // In `cargo tauri dev` the exe lives under target/; the resources dir
         // is placed next to it by Tauri's dev runner.
-        let dev_resource = exe
-            .parent()
-            .map(|p| p.join("resources").join("bundles"));
+        let dev_resource = exe.parent().map(|p| p.join("resources").join("bundles"));
         if let Some(drp) = dev_resource {
             if drp.exists() {
                 return Ok(drp);
@@ -236,7 +234,8 @@ fn bundle_manifests_dir() -> Result<std::path::PathBuf, String> {
     }
 
     // (2) Dev sibling fleet layout fallback.
-    let home = std::env::var("HOME").map_err(|_| "HOME environment variable not set".to_string())?;
+    let home =
+        std::env::var("HOME").map_err(|_| "HOME environment variable not set".to_string())?;
     let sibling = std::path::PathBuf::from(home)
         .join("Projects")
         .join("Harborline-Software")
@@ -250,12 +249,10 @@ fn bundle_manifests_dir() -> Result<std::path::PathBuf, String> {
         return Ok(sibling);
     }
 
-    Err(
-        "Bundle manifest directory not found. \
+    Err("Bundle manifest directory not found. \
          Expected either the bundled resources/bundles/ inside the .app, \
          or a sibling shipyard/ clone at ~/Projects/Harborline-Software/."
-            .to_string(),
-    )
+        .to_string())
 }
 
 /// Read all `*.bundle.json` files from the resolved bundles directory.
@@ -300,10 +297,7 @@ pub fn read_bundle_manifests() -> Result<Vec<BusinessCaseBundleManifest>, String
     }
 
     if manifests.is_empty() {
-        return Err(format!(
-            "No *.bundle.json files found in {}",
-            dir.display()
-        ));
+        return Err(format!("No *.bundle.json files found in {}", dir.display()));
     }
 
     // Stable ordering: sort by bundle key so UI renders consistently

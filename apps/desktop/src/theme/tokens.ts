@@ -27,6 +27,12 @@ export interface Theme {
   // Brand accents (action/selection — NOT semantic status)
   accent: string
   accentBright: string
+  // Accent when rendered AS TEXT (labels, counts, small controls) rather than as
+  // a border/fill/icon. `accent` itself fails the 4.5:1 AA text floor in light
+  // mode (3.78:1) — accentText is the AA-safe shade for that usage (design-review
+  // D1, tender#103): accentBright in light, accent in dark. Accent-as-border/
+  // -fill/-icon (3:1 floor) should keep using `accent` directly.
+  accentText: string
   // Beacon-amber live/signal accent (identity; NOT interactive, NOT health)
   signal: string
   // Semantic status — fleet-standard green/amber/red
@@ -88,6 +94,10 @@ export const dark: Theme = {
   // Contrast vs #15171c bg: accent ~8.7:1, accentBright ~11.2:1 — AA pass.
   accent: '#7ab8ff',
   accentBright: '#a8d0ff',
+  // accentText: dark mode's `accent` already passes the AA text floor (~8.7:1),
+  // so accentText = accent here (no swap needed — the light-mode fail is the
+  // one case accentText exists for).
+  accentText: '#7ab8ff',
   // Beacon-amber live/signal — ~6.4:1 vs #15171c, AA pass
   signal: '#e97c48',
   // Semantic status — contrast vs #15171c bg:
@@ -121,6 +131,11 @@ export const light: Theme = {
   // accent-as-small-text use accentBright #0043ce (~5.9:1, AA text pass).
   accent: '#0f62fe',
   accentBright: '#0043ce',
+  // accentText: `accent` (#0f62fe) measures 3.78:1 vs #dde0e6 — fails the 4.5:1
+  // AA text floor. accentBright (#0043ce, ~5.84:1) is the AA-pass shade for
+  // accent rendered AS TEXT (design-review D1, tender#103). Accent-as-border/
+  // -fill/-icon stays on plain `accent` (3:1 floor, which #0f62fe clears).
+  accentText: '#0043ce',
   // Beacon-amber as ink on the light bg (brand accent-ink family, depth-tuned
   // for this bg) — ~4.8:1, AA pass
   signal: '#9a4719',

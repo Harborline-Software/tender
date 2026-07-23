@@ -20,7 +20,12 @@ export function MenuShell({ children }: Props) {
   return (
     <div
       style={{
-        width: 360,
+        // CIC amendment (tender#103 fix pass 2): widened 360 -> 440. At 360px the
+        // header's workspace/host chip (e.g. "MacBook Pro 2016") wrapped to 3
+        // lines and crowded the row. This supersedes the card's original "popup
+        // pixel-role unchanged" clause for WIDTH specifically — density/role
+        // (dense rows, tray-native chrome, unchanged bundle) is otherwise intact.
+        width: 440,
         // F1.2: clamp to viewport minus menubar height; panel hangs below ~24px bar
         maxHeight: 'calc(100vh - 44px)',
         minHeight: 200,

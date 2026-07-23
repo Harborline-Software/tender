@@ -1,0 +1,3 @@
+
+# Playwright screenshot/UI-verification artifacts (local only)
+.playwright-mcp/

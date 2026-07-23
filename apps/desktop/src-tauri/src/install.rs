@@ -195,7 +195,10 @@ pub fn install_app_local(req: &InstallRequest) -> InstallOutcome {
 pub fn launch_app(app_id: &str) -> InstallOutcome {
     let config = install_config::load();
     let Some(app) = config.app(app_id) else {
-        return InstallOutcome::failed(app_id, "app is not Tender-managed (no install config entry)");
+        return InstallOutcome::failed(
+            app_id,
+            "app is not Tender-managed (no install config entry)",
+        );
     };
     let launch = &app.launch;
 
@@ -208,7 +211,10 @@ pub fn launch_app(app_id: &str) -> InstallOutcome {
             app_id: app_id.to_string(),
             status: InstallStatus::Launched,
             install_path: Some(app.install_path.clone()),
-            detail: Some(format!("launched via {} (app self-supervises its sidecar)", launch.program)),
+            detail: Some(format!(
+                "launched via {} (app self-supervises its sidecar)",
+                launch.program
+            )),
         },
         Ok(s) => InstallOutcome::failed(app_id, format!("launch command exited {s}")),
         Err(e) => InstallOutcome::failed(app_id, format!("launch spawn failed: {e}")),
@@ -273,7 +279,10 @@ mod tests {
         let c = macos_launch_contract("/X/Sunfish.app");
         assert_eq!(c.program, "/usr/bin/open");
         assert_eq!(c.args, vec!["/X/Sunfish.app".to_string()]);
-        assert!(c.health_url.is_none(), "ephemeral internal port — not polled");
+        assert!(
+            c.health_url.is_none(),
+            "ephemeral internal port — not polled"
+        );
     }
 
     #[test]
@@ -317,32 +326,54 @@ mod tests {
         let req = InstallRequest {
             app_id: "sunfish".to_string(),
             version: "0.1.0".to_string(),
-            source: InstallSource { kind: InstallSourceKind::AppBundle, path: src },
+            source: InstallSource {
+                kind: InstallSourceKind::AppBundle,
+                path: src,
+            },
             profile: sample_profile(),
         };
 
         // 1. Install (place + record).
         let out = install_app_local(&req);
-        assert_eq!(out.status, InstallStatus::Installed, "install failed: {:?}", out.detail);
+        assert_eq!(
+            out.status,
+            InstallStatus::Installed,
+            "install failed: {:?}",
+            out.detail
+        );
         let install_path = out.install_path.clone().expect("install path");
         eprintln!("[c3] installed → {install_path}");
-        assert!(Path::new(&install_path).join("Contents/MacOS/anchor-tauri").exists());
-        assert!(Path::new(&install_path).join("Contents/MacOS/local-node-host").exists());
+        assert!(Path::new(&install_path)
+            .join("Contents/MacOS/anchor-tauri")
+            .exists());
+        assert!(Path::new(&install_path)
+            .join("Contents/MacOS/local-node-host")
+            .exists());
         assert_eq!(
-            install_config::load().app("sunfish").map(|a| a.version.clone()),
+            install_config::load()
+                .app("sunfish")
+                .map(|a| a.version.clone()),
             Some("0.1.0".to_string())
         );
 
         // 2. Launch (hand off to the app's own ADR 0115 supervisor).
         let launched = launch_app("sunfish");
-        assert_eq!(launched.status, InstallStatus::Launched, "launch failed: {:?}", launched.detail);
+        assert_eq!(
+            launched.status,
+            InstallStatus::Launched,
+            "launch failed: {:?}",
+            launched.detail
+        );
         eprintln!("[c3] launched; waiting for the app to spawn its sidecar…");
 
         // 3. Verify liveness by process (the sidecar's health port is ephemeral +
         //    internal to the app, so process liveness is the honest external signal).
         let pgrep = |pat: &str| {
-            std::process::Command::new("pgrep").args(["-f", pat]).output()
-                .map(|o| o.status.success()).unwrap_or(false)
+            std::process::Command::new("pgrep")
+                .args(["-f", pat])
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false)
         };
         let mut shell_up = false;
         let mut sidecar_up = false;
@@ -350,7 +381,9 @@ mod tests {
             std::thread::sleep(Duration::from_secs(1));
             shell_up = pgrep("anchor-tauri");
             sidecar_up = pgrep("local-node-host");
-            if shell_up && sidecar_up { break; }
+            if shell_up && sidecar_up {
+                break;
+            }
         }
         eprintln!("[c3] anchor-tauri running={shell_up}, local-node-host running={sidecar_up}");
 
@@ -371,14 +404,21 @@ mod tests {
 
         // 5. Cleanup: terminate the launched instance (test hygiene — leaves the
         //    install in place; this is not the §7 path, just test teardown).
-        let _ = std::process::Command::new("pkill").args(["-f", "anchor-tauri"]).status();
-        let _ = std::process::Command::new("pkill").args(["-f", "local-node-host"]).status();
+        let _ = std::process::Command::new("pkill")
+            .args(["-f", "anchor-tauri"])
+            .status();
+        let _ = std::process::Command::new("pkill")
+            .args(["-f", "local-node-host"])
+            .status();
 
         // Tender's C3 guarantees (what the installer/coordinator OWNS): the bundle
         // was placed, recorded, launched, and the app's shell is running — i.e.
         // "Tender installs Sunfish on this box and it launches." Whether the app
         // then fully boots its sidecar is the app's own responsibility (above).
-        assert!(shell_up, "Sunfish Tauri shell (anchor-tauri) did not come up after launch");
+        assert!(
+            shell_up,
+            "Sunfish Tauri shell (anchor-tauri) did not come up after launch"
+        );
     }
 
     /// LIVE end-to-end install proof for **Flight-Deck** (C5). Same engine as C3
@@ -396,40 +436,64 @@ mod tests {
         let req = InstallRequest {
             app_id: "flight-deck".to_string(),
             version: "0.1.0".to_string(),
-            source: InstallSource { kind: InstallSourceKind::AppBundle, path: src },
+            source: InstallSource {
+                kind: InstallSourceKind::AppBundle,
+                path: src,
+            },
             profile: sample_profile(),
         };
 
         // 1. Install (place + record) — same engine as Sunfish.
         let out = install_app_local(&req);
-        assert_eq!(out.status, InstallStatus::Installed, "install failed: {:?}", out.detail);
+        assert_eq!(
+            out.status,
+            InstallStatus::Installed,
+            "install failed: {:?}",
+            out.detail
+        );
         let install_path = out.install_path.clone().expect("install path");
         eprintln!("[c5] installed → {install_path}");
         // Flight-Deck has NO sidecar (externalBin: []) — only the shell binary.
-        assert!(Path::new(&install_path).join("Contents/MacOS/galley-desktop").exists());
+        assert!(Path::new(&install_path)
+            .join("Contents/MacOS/galley-desktop")
+            .exists());
         assert!(
-            !Path::new(&install_path).join("Contents/MacOS/local-node-host").exists(),
+            !Path::new(&install_path)
+                .join("Contents/MacOS/local-node-host")
+                .exists(),
             "Flight-Deck must have no .NET sidecar"
         );
         assert_eq!(
-            install_config::load().app("flight-deck").map(|a| a.version.clone()),
+            install_config::load()
+                .app("flight-deck")
+                .map(|a| a.version.clone()),
             Some("0.1.0".to_string())
         );
 
         // 2. Launch (hand off to the app's own supervisor).
         let launched = launch_app("flight-deck");
-        assert_eq!(launched.status, InstallStatus::Launched, "launch failed: {:?}", launched.detail);
+        assert_eq!(
+            launched.status,
+            InstallStatus::Launched,
+            "launch failed: {:?}",
+            launched.detail
+        );
 
         // 3. Verify the shell came up.
         let pgrep = |pat: &str| {
-            std::process::Command::new("pgrep").args(["-f", pat]).output()
-                .map(|o| o.status.success()).unwrap_or(false)
+            std::process::Command::new("pgrep")
+                .args(["-f", pat])
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false)
         };
         let mut shell_up = false;
         for _ in 0..20 {
             std::thread::sleep(Duration::from_secs(1));
             shell_up = pgrep("galley-desktop");
-            if shell_up { break; }
+            if shell_up {
+                break;
+            }
         }
         eprintln!("[c5] galley-desktop (shell) running={shell_up}");
 
@@ -438,8 +502,19 @@ mod tests {
         //    Installed OUTSIDE the repo tree (Tender's apps dir), the walk-up fails,
         //    so the backend will NOT auto-start — observed, not asserted.
         let backend_up = std::process::Command::new("curl")
-            .args(["-s", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "2", "http://127.0.0.1:3080/"])
-            .output().map(|o| String::from_utf8_lossy(&o.stdout) == "200").unwrap_or(false);
+            .args([
+                "-s",
+                "-o",
+                "/dev/null",
+                "-w",
+                "%{http_code}",
+                "--max-time",
+                "2",
+                "http://127.0.0.1:3080/",
+            ])
+            .output()
+            .map(|o| String::from_utf8_lossy(&o.stdout) == "200")
+            .unwrap_or(false);
         eprintln!(
             "[c5] APP-SIDE: book-server :3080 reachable={backend_up} — the app's OWN backend. \
              From Tender's managed install path (outside the repo tree) the book-server walk-up \
@@ -449,8 +524,13 @@ mod tests {
         );
 
         // 5. Cleanup: quit only our shell (leave any pre-existing book-server intact).
-        let _ = std::process::Command::new("pkill").args(["-f", "galley-desktop"]).status();
+        let _ = std::process::Command::new("pkill")
+            .args(["-f", "galley-desktop"])
+            .status();
 
-        assert!(shell_up, "Flight-Deck shell (galley-desktop) did not come up after launch");
+        assert!(
+            shell_up,
+            "Flight-Deck shell (galley-desktop) did not come up after launch"
+        );
     }
 }

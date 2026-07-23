@@ -313,8 +313,85 @@ const PAID_COMPUTE: PaidComputeSnapshot = {
   probedAt: '2026-07-07T17:20:00Z',
 }
 
+// ── Ships view (shipyard#2998) ───────────────────────────────────────────────
+// Shaped from the real winhub state 2026-07-21: the five GPU services were
+// manually stopped to reclaim ~28GiB; CaddyPreviewHost/HarborlineDogfood serve
+// and are essential (status-only). Lets the browser render each honest state
+// for screenshot/UI work; never used in the built Tauri app.
+const SHIP_HOSTS = [
+  { id: 'winhub', displayName: 'winhub', sshTarget: 'desktop-umt08rn.taildefd38.ts.net', classified: true },
+  { id: 'surface', displayName: 'surface', sshTarget: 'surface-pro.taildefd38.ts.net', classified: false },
+]
+
+const WINHUB_SNAPSHOT = {
+  hostId: 'winhub',
+  displayName: 'winhub',
+  sshTarget: 'desktop-umt08rn.taildefd38.ts.net',
+  reachable: true,
+  detail: null,
+  classified: true,
+  classificationSource: 'ship-essential-winhub.json',
+  services: [
+    { name: 'ComfyUIService', classification: 'reclaimable', status: 'stopped', canControl: true },
+    { name: 'TTSService', classification: 'reclaimable', status: 'stopped', canControl: true },
+    { name: 'MusicService', classification: 'reclaimable', status: 'stopped', canControl: true },
+    { name: 'KokoroTTSService', classification: 'reclaimable', status: 'stopped', canControl: true },
+    { name: 'InferenceStudioService', classification: 'reclaimable', status: 'stopped', canControl: true },
+    { name: 'CaddyPreviewHost', classification: 'essential', status: 'running', canControl: false },
+    { name: 'HarborlineDogfood', classification: 'essential', status: 'running', canControl: false },
+    // Fleet PR #61 (Admiral ruling): SunfishOllama/ollama back
+    // ordinance/bin/local-review + the support-desk direction — essential.
+    { name: 'SunfishOllama', classification: 'essential', status: 'running', canControl: false },
+  ],
+  memFreeBytes: 30_064_771_072,
+  memTotalBytes: 34_359_738_368,
+  probedAt: '2026-07-21T16:00:00Z',
+}
+
+// surface: allow-listed but no vendored classification ⇒ nothing controllable
+// (the fail-safe), shown as an honest designed state (here: reachable, empty).
+const SURFACE_SNAPSHOT = {
+  hostId: 'surface',
+  displayName: 'surface',
+  sshTarget: 'surface-pro.taildefd38.ts.net',
+  reachable: true,
+  detail: null,
+  classified: false,
+  classificationSource: null,
+  services: [],
+  memFreeBytes: 9_663_676_416,
+  memTotalBytes: 17_179_869_184,
+  probedAt: '2026-07-21T16:00:00Z',
+}
+
+function shipServicesMock(args?: Record<string, unknown>) {
+  return args?.hostId === 'surface' ? SURFACE_SNAPSHOT : WINHUB_SNAPSHOT
+}
+
+function setShipServiceMock(args?: Record<string, unknown>) {
+  const action = args?.action === 'start' ? 'start' : 'stop'
+  const stopping = action === 'stop'
+  const outcome = {
+    hostId: String(args?.hostId ?? 'winhub'),
+    serviceName: String(args?.serviceName ?? 'KokoroTTSService'),
+    action,
+    ok: true,
+    verifiedStatus: stopping ? 'stopped' : 'running',
+    detail: null,
+    memFreeBeforeBytes: 30_064_771_072,
+    // Stopping frees ~2.4GiB; starting consumes it — the reclaim feedback.
+    memFreeAfterBytes: stopping ? 32_641_751_040 : 27_487_790_694,
+  }
+  // Dev-only latency so the transitioning state is observable in a browser
+  // (real ssh actions measured ~1s round-trip). Never runs in the built Tauri app.
+  return new Promise((resolve) => setTimeout(() => resolve(outcome), 900))
+}
+
 /** Per-command mock results. Commands not listed fall through to real `invoke` (which fail-soft in the browser). */
 export const DEV_MOCKS: Record<string, unknown> = {
+  get_ship_hosts: SHIP_HOSTS,
+  get_ship_services: shipServicesMock,
+  set_ship_service: setShipServiceMock,
   get_appearance: 'dark',
   get_fleet: FLEET,
   get_settings: SETTINGS,
