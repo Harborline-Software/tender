@@ -356,6 +356,26 @@ export const DEV_MOCKS: Record<string, unknown> = {
       nextCandidate: 'claude:bosun-claude-w1',
     },
   ],
+  get_fleet_coordinator_connection: {
+    savedUrl: 'http://coordinator.internal:7788',
+    effectiveUrl: 'http://coordinator.internal:7788',
+    source: 'sharedSettings',
+    tokenConfigured: true,
+    detail: 'Effective URL is shared with Ordinance coordinator clients.',
+  },
+  set_fleet_coordinator_url: {
+    savedUrl: 'http://coordinator.internal:7788',
+    effectiveUrl: 'http://coordinator.internal:7788',
+    source: 'sharedSettings',
+    tokenConfigured: true,
+    detail: 'Effective URL is shared with Ordinance coordinator clients.',
+  },
+  get_fleet_coordinator_status: {
+    state: 'online', url: 'http://coordinator.internal:7788',
+    detail: 'Single authority is reachable and authenticated.',
+    authorityId: 'winhub', epoch: 1, revision: 2,
+    queuedAssignments: 0, claimedAssignments: 1, activeAttempts: 1, reportingNodes: 1,
+  },
   get_fleet_dashboard_link: {
     configured: false, url: null,
     detail: 'Set Fleet Dashboard URL in Dock Settings.',

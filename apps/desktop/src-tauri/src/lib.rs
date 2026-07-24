@@ -8,6 +8,7 @@ pub mod autostart;
 pub mod bundles;
 pub mod catalog;
 pub mod coordination_daemons;
+pub mod fleet_coordinator;
 mod commands;
 mod devices;
 pub mod install;
@@ -15,6 +16,7 @@ pub mod install_config;
 pub mod inventory;
 pub mod paidcompute;
 mod notifications;
+mod platform;
 pub mod probe;
 pub mod profile;
 pub mod provider_health;
@@ -28,6 +30,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_positioner::init())
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .app_name("Harborline Toolbox")
+                .build(),
+        )
         .manage(notifications::NotificationState::new())
         .setup(|app| {
             // Menu-bar accessory mode: no Dock icon, app never becomes the
@@ -74,6 +81,10 @@ pub fn run() {
                         if window.is_visible().unwrap_or(false) {
                             let _ = window.hide();
                         } else {
+                            // Positioner supports both macOS menu-bar and
+                            // Windows notification-area geometry. If a shell
+                            // does not report tray coordinates, showing the
+                            // window is still preferable to losing the click.
                             let _ = window.move_window(Position::TrayCenter);
                             let _ = window.show();
                             let _ = window.set_focus();
@@ -150,6 +161,9 @@ pub fn run() {
             commands::open_coordination_daemon_log,
             commands::get_fleet_dashboard_link,
             commands::open_fleet_dashboard,
+            commands::get_fleet_coordinator_connection,
+            commands::set_fleet_coordinator_url,
+            commands::get_fleet_coordinator_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Harborline Toolbox");

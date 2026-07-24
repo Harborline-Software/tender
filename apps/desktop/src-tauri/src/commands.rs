@@ -37,6 +37,26 @@ pub fn open_fleet_dashboard() -> Result<(), String> {
     crate::coordination_daemons::open_dashboard()
 }
 
+/// Return the shared Ordinance coordinator connection without exposing its token.
+#[tauri::command]
+pub fn get_fleet_coordinator_connection() -> crate::fleet_coordinator::FleetCoordinatorConnection {
+    crate::fleet_coordinator::connection()
+}
+
+/// Persist or clear the shared coordinator URL while preserving local secret configuration.
+#[tauri::command]
+pub fn set_fleet_coordinator_url(
+    url: Option<String>,
+) -> Result<crate::fleet_coordinator::FleetCoordinatorConnection, String> {
+    crate::fleet_coordinator::set_url(url)
+}
+
+/// Probe the authenticated single-authority status endpoint. Tender remains read-only.
+#[tauri::command]
+pub async fn get_fleet_coordinator_status() -> crate::fleet_coordinator::FleetCoordinatorStatus {
+    crate::fleet_coordinator::status().await
+}
+
 // ── Log file path resolution ───────────────────────────────────────────────
 
 /// Canonical log file paths for each service identifier.
@@ -170,12 +190,13 @@ pub async fn get_devices() -> Vec<devices::TailscaleDevice> {
 }
 
 #[tauri::command]
-pub fn open_external(url: String) {
+pub fn open_external(url: String) -> Result<(), String> {
     // Only open well-formed web/mail URLs — never an arbitrary string or local
     // path handed to the `open` shell. Reject anything that isn't http(s)/mailto.
     if url.starts_with("https://") || url.starts_with("http://") || url.starts_with("mailto:") {
-        let _ = std::process::Command::new("open").arg(&url).spawn();
+        return crate::platform::open_url(&url);
     }
+    Err("Only http, https, and mailto links can be opened.".into())
 }
 
 #[tauri::command]
@@ -608,25 +629,51 @@ pub fn get_projects() -> Vec<projects::ProjectEntry> {
 
 // ── Login-item (auto-start at login) ─────────────────────────────────────────
 
-/// Enable or disable Tender auto-starting at login (a per-user LaunchAgent).
-/// When enabling, the LaunchAgent points at the currently-running Tender binary
-/// (`current_exe`), so it works wherever Tender is installed. Returns the
-/// resulting enabled state.
+/// Enable or disable Toolbox auto-starting in the current user's desktop
+/// session. macOS retains the stable LaunchAgent identity used by existing
+/// installs; Windows/Linux use Tauri's platform autostart manager.
 #[tauri::command]
-pub fn set_autostart(enabled: bool) -> Result<bool, String> {
-    if enabled {
-        let exe = std::env::current_exe().map_err(|e| format!("resolve current exe: {e}"))?;
-        crate::autostart::enable(&exe.to_string_lossy())?;
-    } else {
-        crate::autostart::disable()?;
+pub fn set_autostart(app: tauri::AppHandle, enabled: bool) -> Result<bool, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app;
+        if enabled {
+            let exe = std::env::current_exe().map_err(|e| format!("resolve current exe: {e}"))?;
+            crate::autostart::enable(&exe.to_string_lossy())?;
+        } else {
+            crate::autostart::disable()?;
+        }
+        return Ok(crate::autostart::is_enabled());
     }
-    Ok(crate::autostart::is_enabled())
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        use tauri_plugin_autostart::ManagerExt;
+
+        let manager = app.autolaunch();
+        if enabled {
+            manager.enable().map_err(|error| error.to_string())?;
+        } else {
+            manager.disable().map_err(|error| error.to_string())?;
+        }
+        manager.is_enabled().map_err(|error| error.to_string())
+    }
 }
 
-/// Whether Tender is currently set to auto-start at login.
+/// Whether Toolbox is currently set to auto-start in the user's desktop session.
 #[tauri::command]
-pub fn get_autostart() -> bool {
-    crate::autostart::is_enabled()
+pub fn get_autostart(app: tauri::AppHandle) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app;
+        crate::autostart::is_enabled()
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        use tauri_plugin_autostart::ManagerExt;
+        app.autolaunch().is_enabled().unwrap_or(false)
+    }
 }
 
 // ── Settings + dev/end-user mode (CFG-2) ──────────────────────────────────────
@@ -697,7 +744,13 @@ mod tests {
     /// stop_by_pattern against a real process: spawn a uniquely-marked sleep,
     /// confirm the helper SIGTERMs it and reports stopped; a second call
     /// returns None (nothing left matching).
+    ///
+    /// Unix-only: relies on `bash`/`exec -a`/`pkill -f`, none of which exist on
+    /// Windows -- `stop_by_pattern`'s own implementation is pkill-based and has
+    /// no Windows backend yet (pre-existing gap, out of scope for the Windows
+    /// tray card; see tender#2956).
     #[test]
+    #[cfg(not(target_os = "windows"))]
     fn stop_by_pattern_terminates_a_live_process_then_reports_none() {
         let marker = format!("tender-stoptest-{}", std::process::id());
         let mut child = std::process::Command::new("bash")

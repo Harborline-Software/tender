@@ -35,6 +35,10 @@ Dual-mode, follows macOS appearance (IPC-driven; `.dark`/`.light` class on docum
   cadence, last-log summary, and local controls. Maintenance-held, armed-but-unloaded, disabled,
   stale/error, and not-configured are first-class states; the UI never equates an active marker with
   a running job. Stop establishes a persistent hold. Start is confirmation-based and native-gated.
+- Fleet Coordinator: the first row in Coordination Daemons answers whether the single authority is
+  reachable and authenticated, then shows authority, epoch, revision, assignment/attempt counts,
+  and reporting nodes. Its URL is edited in Dock Settings and shared with Ordinance; secrets remain
+  in the native process and no customer-specific host is compiled into Tender.
 - Fleet Dashboard: an optional action in Coordination Daemons, persisted through Dock Settings;
   a session environment value is the fallback. No fleet-private hostname is embedded in the app,
   and the absent configuration has explicit guidance.

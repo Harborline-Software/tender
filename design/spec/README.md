@@ -1,6 +1,7 @@
 # Tender · Specification
 
-Implementation contract for the Tender Windows tray application. This folder
+Implementation contract for the Tender tray application (macOS menu-bar and
+Windows notification-area tray). This folder
 is the source of truth — the prototype (`/index.html`) is the visual source
 of truth for materials/composition, but behavior, data shapes, and platform
 integration are specified here.
