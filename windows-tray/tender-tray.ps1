@@ -1,6 +1,6 @@
 #Requires -Version 5.1
 # Harborline Tender -- Windows system tray coordinator.
-# Mirrors the Mac SwiftBar plugin at tender/menubar-plugin/sunfishsoftware.10s.sh
+# Mirrors the Mac SwiftBar plugin at tender/menubar-plugin/tender.10s.sh
 #
 # Sections: Coordination | Signal-Bridge | Sunfish ERP | Anchor (Tauri) | GPU Workers | Folders
 # Refresh: every 10 seconds
@@ -143,12 +143,18 @@ function Get-InboxCount {
 }
 
 function Get-LastSyncLine {
-    $log = Join-Path $Script:CoordDir ".sync-stdout.log"
+    # Prefer the Windows one-shot's own log (.coordination-sync.log, written by
+    # coordination-sync.ps1); fall back to the cross-synced Mac orchestrator log
+    # (.sync-stdout.log) so a fresh Windows box still shows fleet sync status before
+    # its first local run. Match vocabulary covers BOTH logs (issue #106).
+    $log = Join-Path $Script:CoordDir ".coordination-sync.log"
+    if (-not (Test-Path $log)) { $log = Join-Path $Script:CoordDir ".sync-stdout.log" }
     if (-not (Test-Path $log)) { return "" }
     try {
         $lines = Get-Content $log -Tail 20 -ErrorAction SilentlyContinue
-        $match = $lines | Where-Object { $_ -match "synced|ERROR|manual sync" } | Select-Object -Last 1
-        return if ($match) { $match.Substring(0, [Math]::Min($match.Length, 80)) } else { "" }
+        $match = $lines | Where-Object { $_ -match "reconciled|pushed|nothing to push|synced|DIVERGED|ERROR|WARN|manual sync" } | Select-Object -Last 1
+        if ($match) { return $match.Substring(0, [Math]::Min($match.Length, 80)) }
+        return ""
     } catch { return "" }
 }
 
@@ -248,11 +254,16 @@ function Update-Tray {
     # -- Coordination ---------------------------------------------------------
     $coordItem = Add-Item $menu "Coordination"
     Add-SubItem $coordItem "Sync now (one-shot)" {
-        $syncScript = Join-Path $Script:CoordDir "sync-coordination.py"
+        # Windows-side one-shot sync (issue #106). coordination-sync.ps1 runs a single
+        # fetch/pull/commit/push cycle and exits (0 clean / 1 diverged / 2 error) -- it is
+        # the native companion to the bash coordination-sync. Do NOT call the Mac-side
+        # sync-coordination.py here: that orchestrator SSHes *to* winhub, so on Windows it
+        # dies with "could not resolve hostname winhub" (self-ssh, wrong host anyway).
+        $syncScript = Join-Path $Script:CoordDir "coordination-sync.ps1"
         if (Test-Path $syncScript) {
-            Start-InTerminal $Script:CoordDir "python '$syncScript' -v"
+            Start-InTerminal $Script:CoordDir "& '$syncScript'"
         } else {
-            [System.Windows.Forms.MessageBox]::Show("sync-coordination.py not found at $syncScript") | Out-Null
+            [System.Windows.Forms.MessageBox]::Show("coordination-sync.ps1 not found at $syncScript") | Out-Null
         }
     }
     if ($lastSync) {
